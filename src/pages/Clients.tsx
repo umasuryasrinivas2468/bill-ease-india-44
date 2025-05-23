@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Search, Plus, Mail, Phone, MapPin, FileText } from 'lucide-react';
+import { Search, Plus, Mail, Phone, MapPin, FileText, Users } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useClients, useCreateClient } from '@/hooks/useClients';
