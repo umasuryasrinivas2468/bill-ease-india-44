@@ -51,8 +51,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return supabase.auth.signUp({ email, password });
   };
 
-  const signOut = () => {
-    return supabase.auth.signOut();
+  const signOut = async (): Promise<void> => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      throw error;
+    }
   };
 
   const value = {
