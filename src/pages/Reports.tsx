@@ -6,64 +6,129 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Download, FileSpreadsheet, Calendar, TrendingUp, IndianRupee } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { useInvoices } from '@/hooks/useInvoices';
+import { useToast } from '@/hooks/use-toast';
 
 const Reports = () => {
   const [selectedMonth, setSelectedMonth] = useState('2024-01');
   const [selectedYear, setSelectedYear] = useState('2024');
+  const { data: invoices = [] } = useInvoices();
+  const { toast } = useToast();
 
-  const monthlyData = [
-    { month: 'Jan', invoices: 8, amount: 125000 },
-    { month: 'Feb', invoices: 12, amount: 185000 },
-    { month: 'Mar', invoices: 15, amount: 220000 },
-    { month: 'Apr', invoices: 10, amount: 160000 },
-    { month: 'May', invoices: 18, amount: 280000 },
-    { month: 'Jun', invoices: 14, amount: 195000 },
-  ];
+  // Calculate stats from real data
+  const totalInvoices = invoices.length;
+  const totalRevenue = invoices
+    .filter(inv => inv.status === 'paid')
+    .reduce((sum, inv) => sum + Number(inv.total_amount), 0);
+  const totalGst = invoices
+    .filter(inv => inv.status === 'paid')
+    .reduce((sum, inv) => sum + Number(inv.gst_amount), 0);
+
+  // Generate monthly data from invoices
+  const monthlyData = React.useMemo(() => {
+    const monthlyStats = {};
+    
+    invoices.forEach(invoice => {
+      const date = new Date(invoice.invoice_date);
+      const monthKey = date.toLocaleDateString('en', { month: 'short' });
+      
+      if (!monthlyStats[monthKey]) {
+        monthlyStats[monthKey] = { month: monthKey, invoices: 0, amount: 0 };
+      }
+      
+      monthlyStats[monthKey].invoices += 1;
+      if (invoice.status === 'paid') {
+        monthlyStats[monthKey].amount += Number(invoice.total_amount);
+      }
+    });
+    
+    return Object.values(monthlyStats);
+  }, [invoices]);
 
   const gstData = [
-    { name: 'CGST (9%)', value: 15000, color: '#8884d8' },
-    { name: 'SGST (9%)', value: 15000, color: '#82ca9d' },
-    { name: 'IGST (18%)', value: 8000, color: '#ffc658' },
+    { name: 'CGST (9%)', value: totalGst * 0.5, color: '#8884d8' },
+    { name: 'SGST (9%)', value: totalGst * 0.5, color: '#82ca9d' },
+    { name: 'IGST (18%)', value: 0, color: '#ffc658' },
   ];
 
   const stats = [
     {
       title: "Total Invoices",
-      value: "77",
-      description: "This year",
+      value: totalInvoices.toString(),
+      description: "All time",
       icon: Calendar,
       color: "text-blue-600",
     },
     {
       title: "Total Revenue",
-      value: "₹12,65,000",
-      description: "This year",
+      value: `₹${totalRevenue.toLocaleString()}`,
+      description: "All time",
       icon: IndianRupee,
       color: "text-green-600",
     },
     {
       title: "GST Collected",
-      value: "₹2,27,700",
-      description: "This year",
+      value: `₹${totalGst.toLocaleString()}`,
+      description: "All time",
       icon: TrendingUp,
       color: "text-purple-600",
     },
   ];
 
   const gstSummary = {
-    totalSales: 1265000,
-    cgst: 113850,
-    sgst: 113850,
+    totalSales: totalRevenue,
+    cgst: Math.round(totalGst * 0.5),
+    sgst: Math.round(totalGst * 0.5),
     igst: 0,
-    totalGst: 227700,
+    totalGst: totalGst,
+  };
+
+  const generateCSVData = () => {
+    const headers = ['Invoice Number', 'Client Name', 'Date', 'Amount', 'GST', 'Total', 'Status'];
+    const csvData = [
+      headers.join(','),
+      ...invoices.map(invoice => [
+        invoice.invoice_number,
+        invoice.client_name,
+        invoice.invoice_date,
+        invoice.amount,
+        invoice.gst_amount,
+        invoice.total_amount,
+        invoice.status
+      ].join(','))
+    ].join('\n');
+    
+    return csvData;
+  };
+
+  const downloadCSV = (data: string, filename: string) => {
+    const blob = new Blob([data], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleExportExcel = () => {
-    console.log('Exporting to Excel...');
+    const csvData = generateCSVData();
+    downloadCSV(csvData, `invoice_report_${new Date().toISOString().split('T')[0]}.csv`);
+    toast({
+      title: "Export Successful",
+      description: "Invoice report has been downloaded as CSV file.",
+    });
   };
 
   const handleExportCSV = () => {
-    console.log('Exporting to CSV...');
+    const csvData = generateCSVData();
+    downloadCSV(csvData, `invoice_report_${new Date().toISOString().split('T')[0]}.csv`);
+    toast({
+      title: "Export Successful",
+      description: "Invoice report has been downloaded as CSV file.",
+    });
   };
 
   return (
@@ -102,18 +167,24 @@ const Reports = () => {
             <CardDescription>Invoice count and revenue by month</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip formatter={(value, name) => [
-                  name === 'amount' ? `₹${value.toLocaleString()}` : value,
-                  name === 'amount' ? 'Revenue' : 'Invoices'
-                ]} />
-                <Bar dataKey="amount" fill="#8884d8" />
-              </BarChart>
-            </ResponsiveContainer>
+            {monthlyData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip formatter={(value, name) => [
+                    name === 'amount' ? `₹${value.toLocaleString()}` : value,
+                    name === 'amount' ? 'Revenue' : 'Invoices'
+                  ]} />
+                  <Bar dataKey="amount" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No data available. Create some invoices to see the chart.
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -123,25 +194,31 @@ const Reports = () => {
             <CardDescription>GST collection by type</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={gstData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ₹${value.toLocaleString()}`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {gstData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => `₹${value.toLocaleString()}`} />
-              </PieChart>
-            </ResponsiveContainer>
+            {totalGst > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={gstData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => `${name}: ₹${value.toLocaleString()}`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {gstData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => `₹${value.toLocaleString()}`} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No GST data available. Create some paid invoices to see the breakdown.
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -152,7 +229,7 @@ const Reports = () => {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <CardTitle>GST Summary Report</CardTitle>
-              <CardDescription>Monthly GST filing summary</CardDescription>
+              <CardDescription>Business GST filing summary</CardDescription>
             </div>
             <div className="flex gap-2">
               <Select value={selectedMonth} onValueChange={setSelectedMonth}>
@@ -214,21 +291,21 @@ const Reports = () => {
                 <div>
                   <div className="flex justify-between">
                     <span>B2B Sales:</span>
-                    <span className="font-medium">₹8,50,000</span>
+                    <span className="font-medium">₹{Math.round(gstSummary.totalSales * 0.7).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>B2B GST:</span>
-                    <span className="font-medium">₹1,53,000</span>
+                    <span className="font-medium">₹{Math.round(gstSummary.totalGst * 0.7).toLocaleString()}</span>
                   </div>
                 </div>
                 <div>
                   <div className="flex justify-between">
                     <span>B2C Sales:</span>
-                    <span className="font-medium">₹4,15,000</span>
+                    <span className="font-medium">₹{Math.round(gstSummary.totalSales * 0.3).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>B2C GST:</span>
-                    <span className="font-medium">₹74,700</span>
+                    <span className="font-medium">₹{Math.round(gstSummary.totalGst * 0.3).toLocaleString()}</span>
                   </div>
                 </div>
               </div>

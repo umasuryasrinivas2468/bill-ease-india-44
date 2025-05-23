@@ -6,59 +6,18 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Search, Plus, Download, Eye, Filter } from 'lucide-react';
+import { Search, Plus, Download, Eye, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useInvoices } from '@/hooks/useInvoices';
 
 const Invoices = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-
-  const invoices = [
-    {
-      id: "INV-001",
-      clientName: "ABC Technologies",
-      amount: 25000,
-      gst: 4500,
-      total: 29500,
-      status: "paid",
-      date: "2024-01-15",
-      dueDate: "2024-02-15",
-    },
-    {
-      id: "INV-002",
-      clientName: "XYZ Solutions",
-      amount: 18500,
-      gst: 3330,
-      total: 21830,
-      status: "pending",
-      date: "2024-01-14",
-      dueDate: "2024-02-14",
-    },
-    {
-      id: "INV-003",
-      clientName: "Digital Corp",
-      amount: 32000,
-      gst: 5760,
-      total: 37760,
-      status: "paid",
-      date: "2024-01-13",
-      dueDate: "2024-02-13",
-    },
-    {
-      id: "INV-004",
-      clientName: "Tech Startup",
-      amount: 15000,
-      gst: 2700,
-      total: 17700,
-      status: "overdue",
-      date: "2024-01-10",
-      dueDate: "2024-02-10",
-    },
-  ];
+  const { data: invoices = [], isLoading } = useInvoices();
 
   const filteredInvoices = invoices.filter(invoice => {
-    const matchesSearch = invoice.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         invoice.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = invoice.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         invoice.invoice_number.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -75,6 +34,24 @@ const Invoices = () => {
         return <Badge variant="secondary">{status}</Badge>;
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-4 md:p-6 space-y-6">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger className="md:hidden" />
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">Invoices</h1>
+            <p className="text-muted-foreground">Loading your invoices...</p>
+          </div>
+        </div>
+        <div className="animate-pulse space-y-4">
+          <Card><CardContent className="h-20"></CardContent></Card>
+          <Card><CardContent className="h-96"></CardContent></Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -142,94 +119,117 @@ const Invoices = () => {
       </Card>
 
       {/* Invoice Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Invoice ID</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>GST</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredInvoices.map((invoice) => (
-                  <TableRow key={invoice.id}>
-                    <TableCell className="font-medium">{invoice.id}</TableCell>
-                    <TableCell>{invoice.clientName}</TableCell>
-                    <TableCell>₹{invoice.amount.toLocaleString()}</TableCell>
-                    <TableCell>₹{invoice.gst.toLocaleString()}</TableCell>
-                    <TableCell className="font-medium">₹{invoice.total.toLocaleString()}</TableCell>
-                    <TableCell>{getStatusBadge(invoice.status)}</TableCell>
-                    <TableCell>{new Date(invoice.date).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline">
-                          <Eye className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Download className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Mobile Cards for smaller screens */}
-      <div className="block sm:hidden space-y-4">
-        {filteredInvoices.map((invoice) => (
-          <Card key={invoice.id}>
-            <CardContent className="p-4">
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <p className="font-medium">{invoice.id}</p>
-                  <p className="text-sm text-muted-foreground">{invoice.clientName}</p>
-                </div>
-                {getStatusBadge(invoice.status)}
-              </div>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span>Amount:</span>
-                  <span>₹{invoice.amount.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>GST:</span>
-                  <span>₹{invoice.gst.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between font-medium">
-                  <span>Total:</span>
-                  <span>₹{invoice.total.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Date:</span>
-                  <span>{new Date(invoice.date).toLocaleDateString()}</span>
-                </div>
-              </div>
-              <div className="flex gap-2 mt-4">
-                <Button size="sm" variant="outline" className="flex-1">
-                  <Eye className="h-3 w-3 mr-1" />
-                  View
-                </Button>
-                <Button size="sm" variant="outline" className="flex-1">
-                  <Download className="h-3 w-3 mr-1" />
-                  Download
-                </Button>
+      {filteredInvoices.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <div className="text-muted-foreground">
+              {searchTerm || statusFilter !== 'all' 
+                ? 'No invoices found matching your criteria.' 
+                : 'No invoices created yet.'}
+            </div>
+            {!searchTerm && statusFilter === 'all' && (
+              <Button asChild className="mt-4">
+                <Link to="/create-invoice">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Your First Invoice
+                </Link>
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Invoice ID</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>GST</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredInvoices.map((invoice) => (
+                      <TableRow key={invoice.id}>
+                        <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
+                        <TableCell>{invoice.client_name}</TableCell>
+                        <TableCell>₹{Number(invoice.amount).toLocaleString()}</TableCell>
+                        <TableCell>₹{Number(invoice.gst_amount).toLocaleString()}</TableCell>
+                        <TableCell className="font-medium">₹{Number(invoice.total_amount).toLocaleString()}</TableCell>
+                        <TableCell>{getStatusBadge(invoice.status)}</TableCell>
+                        <TableCell>{new Date(invoice.invoice_date).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline">
+                              <Eye className="h-3 w-3" />
+                            </Button>
+                            <Button size="sm" variant="outline">
+                              <Download className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
+
+          {/* Mobile Cards for smaller screens */}
+          <div className="block sm:hidden space-y-4">
+            {filteredInvoices.map((invoice) => (
+              <Card key={invoice.id}>
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="font-medium">{invoice.invoice_number}</p>
+                      <p className="text-sm text-muted-foreground">{invoice.client_name}</p>
+                    </div>
+                    {getStatusBadge(invoice.status)}
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>Amount:</span>
+                      <span>₹{Number(invoice.amount).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>GST:</span>
+                      <span>₹{Number(invoice.gst_amount).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between font-medium">
+                      <span>Total:</span>
+                      <span>₹{Number(invoice.total_amount).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Date:</span>
+                      <span>{new Date(invoice.invoice_date).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <Button size="sm" variant="outline" className="flex-1">
+                      <Eye className="h-3 w-3 mr-1" />
+                      View
+                    </Button>
+                    <Button size="sm" variant="outline" className="flex-1">
+                      <Download className="h-3 w-3 mr-1" />
+                      Download
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 };

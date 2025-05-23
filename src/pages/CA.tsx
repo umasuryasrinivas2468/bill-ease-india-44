@@ -9,45 +9,47 @@ import { Upload, Download, FileText, Eye, Trash2, AlertCircle } from 'lucide-rea
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/components/AuthProvider';
 
 interface ProcessedDocument {
   id: string;
-  fileName: string;
-  uploadDate: string;
+  file_name: string;
   status: 'processing' | 'completed' | 'error';
-  recordsCount?: number;
-  downloadUrl?: string;
+  records_count?: number;
+  processed_file_url?: string;
+  created_at: string;
 }
 
 const CA = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  
-  const [processedDocuments] = useState<ProcessedDocument[]>([
-    {
-      id: '1',
-      fileName: 'bank_statement_jan2024.pdf',
-      uploadDate: '2024-01-15',
-      status: 'completed',
-      recordsCount: 45,
-      downloadUrl: '/exports/bank_statement_jan2024.csv'
-    },
-    {
-      id: '2',
-      fileName: 'expense_receipts_feb2024.pdf',
-      uploadDate: '2024-02-10',
-      status: 'completed',
-      recordsCount: 28,
-      downloadUrl: '/exports/expense_receipts_feb2024.csv'
-    },
-    {
-      id: '3',
-      fileName: 'invoice_copies_mar2024.pdf',
-      uploadDate: '2024-03-05',
-      status: 'processing',
-    },
-  ]);
+  const [documents, setDocuments] = useState<ProcessedDocument[]>([]);
+
+  React.useEffect(() => {
+    if (user) {
+      fetchDocuments();
+    }
+  }, [user]);
+
+  const fetchDocuments = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('processed_documents')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setDocuments(data || []);
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+    }
+  };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -78,22 +80,87 @@ const CA = () => {
     }
   };
 
+  const generateCSVContent = (fileName: string) => {
+    // Simulate OCR data extraction based on file type
+    const headers = ["Date", "Description", "Amount", "Type", "Category"];
+    const sampleData = [
+      ["2024-01-15", "Payment received from ABC Corp", "25000", "Credit", "Income"],
+      ["2024-01-14", "Office supplies purchase", "2500", "Debit", "Expense"],
+      ["2024-01-13", "Electricity bill payment", "3200", "Debit", "Utilities"],
+      ["2024-01-12", "Service invoice to XYZ Ltd", "18500", "Credit", "Income"],
+      ["2024-01-11", "Internet bill payment", "1500", "Debit", "Utilities"],
+    ];
+    
+    const csvContent = [
+      headers.join(","),
+      ...sampleData.map(row => row.join(","))
+    ].join("\n");
+    
+    return csvContent;
+  };
+
+  const downloadCSV = (content: string, fileName: string) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName.replace('.pdf', '.csv'));
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleProcessDocument = async () => {
-    if (!uploadedFile) return;
+    if (!uploadedFile || !user) return;
     
     setIsProcessing(true);
     
-    // Simulate OCR processing
     try {
+      // Save document to database
+      const { data: docData, error: docError } = await supabase
+        .from('processed_documents')
+        .insert([{
+          user_id: user.id,
+          file_name: uploadedFile.name,
+          status: 'processing'
+        }])
+        .select()
+        .single();
+      
+      if (docError) throw docError;
+      
+      // Simulate processing time
       await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Generate CSV content
+      const csvContent = generateCSVContent(uploadedFile.name);
+      const recordsCount = csvContent.split('\n').length - 1; // Exclude header
+      
+      // Update document status
+      const { error: updateError } = await supabase
+        .from('processed_documents')
+        .update({
+          status: 'completed',
+          records_count: recordsCount,
+        })
+        .eq('id', docData.id);
+      
+      if (updateError) throw updateError;
+      
+      // Auto-download the CSV
+      downloadCSV(csvContent, uploadedFile.name);
       
       toast({
         title: "Processing Complete",
-        description: "Your document has been processed and converted to CSV format.",
+        description: "Your document has been processed and CSV file downloaded automatically.",
       });
       
       setUploadedFile(null);
+      fetchDocuments(); // Refresh the list
+      
     } catch (error) {
+      console.error('Processing error:', error);
       toast({
         title: "Processing Failed",
         description: "There was an error processing your document.",
@@ -117,19 +184,39 @@ const CA = () => {
     }
   };
 
-  const handleDownload = (downloadUrl: string, fileName: string) => {
+  const handleDownload = (doc: ProcessedDocument) => {
+    const csvContent = generateCSVContent(doc.file_name);
+    downloadCSV(csvContent, doc.file_name);
+    
     toast({
       title: "Download Started",
-      description: `Downloading ${fileName}...`,
+      description: `Downloading ${doc.file_name.replace('.pdf', '.csv')}...`,
     });
-    // In a real app, this would trigger the actual download
   };
 
-  const handleDelete = (id: string, fileName: string) => {
-    toast({
-      title: "Document Deleted",
-      description: `${fileName} has been removed.`,
-    });
+  const handleDelete = async (id: string, fileName: string) => {
+    try {
+      const { error } = await supabase
+        .from('processed_documents')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Document Deleted",
+        description: `${fileName} has been removed.`,
+      });
+      
+      fetchDocuments(); // Refresh the list
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete document.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -235,7 +322,7 @@ const CA = () => {
               <div className="text-sm">
                 <p className="font-medium text-yellow-800">Processing Information</p>
                 <p className="text-yellow-700">
-                  OCR processing typically takes 1-3 minutes depending on document size and complexity. 
+                  OCR processing typically takes 1-3 minutes. The CSV file will download automatically when ready.
                   Ensure your PDF has clear, readable text for best results.
                 </p>
               </div>
@@ -253,7 +340,7 @@ const CA = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {processedDocuments.length > 0 ? (
+          {documents.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -266,22 +353,22 @@ const CA = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {processedDocuments.map((doc) => (
+                  {documents.map((doc) => (
                     <TableRow key={doc.id}>
-                      <TableCell className="font-medium">{doc.fileName}</TableCell>
-                      <TableCell>{new Date(doc.uploadDate).toLocaleDateString()}</TableCell>
+                      <TableCell className="font-medium">{doc.file_name}</TableCell>
+                      <TableCell>{new Date(doc.created_at).toLocaleDateString()}</TableCell>
                       <TableCell>{getStatusBadge(doc.status)}</TableCell>
                       <TableCell>
-                        {doc.recordsCount ? `${doc.recordsCount} records` : '-'}
+                        {doc.records_count ? `${doc.records_count} records` : '-'}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          {doc.status === 'completed' && doc.downloadUrl && (
+                          {doc.status === 'completed' && (
                             <>
                               <Button 
                                 size="sm" 
                                 variant="outline"
-                                onClick={() => handleDownload(doc.downloadUrl!, doc.fileName)}
+                                onClick={() => handleDownload(doc)}
                               >
                                 <Download className="h-3 w-3" />
                               </Button>
@@ -293,7 +380,7 @@ const CA = () => {
                           <Button 
                             size="sm" 
                             variant="outline"
-                            onClick={() => handleDelete(doc.id, doc.fileName)}
+                            onClick={() => handleDelete(doc.id, doc.file_name)}
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>

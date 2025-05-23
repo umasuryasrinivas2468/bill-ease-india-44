@@ -5,43 +5,66 @@ import { Button } from '@/components/ui/button';
 import { FileText, Users, IndianRupee, TrendingUp, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { useDashboardStats } from '@/hooks/useDashboardStats';
 
 const Dashboard = () => {
+  const { data: dashboardData, isLoading } = useDashboardStats();
+
+  if (isLoading) {
+    return (
+      <div className="p-4 md:p-6 space-y-6">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger className="md:hidden" />
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
+            <p className="text-muted-foreground">Loading your dashboard...</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <div className="animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   const stats = [
     {
       title: "Total Invoices",
-      value: "24",
-      description: "This month",
+      value: dashboardData?.totalInvoices.toString() || "0",
+      description: "All time",
       icon: FileText,
       color: "text-blue-600",
     },
     {
       title: "Total Clients",
-      value: "12",
+      value: dashboardData?.totalClients.toString() || "0",
       description: "Active clients",
       icon: Users,
       color: "text-green-600",
     },
     {
       title: "Revenue",
-      value: "₹1,24,500",
-      description: "This month",
+      value: `₹${dashboardData?.totalRevenue.toLocaleString() || "0"}`,
+      description: "Total earned",
       icon: IndianRupee,
       color: "text-purple-600",
     },
     {
       title: "Pending Amount",
-      value: "₹45,200",
+      value: `₹${dashboardData?.pendingAmount.toLocaleString() || "0"}`,
       description: "Outstanding",
       icon: TrendingUp,
       color: "text-orange-600",
     },
-  ];
-
-  const recentInvoices = [
-    { id: "INV-001", client: "ABC Technologies", amount: "₹25,000", status: "Paid", date: "2024-01-15" },
-    { id: "INV-002", client: "XYZ Solutions", amount: "₹18,500", status: "Pending", date: "2024-01-14" },
-    { id: "INV-003", client: "Digital Corp", amount: "₹32,000", status: "Paid", date: "2024-01-13" },
   ];
 
   return (
@@ -87,28 +110,40 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentInvoices.map((invoice) => (
-                <div key={invoice.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <p className="font-medium">{invoice.id}</p>
-                    <p className="text-sm text-muted-foreground">{invoice.client}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">{invoice.amount}</p>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      invoice.status === 'Paid' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {invoice.status}
-                    </span>
-                  </div>
+              {dashboardData?.recentInvoices.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p>No invoices created yet</p>
+                  <Button asChild className="mt-4">
+                    <Link to="/create-invoice">Create Your First Invoice</Link>
+                  </Button>
                 </div>
-              ))}
+              ) : (
+                <>
+                  {dashboardData?.recentInvoices.map((invoice) => (
+                    <div key={invoice.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div>
+                        <p className="font-medium">{invoice.invoice_number}</p>
+                        <p className="text-sm text-muted-foreground">{invoice.client_name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">₹{Number(invoice.total_amount).toLocaleString()}</p>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          invoice.status === 'paid' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {invoice.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  <Button variant="outline" className="w-full mt-4" asChild>
+                    <Link to="/invoices">View All Invoices</Link>
+                  </Button>
+                </>
+              )}
             </div>
-            <Button variant="outline" className="w-full mt-4" asChild>
-              <Link to="/invoices">View All Invoices</Link>
-            </Button>
           </CardContent>
         </Card>
 
