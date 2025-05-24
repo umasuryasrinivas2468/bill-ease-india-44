@@ -1,8 +1,7 @@
 
 // Utility to ensure user ID compatibility with Supabase
 export const normalizeUserId = (userId: string): string => {
-  // Clerk user IDs are already strings, just return as-is
-  // This function can be extended if needed for other auth providers
+  // Clerk user IDs are strings, return as-is for text columns
   return userId;
 };
 

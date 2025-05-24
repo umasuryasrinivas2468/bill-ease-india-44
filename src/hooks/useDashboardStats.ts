@@ -19,22 +19,34 @@ export const useDashboardStats = () => {
       console.log('Fetching dashboard stats for user:', normalizedUserId);
       
       // Get total invoices count
-      const { count: totalInvoices } = await supabase
+      const { count: totalInvoices, error: invoiceCountError } = await supabase
         .from('invoices')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', normalizedUserId);
       
+      if (invoiceCountError) {
+        console.error('Error fetching invoice count:', invoiceCountError);
+      }
+      
       // Get total clients count
-      const { count: totalClients } = await supabase
+      const { count: totalClients, error: clientCountError } = await supabase
         .from('clients')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', normalizedUserId);
       
+      if (clientCountError) {
+        console.error('Error fetching client count:', clientCountError);
+      }
+      
       // Get revenue and pending amount
-      const { data: invoiceStats } = await supabase
+      const { data: invoiceStats, error: invoiceStatsError } = await supabase
         .from('invoices')
         .select('total_amount, status')
         .eq('user_id', normalizedUserId);
+      
+      if (invoiceStatsError) {
+        console.error('Error fetching invoice stats:', invoiceStatsError);
+      }
       
       const totalRevenue = invoiceStats?.reduce((sum, invoice) => {
         return invoice.status === 'paid' ? sum + Number(invoice.total_amount) : sum;
@@ -46,12 +58,16 @@ export const useDashboardStats = () => {
       }, 0) || 0;
       
       // Get recent invoices
-      const { data: recentInvoices } = await supabase
+      const { data: recentInvoices, error: recentInvoicesError } = await supabase
         .from('invoices')
         .select('id, invoice_number, client_name, total_amount, status, invoice_date')
         .eq('user_id', normalizedUserId)
         .order('created_at', { ascending: false })
         .limit(3);
+      
+      if (recentInvoicesError) {
+        console.error('Error fetching recent invoices:', recentInvoicesError);
+      }
       
       console.log('Dashboard stats fetched:', {
         totalInvoices: totalInvoices || 0,

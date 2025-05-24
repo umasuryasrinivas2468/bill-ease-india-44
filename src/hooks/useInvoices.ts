@@ -67,8 +67,9 @@ export const useCreateInvoice = () => {
       
       const normalizedUserId = normalizeUserId(user.id);
       console.log('Creating invoice for user:', normalizedUserId);
-      console.log('Invoice data:', invoiceData);
+      console.log('Invoice data to insert:', { ...invoiceData, user_id: normalizedUserId });
       
+      // Insert the invoice
       const { data, error } = await supabase
         .from('invoices')
         .insert([{ ...invoiceData, user_id: normalizedUserId }])
@@ -76,16 +77,26 @@ export const useCreateInvoice = () => {
         .single();
       
       if (error) {
-        console.error('Error creating invoice:', error);
-        throw error;
+        console.error('Supabase error creating invoice:', error);
+        console.error('Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw new Error(`Failed to save invoice: ${error.message}`);
       }
       
-      console.log('Created invoice:', data);
+      console.log('Successfully created invoice:', data);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Invoice creation successful, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    },
+    onError: (error) => {
+      console.error('Mutation error:', error);
     },
   });
 };
