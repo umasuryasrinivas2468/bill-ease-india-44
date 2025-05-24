@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -264,7 +263,29 @@ const CreateInvoice = () => {
     }
   };
 
-  const handleSave = async (sendToClient = false) => {
+  const createInvoiceDataObject = () => {
+    const { subtotal, gstAmount, total } = calculateTotals();
+    
+    return {
+      invoice_number: invoiceData.invoiceNumber,
+      client_name: invoiceData.clientName,
+      client_email: invoiceData.clientEmail || null,
+      client_gst_number: invoiceData.clientGST || null,
+      client_address: invoiceData.clientAddress || null,
+      amount: subtotal,
+      gst_amount: gstAmount,
+      total_amount: total,
+      status: 'pending' as const,
+      invoice_date: invoiceData.invoiceDate,
+      due_date: invoiceData.dueDate,
+      items: items,
+      notes: invoiceData.notes || null,
+    };
+  };
+
+  const handleSave = async () => {
+    console.log('Save as draft clicked');
+    
     if (!invoiceData.clientName.trim()) {
       toast({
         title: "Validation Error",
@@ -292,31 +313,112 @@ const CreateInvoice = () => {
       return;
     }
 
-    const { subtotal, gstAmount, total } = calculateTotals();
-
     try {
-      console.log('Attempting to save invoice with user:', user?.id);
-      const savedInvoice = await createInvoiceMutation.mutateAsync({
-        invoice_number: invoiceData.invoiceNumber,
-        client_name: invoiceData.clientName,
-        client_email: invoiceData.clientEmail || undefined,
-        client_gst_number: invoiceData.clientGST || undefined,
-        client_address: invoiceData.clientAddress || undefined,
-        amount: subtotal,
-        gst_amount: gstAmount,
-        total_amount: total,
-        status: 'pending',
-        invoice_date: invoiceData.invoiceDate,
-        due_date: invoiceData.dueDate,
-        items: items,
-        notes: invoiceData.notes || undefined,
-      });
+      console.log('User ID:', user?.id);
+      
+      const invoiceDataToSave = createInvoiceDataObject();
+      console.log('Invoice data to save:', invoiceDataToSave);
+      
+      const savedInvoice = await createInvoiceMutation.mutateAsync(invoiceDataToSave);
+      
+      console.log('Invoice saved successfully:', savedInvoice);
 
       toast({
-        title: sendToClient ? "Invoice Sent" : "Invoice Saved",
-        description: sendToClient 
-          ? "Invoice has been saved and sent to the client."
-          : "Your invoice has been saved successfully.",
+        title: "Invoice Saved",
+        description: "Your invoice has been saved as draft successfully.",
+      });
+
+      navigate('/invoices');
+    } catch (error) {
+      console.error('Error saving invoice:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save invoice. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveAndSend = async () => {
+    console.log('Save and send clicked');
+    
+    if (!invoiceData.clientName.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Client name is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!invoiceData.clientEmail.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Client email is required to send invoice.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!invoiceData.dueDate) {
+      toast({
+        title: "Validation Error",
+        description: "Due date is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (items.some(item => !item.description.trim())) {
+      toast({
+        title: "Validation Error",
+        description: "All items must have a description.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      console.log('User ID:', user?.id);
+      
+      const invoiceDataToSave = createInvoiceDataObject();
+      console.log('Invoice data to save:', invoiceDataToSave);
+      
+      const savedInvoice = await createInvoiceMutation.mutateAsync(invoiceDataToSave);
+      
+      console.log('Invoice saved successfully:', savedInvoice);
+
+      // Create email content
+      const { subtotal, gstAmount, total } = calculateTotals();
+      const businessInfo = user?.unsafeMetadata?.businessInfo as any;
+      
+      const emailSubject = `Invoice ${invoiceData.invoiceNumber} from ${businessInfo?.businessName || 'Aczen Bilz'}`;
+      const emailBody = `Dear ${invoiceData.clientName},
+
+Please find attached invoice ${invoiceData.invoiceNumber} for the amount of ₹${total.toFixed(2)}.
+
+Invoice Details:
+- Invoice Number: ${invoiceData.invoiceNumber}
+- Invoice Date: ${new Date(invoiceData.invoiceDate).toLocaleDateString()}
+- Due Date: ${new Date(invoiceData.dueDate).toLocaleDateString()}
+- Amount: ₹${subtotal.toFixed(2)}
+- GST (${gstRate}%): ₹${gstAmount.toFixed(2)}
+- Total Amount: ₹${total.toFixed(2)}
+
+${invoiceData.notes ? `\nNotes: ${invoiceData.notes}` : ''}
+
+Thank you for your business!
+
+Best regards,
+${businessInfo?.businessName || 'Aczen Bilz'}`;
+
+      // Open email client with pre-filled data
+      const mailtoLink = `mailto:${invoiceData.clientEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+      window.open(mailtoLink);
+
+      toast({
+        title: "Invoice Saved & Email Opened",
+        description: "Invoice saved successfully and email client opened with pre-filled content.",
       });
 
       navigate('/invoices');
@@ -559,7 +661,7 @@ const CreateInvoice = () => {
               
               <div className="space-y-2">
                 <Button 
-                  onClick={() => handleSave(false)} 
+                  onClick={handleSave} 
                   variant="outline" 
                   className="w-full"
                   disabled={createInvoiceMutation.isPending}
@@ -568,7 +670,7 @@ const CreateInvoice = () => {
                   {createInvoiceMutation.isPending ? "Saving..." : "Save as Draft"}
                 </Button>
                 <Button 
-                  onClick={() => handleSave(true)} 
+                  onClick={handleSaveAndSend} 
                   variant="outline"
                   className="w-full"
                   disabled={createInvoiceMutation.isPending}
