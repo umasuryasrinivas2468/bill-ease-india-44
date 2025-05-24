@@ -1,7 +1,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/components/AuthProvider';
+import { useAuth } from '@/components/ClerkAuthProvider';
+import { normalizeUserId, isValidUserId } from '@/lib/userUtils';
 
 export interface Client {
   id: string;
@@ -19,14 +20,17 @@ export const useClients = () => {
   return useQuery({
     queryKey: ['clients', user?.id],
     queryFn: async () => {
-      if (!user) throw new Error('User not authenticated');
+      if (!user || !isValidUserId(user.id)) {
+        throw new Error('User not authenticated or invalid user ID');
+      }
       
-      console.log('Fetching clients for user:', user.id);
+      const normalizedUserId = normalizeUserId(user.id);
+      console.log('Fetching clients for user:', normalizedUserId);
       
       const { data, error } = await supabase
         .from('clients')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', normalizedUserId)
         .order('created_at', { ascending: false });
       
       if (error) {
@@ -37,7 +41,7 @@ export const useClients = () => {
       console.log('Fetched clients:', data);
       return data as Client[];
     },
-    enabled: !!user,
+    enabled: !!user && isValidUserId(user?.id),
   });
 };
 
@@ -47,13 +51,17 @@ export const useCreateClient = () => {
   
   return useMutation({
     mutationFn: async (clientData: Omit<Client, 'id' | 'created_at'>) => {
-      if (!user) throw new Error('User not authenticated');
+      if (!user || !isValidUserId(user.id)) {
+        throw new Error('User not authenticated or invalid user ID');
+      }
       
-      console.log('Creating client:', clientData);
+      const normalizedUserId = normalizeUserId(user.id);
+      console.log('Creating client for user:', normalizedUserId);
+      console.log('Client data:', clientData);
       
       const { data, error } = await supabase
         .from('clients')
-        .insert([{ ...clientData, user_id: user.id }])
+        .insert([{ ...clientData, user_id: normalizedUserId }])
         .select()
         .single();
       

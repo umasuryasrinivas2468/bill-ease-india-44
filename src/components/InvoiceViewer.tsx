@@ -1,6 +1,6 @@
 
 import React, { useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Download, X } from 'lucide-react';
 import { Invoice } from '@/hooks/useInvoices';
@@ -50,6 +50,9 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
               </Button>
             </div>
           </div>
+          <DialogDescription>
+            View and download invoice details for {invoice.client_name}
+          </DialogDescription>
         </DialogHeader>
         
         <div ref={printRef} className="bg-white p-8 space-y-6">

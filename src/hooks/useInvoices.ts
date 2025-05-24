@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/ClerkAuthProvider';
+import { normalizeUserId, isValidUserId } from '@/lib/userUtils';
 
 export interface Invoice {
   id: string;
@@ -27,14 +28,17 @@ export const useInvoices = () => {
   return useQuery({
     queryKey: ['invoices', user?.id],
     queryFn: async () => {
-      if (!user) throw new Error('User not authenticated');
+      if (!user || !isValidUserId(user.id)) {
+        throw new Error('User not authenticated or invalid user ID');
+      }
       
-      console.log('Fetching invoices for user:', user.id);
+      const normalizedUserId = normalizeUserId(user.id);
+      console.log('Fetching invoices for user:', normalizedUserId);
       
       const { data, error } = await supabase
         .from('invoices')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', normalizedUserId)
         .order('created_at', { ascending: false });
       
       if (error) {
@@ -45,7 +49,7 @@ export const useInvoices = () => {
       console.log('Fetched invoices:', data);
       return data as Invoice[];
     },
-    enabled: !!user,
+    enabled: !!user && isValidUserId(user?.id),
   });
 };
 
@@ -55,13 +59,17 @@ export const useCreateInvoice = () => {
   
   return useMutation({
     mutationFn: async (invoiceData: Omit<Invoice, 'id' | 'created_at'>) => {
-      if (!user) throw new Error('User not authenticated');
+      if (!user || !isValidUserId(user.id)) {
+        throw new Error('User not authenticated or invalid user ID');
+      }
       
-      console.log('Creating invoice:', invoiceData);
+      const normalizedUserId = normalizeUserId(user.id);
+      console.log('Creating invoice for user:', normalizedUserId);
+      console.log('Invoice data:', invoiceData);
       
       const { data, error } = await supabase
         .from('invoices')
-        .insert([{ ...invoiceData, user_id: user.id }])
+        .insert([{ ...invoiceData, user_id: normalizedUserId }])
         .select()
         .single();
       
