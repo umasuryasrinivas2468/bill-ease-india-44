@@ -21,13 +21,20 @@ export const useClients = () => {
     queryFn: async () => {
       if (!user) throw new Error('User not authenticated');
       
+      console.log('Fetching clients for user:', user.id);
+      
       const { data, error } = await supabase
         .from('clients')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching clients:', error);
+        throw error;
+      }
+      
+      console.log('Fetched clients:', data);
       return data as Client[];
     },
     enabled: !!user,
@@ -42,17 +49,25 @@ export const useCreateClient = () => {
     mutationFn: async (clientData: Omit<Client, 'id' | 'created_at'>) => {
       if (!user) throw new Error('User not authenticated');
       
+      console.log('Creating client:', clientData);
+      
       const { data, error } = await supabase
         .from('clients')
         .insert([{ ...clientData, user_id: user.id }])
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating client:', error);
+        throw error;
+      }
+      
+      console.log('Created client:', data);
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     },
   });
 };

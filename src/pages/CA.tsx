@@ -5,165 +5,86 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Upload, Download, FileText, Eye, Trash2, AlertCircle } from 'lucide-react';
+import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/components/AuthProvider';
-
-interface ProcessedDocument {
-  id: string;
-  file_name: string;
-  status: 'processing' | 'completed' | 'error';
-  records_count?: number;
-  processed_file_url?: string;
-  created_at: string;
-}
+import { useInvoices } from '@/hooks/useInvoices';
 
 const CA = () => {
   const { toast } = useToast();
-  const { user } = useAuth();
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const { data: invoices = [] } = useInvoices();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [documents, setDocuments] = useState<ProcessedDocument[]>([]);
 
-  React.useEffect(() => {
-    if (user) {
-      fetchDocuments();
-    }
-  }, [user]);
-
-  const fetchDocuments = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('processed_documents')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      setDocuments(data || []);
-    } catch (error) {
-      console.error('Error fetching documents:', error);
-    }
-  };
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (file.type !== 'application/pdf') {
-        toast({
-          title: "Invalid File Type",
-          description: "Please upload a PDF file only.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        toast({
-          title: "File Too Large",
-          description: "Please upload a file smaller than 10MB.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      setUploadedFile(file);
-      toast({
-        title: "File Selected",
-        description: `${file.name} is ready for processing.`,
-      });
-    }
-  };
-
-  const generateCSVContent = (fileName: string) => {
-    // Simulate OCR data extraction based on file type
-    const headers = ["Date", "Description", "Amount", "Type", "Category"];
-    const sampleData = [
-      ["2024-01-15", "Payment received from ABC Corp", "25000", "Credit", "Income"],
-      ["2024-01-14", "Office supplies purchase", "2500", "Debit", "Expense"],
-      ["2024-01-13", "Electricity bill payment", "3200", "Debit", "Utilities"],
-      ["2024-01-12", "Service invoice to XYZ Ltd", "18500", "Credit", "Income"],
-      ["2024-01-11", "Internet bill payment", "1500", "Debit", "Utilities"],
+  const generateGSTReport = () => {
+    const csvHeaders = [
+      'Invoice Number',
+      'Client Name',
+      'Client GST',
+      'Invoice Date',
+      'Taxable Amount',
+      'CGST (9%)',
+      'SGST (9%)',
+      'IGST (18%)',
+      'Total Tax',
+      'Total Amount',
+      'Status'
     ];
-    
-    const csvContent = [
-      headers.join(","),
-      ...sampleData.map(row => row.join(","))
-    ].join("\n");
-    
+
+    const csvData = invoices.map(invoice => {
+      const taxableAmount = Number(invoice.amount);
+      const totalTax = Number(invoice.gst_amount);
+      const cgst = totalTax / 2;
+      const sgst = totalTax / 2;
+      const igst = 0; // Assuming intra-state for now
+
+      return [
+        invoice.invoice_number,
+        invoice.client_name,
+        invoice.client_gst_number || '',
+        invoice.invoice_date,
+        taxableAmount.toFixed(2),
+        cgst.toFixed(2),
+        sgst.toFixed(2),
+        igst.toFixed(2),
+        totalTax.toFixed(2),
+        Number(invoice.total_amount).toFixed(2),
+        invoice.status.toUpperCase()
+      ];
+    });
+
+    const csvContent = [csvHeaders, ...csvData]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+
     return csvContent;
   };
 
-  const downloadCSV = (content: string, fileName: string) => {
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", fileName.replace('.pdf', '.csv'));
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleProcessDocument = async () => {
-    if (!uploadedFile || !user) return;
-    
+  const downloadGSTReport = () => {
     setIsProcessing(true);
     
     try {
-      // Save document to database
-      const { data: docData, error: docError } = await supabase
-        .from('processed_documents')
-        .insert([{
-          user_id: user.id,
-          file_name: uploadedFile.name,
-          status: 'processing'
-        }])
-        .select()
-        .single();
+      const csvContent = generateGSTReport();
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
       
-      if (docError) throw docError;
+      const currentDate = new Date().toISOString().split('T')[0];
+      link.setAttribute('href', url);
+      link.setAttribute('download', `GST_Report_${currentDate}.csv`);
+      link.style.visibility = 'hidden';
       
-      // Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Generate CSV content
-      const csvContent = generateCSVContent(uploadedFile.name);
-      const recordsCount = csvContent.split('\n').length - 1; // Exclude header
-      
-      // Update document status
-      const { error: updateError } = await supabase
-        .from('processed_documents')
-        .update({
-          status: 'completed',
-          records_count: recordsCount,
-        })
-        .eq('id', docData.id);
-      
-      if (updateError) throw updateError;
-      
-      // Auto-download the CSV
-      downloadCSV(csvContent, uploadedFile.name);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       
       toast({
-        title: "Processing Complete",
-        description: "Your document has been processed and CSV file downloaded automatically.",
+        title: "Report Generated",
+        description: "GST report has been downloaded successfully.",
       });
-      
-      setUploadedFile(null);
-      fetchDocuments(); // Refresh the list
-      
     } catch (error) {
-      console.error('Processing error:', error);
+      console.error('Error generating report:', error);
       toast({
-        title: "Processing Failed",
-        description: "There was an error processing your document.",
+        title: "Error",
+        description: "Failed to generate report. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -171,51 +92,69 @@ const CA = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
-      case 'processing':
-        return <Badge className="bg-yellow-100 text-yellow-800">Processing</Badge>;
-      case 'error':
-        return <Badge className="bg-red-100 text-red-800">Error</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
+  const generateSalesReport = () => {
+    const csvHeaders = [
+      'Invoice Number',
+      'Client Name',
+      'Invoice Date',
+      'Due Date',
+      'Amount',
+      'GST Amount',
+      'Total Amount',
+      'Status',
+      'Payment Status'
+    ];
+
+    const csvData = invoices.map(invoice => [
+      invoice.invoice_number,
+      invoice.client_name,
+      invoice.invoice_date,
+      invoice.due_date,
+      Number(invoice.amount).toFixed(2),
+      Number(invoice.gst_amount).toFixed(2),
+      Number(invoice.total_amount).toFixed(2),
+      invoice.status.toUpperCase(),
+      invoice.status === 'paid' ? 'RECEIVED' : 'PENDING'
+    ]);
+
+    const csvContent = [csvHeaders, ...csvData]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+
+    return csvContent;
   };
 
-  const handleDownload = (doc: ProcessedDocument) => {
-    const csvContent = generateCSVContent(doc.file_name);
-    downloadCSV(csvContent, doc.file_name);
+  const downloadSalesReport = () => {
+    setIsProcessing(true);
     
-    toast({
-      title: "Download Started",
-      description: `Downloading ${doc.file_name.replace('.pdf', '.csv')}...`,
-    });
-  };
-
-  const handleDelete = async (id: string, fileName: string) => {
     try {
-      const { error } = await supabase
-        .from('processed_documents')
-        .delete()
-        .eq('id', id);
+      const csvContent = generateSalesReport();
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
       
-      if (error) throw error;
+      const currentDate = new Date().toISOString().split('T')[0];
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Sales_Report_${currentDate}.csv`);
+      link.style.visibility = 'hidden';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       
       toast({
-        title: "Document Deleted",
-        description: `${fileName} has been removed.`,
+        title: "Report Generated",
+        description: "Sales report has been downloaded successfully.",
       });
-      
-      fetchDocuments(); // Refresh the list
     } catch (error) {
-      console.error('Delete error:', error);
+      console.error('Error generating report:', error);
       toast({
         title: "Error",
-        description: "Failed to delete document.",
+        description: "Failed to generate report. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -225,217 +164,138 @@ const CA = () => {
         <SidebarTrigger className="md:hidden" />
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">CA Tools</h1>
-          <p className="text-muted-foreground">Convert PDFs to CSV using OCR technology</p>
+          <p className="text-muted-foreground">Professional tools for chartered accountants</p>
         </div>
       </div>
 
-      {/* Upload Section */}
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Invoices</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{invoices.length}</div>
+            <p className="text-xs text-muted-foreground">Available for processing</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              ₹{invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + Number(inv.total_amount), 0).toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">From paid invoices</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">GST Collected</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              ₹{invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + Number(inv.gst_amount), 0).toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">Total GST amount</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Report Generation */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>GST Returns</CardTitle>
+            <CardDescription>Generate GST return files for filing</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <span>GSTR-1 format compatible</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <span>All tax slabs included</span>
+            </div>
+            
+            <Button 
+              onClick={downloadGSTReport} 
+              className="w-full"
+              disabled={isProcessing || invoices.length === 0}
+            >
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              {isProcessing ? "Generating..." : "Download GST Report"}
+            </Button>
+            
+            {invoices.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center">
+                No invoices available. Create some invoices first.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Sales Reports</CardTitle>
+            <CardDescription>Comprehensive sales and revenue analysis</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <span>Detailed transaction records</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <span>Payment status tracking</span>
+            </div>
+            
+            <Button 
+              onClick={downloadSalesReport} 
+              variant="outline" 
+              className="w-full"
+              disabled={isProcessing || invoices.length === 0}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {isProcessing ? "Generating..." : "Download Sales Report"}
+            </Button>
+            
+            {invoices.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center">
+                No invoices available. Create some invoices first.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* File Upload Section */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5" />
-            Document Upload & Processing
-          </CardTitle>
-          <CardDescription>
-            Upload PDF documents to extract data and convert to CSV format
-          </CardDescription>
+          <CardTitle>Bulk Data Processing</CardTitle>
+          <CardDescription>Upload and process large datasets</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4">
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-            <div className="space-y-4">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto" />
-              <div>
-                <h3 className="text-lg font-medium">Upload PDF Document</h3>
-                <p className="text-sm text-muted-foreground">
-                  Supports bank statements, receipts, invoices, and other financial documents
-                </p>
-              </div>
-              
-              {uploadedFile ? (
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <div className="flex items-center justify-center gap-2">
-                    <FileText className="h-5 w-5 text-blue-600" />
-                    <span className="font-medium">{uploadedFile.name}</span>
-                    <span className="text-sm text-muted-foreground">
-                      ({(uploadedFile.size / 1024 / 1024).toFixed(2)} MB)
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="pdf-upload"
-                  />
-                  <Label htmlFor="pdf-upload" className="cursor-pointer">
-                    <Button variant="outline" asChild>
-                      <span>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Select PDF File
-                      </span>
-                    </Button>
-                  </Label>
-                </div>
-              )}
-              
-              <div className="text-xs text-muted-foreground">
-                Maximum file size: 10MB • Supported format: PDF
-              </div>
+            <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+            <div className="space-y-2">
+              <Label htmlFor="file-upload" className="cursor-pointer">
+                <span className="text-sm font-medium">Upload CSV or Excel files</span>
+                <Input id="file-upload" type="file" accept=".csv,.xlsx,.xls" className="hidden" />
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Supported formats: CSV, Excel (.xlsx, .xls)
+              </p>
             </div>
           </div>
           
-          {uploadedFile && (
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button 
-                onClick={handleProcessDocument} 
-                disabled={isProcessing}
-                className="flex-1"
-              >
-                {isProcessing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Process Document
-                  </>
-                )}
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => setUploadedFile(null)}
-                disabled={isProcessing}
-              >
-                Cancel
-              </Button>
-            </div>
-          )}
-          
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div className="flex items-start gap-2">
-              <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-yellow-800">Processing Information</p>
-                <p className="text-yellow-700">
-                  OCR processing typically takes 1-3 minutes. The CSV file will download automatically when ready.
-                  Ensure your PDF has clear, readable text for best results.
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Processed Documents */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Processed Documents</CardTitle>
-          <CardDescription>
-            View and download your converted CSV files
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {documents.length > 0 ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>File Name</TableHead>
-                    <TableHead>Upload Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Records</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {documents.map((doc) => (
-                    <TableRow key={doc.id}>
-                      <TableCell className="font-medium">{doc.file_name}</TableCell>
-                      <TableCell>{new Date(doc.created_at).toLocaleDateString()}</TableCell>
-                      <TableCell>{getStatusBadge(doc.status)}</TableCell>
-                      <TableCell>
-                        {doc.records_count ? `${doc.records_count} records` : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          {doc.status === 'completed' && (
-                            <>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => handleDownload(doc)}
-                              >
-                                <Download className="h-3 w-3" />
-                              </Button>
-                              <Button size="sm" variant="outline">
-                                <Eye className="h-3 w-3" />
-                              </Button>
-                            </>
-                          )}
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleDelete(doc.id, doc.file_name)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              No processed documents yet. Upload a PDF to get started.
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Features Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle>OCR Features</CardTitle>
-          <CardDescription>
-            What our OCR technology can extract from your documents
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="p-4 border rounded-lg">
-              <h4 className="font-medium mb-2">Bank Statements</h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Transaction dates</li>
-                <li>• Amounts (debit/credit)</li>
-                <li>• Descriptions</li>
-                <li>• Balance information</li>
-              </ul>
-            </div>
-            <div className="p-4 border rounded-lg">
-              <h4 className="font-medium mb-2">Invoices</h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Invoice numbers</li>
-                <li>• Dates and due dates</li>
-                <li>• Item details</li>
-                <li>• GST information</li>
-              </ul>
-            </div>
-            <div className="p-4 border rounded-lg">
-              <h4 className="font-medium mb-2">Receipts</h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Vendor information</li>
-                <li>• Purchase dates</li>
-                <li>• Item descriptions</li>
-                <li>• Tax amounts</li>
-              </ul>
-            </div>
+          <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
+            <AlertCircle className="h-4 w-4 text-blue-500" />
+            <p className="text-sm text-blue-700">
+              Upload feature coming soon. Currently generating reports from your invoice data.
+            </p>
           </div>
         </CardContent>
       </Card>

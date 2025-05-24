@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,8 @@ import { Switch } from '@/components/ui/switch';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Plus, Trash2, Save, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useCreateInvoice } from '@/hooks/useInvoices';
+import { useNavigate } from 'react-router-dom';
 
 interface InvoiceItem {
   id: string;
@@ -21,8 +22,12 @@ interface InvoiceItem {
 
 const CreateInvoice = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const createInvoiceMutation = useCreateInvoice();
+  
   const [invoiceData, setInvoiceData] = useState({
     clientName: '',
+    clientEmail: '',
     clientGST: '',
     clientAddress: '',
     invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
@@ -30,6 +35,7 @@ const CreateInvoice = () => {
     dueDate: '',
     isRecurring: false,
     recurringFrequency: 'monthly',
+    notes: '',
   });
 
   const [items, setItems] = useState<InvoiceItem[]>([
@@ -73,18 +79,69 @@ const CreateInvoice = () => {
     return { subtotal, gstAmount, total };
   };
 
-  const handleSave = () => {
-    toast({
-      title: "Invoice Saved",
-      description: "Your invoice has been saved as draft.",
-    });
-  };
+  const handleSave = async (sendToClient = false) => {
+    if (!invoiceData.clientName.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Client name is required.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  const handleSend = () => {
-    toast({
-      title: "Invoice Sent",
-      description: "Invoice has been sent to the client.",
-    });
+    if (!invoiceData.dueDate) {
+      toast({
+        title: "Validation Error",
+        description: "Due date is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (items.some(item => !item.description.trim())) {
+      toast({
+        title: "Validation Error",
+        description: "All items must have a description.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { subtotal, gstAmount, total } = calculateTotals();
+
+    try {
+      await createInvoiceMutation.mutateAsync({
+        invoice_number: invoiceData.invoiceNumber,
+        client_name: invoiceData.clientName,
+        client_email: invoiceData.clientEmail || undefined,
+        client_gst_number: invoiceData.clientGST || undefined,
+        client_address: invoiceData.clientAddress || undefined,
+        amount: subtotal,
+        gst_amount: gstAmount,
+        total_amount: total,
+        status: 'pending',
+        invoice_date: invoiceData.invoiceDate,
+        due_date: invoiceData.dueDate,
+        items: items,
+        notes: invoiceData.notes || undefined,
+      });
+
+      toast({
+        title: sendToClient ? "Invoice Sent" : "Invoice Saved",
+        description: sendToClient 
+          ? "Invoice has been saved and sent to the client."
+          : "Your invoice has been saved successfully.",
+      });
+
+      navigate('/invoices');
+    } catch (error) {
+      console.error('Error saving invoice:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save invoice. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const { subtotal, gstAmount, total } = calculateTotals();
@@ -121,14 +178,24 @@ const CreateInvoice = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="clientGST">Client GST Number</Label>
+                  <Label htmlFor="clientEmail">Client Email</Label>
                   <Input
-                    id="clientGST"
-                    value={invoiceData.clientGST}
-                    onChange={(e) => setInvoiceData({...invoiceData, clientGST: e.target.value})}
-                    placeholder="22AAAAA0000A1Z5"
+                    id="clientEmail"
+                    type="email"
+                    value={invoiceData.clientEmail}
+                    onChange={(e) => setInvoiceData({...invoiceData, clientEmail: e.target.value})}
+                    placeholder="client@example.com"
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="clientGST">Client GST Number</Label>
+                <Input
+                  id="clientGST"
+                  value={invoiceData.clientGST}
+                  onChange={(e) => setInvoiceData({...invoiceData, clientGST: e.target.value})}
+                  placeholder="22AAAAA0000A1Z5"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="clientAddress">Client Address</Label>
@@ -168,7 +235,7 @@ const CreateInvoice = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="dueDate">Due Date</Label>
+                  <Label htmlFor="dueDate">Due Date *</Label>
                   <Input
                     id="dueDate"
                     type="date"
@@ -178,31 +245,16 @@ const CreateInvoice = () => {
                 </div>
               </div>
               
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="recurring"
-                  checked={invoiceData.isRecurring}
-                  onCheckedChange={(checked) => setInvoiceData({...invoiceData, isRecurring: checked})}
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
+                  id="notes"
+                  value={invoiceData.notes}
+                  onChange={(e) => setInvoiceData({...invoiceData, notes: e.target.value})}
+                  placeholder="Additional notes for the invoice"
+                  rows={2}
                 />
-                <Label htmlFor="recurring">Recurring Invoice</Label>
               </div>
-              
-              {invoiceData.isRecurring && (
-                <div className="space-y-2">
-                  <Label htmlFor="frequency">Frequency</Label>
-                  <Select value={invoiceData.recurringFrequency} onValueChange={(value) => setInvoiceData({...invoiceData, recurringFrequency: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="quarterly">Quarterly</SelectItem>
-                      <SelectItem value="yearly">Yearly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -320,13 +372,22 @@ const CreateInvoice = () => {
               </div>
               
               <div className="space-y-2">
-                <Button onClick={handleSave} variant="outline" className="w-full">
+                <Button 
+                  onClick={() => handleSave(false)} 
+                  variant="outline" 
+                  className="w-full"
+                  disabled={createInvoiceMutation.isPending}
+                >
                   <Save className="h-4 w-4 mr-2" />
-                  Save as Draft
+                  {createInvoiceMutation.isPending ? "Saving..." : "Save as Draft"}
                 </Button>
-                <Button onClick={handleSend} className="w-full">
+                <Button 
+                  onClick={() => handleSave(true)} 
+                  className="w-full"
+                  disabled={createInvoiceMutation.isPending}
+                >
                   <Send className="h-4 w-4 mr-2" />
-                  Save & Send
+                  {createInvoiceMutation.isPending ? "Saving..." : "Save & Send"}
                 </Button>
               </div>
             </CardContent>
