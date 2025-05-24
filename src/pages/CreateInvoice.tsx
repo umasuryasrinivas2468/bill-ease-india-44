@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Plus, Trash2, Save, Send } from 'lucide-react';
+import { Plus, Trash2, Save, Send, QrCode } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateInvoice } from '@/hooks/useInvoices';
 import { useNavigate } from 'react-router-dom';
@@ -79,7 +79,7 @@ const CreateInvoice = () => {
     return { subtotal, gstAmount, total };
   };
 
-  const handleSave = async (sendToClient = false) => {
+  const handleSave = async (sendToClient = false, sendUPIRequest = false) => {
     if (!invoiceData.clientName.trim()) {
       toast({
         title: "Validation Error",
@@ -110,7 +110,7 @@ const CreateInvoice = () => {
     const { subtotal, gstAmount, total } = calculateTotals();
 
     try {
-      await createInvoiceMutation.mutateAsync({
+      const savedInvoice = await createInvoiceMutation.mutateAsync({
         invoice_number: invoiceData.invoiceNumber,
         client_name: invoiceData.clientName,
         client_email: invoiceData.clientEmail || undefined,
@@ -132,6 +132,20 @@ const CreateInvoice = () => {
           ? "Invoice has been saved and sent to the client."
           : "Your invoice has been saved successfully.",
       });
+
+      // If UPI request is needed, redirect to UPI collections with prefilled data
+      if (sendUPIRequest && invoiceData.clientEmail) {
+        const upiId = invoiceData.clientEmail.replace('@', '@'); // Assuming email can be converted to UPI
+        navigate('/upi-collections', { 
+          state: { 
+            invoiceId: savedInvoice.id,
+            amount: total,
+            purpose: `Payment for Invoice ${invoiceData.invoiceNumber}`,
+            payerUPI: upiId
+          }
+        });
+        return;
+      }
 
       navigate('/invoices');
     } catch (error) {
@@ -383,11 +397,20 @@ const CreateInvoice = () => {
                 </Button>
                 <Button 
                   onClick={() => handleSave(true)} 
+                  variant="outline"
                   className="w-full"
                   disabled={createInvoiceMutation.isPending}
                 >
                   <Send className="h-4 w-4 mr-2" />
                   {createInvoiceMutation.isPending ? "Saving..." : "Save & Send"}
+                </Button>
+                <Button 
+                  onClick={() => handleSave(false, true)} 
+                  className="w-full"
+                  disabled={createInvoiceMutation.isPending}
+                >
+                  <QrCode className="h-4 w-4 mr-2" />
+                  {createInvoiceMutation.isPending ? "Saving..." : "Save & Request UPI Payment"}
                 </Button>
               </div>
             </CardContent>
