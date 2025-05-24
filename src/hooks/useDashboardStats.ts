@@ -1,7 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/components/AuthProvider';
+import { useAuth } from '@/components/ClerkAuthProvider';
 
 export const useDashboardStats = () => {
   const { user } = useAuth();
