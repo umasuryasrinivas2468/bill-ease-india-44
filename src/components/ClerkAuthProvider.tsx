@@ -1,10 +1,10 @@
 
 import React, { createContext, useContext } from 'react';
 import { useUser, useAuth as useClerkAuth } from '@clerk/clerk-react';
-import { User } from '@clerk/clerk-react';
+import type { UserResource } from '@clerk/types';
 
 interface AuthContextType {
-  user: User | null;
+  user: UserResource | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
