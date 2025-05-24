@@ -134,14 +134,13 @@ const CreateInvoice = () => {
       });
 
       // If UPI request is needed, redirect to UPI collections with prefilled data
-      if (sendUPIRequest && invoiceData.clientEmail) {
-        const upiId = invoiceData.clientEmail.replace('@', '@'); // Assuming email can be converted to UPI
+      if (sendUPIRequest) {
         navigate('/upi-collections', { 
           state: { 
             invoiceId: savedInvoice.id,
             amount: total,
             purpose: `Payment for Invoice ${invoiceData.invoiceNumber}`,
-            payerUPI: upiId
+            payerUPI: invoiceData.clientEmail || ''
           }
         });
         return;

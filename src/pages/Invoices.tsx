@@ -8,11 +8,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Search, Plus, Download, Eye, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useInvoices } from '@/hooks/useInvoices';
+import { useInvoices, Invoice } from '@/hooks/useInvoices';
+import InvoiceViewer from '@/components/InvoiceViewer';
 
 const Invoices = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
   const { data: invoices = [], isLoading } = useInvoices();
 
   const filteredInvoices = invoices.filter(invoice => {
@@ -33,6 +36,17 @@ const Invoices = () => {
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
+  };
+
+  const handleViewInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setIsViewerOpen(true);
+  };
+
+  const handleDownloadInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setIsViewerOpen(true);
+    // The download will be handled inside the viewer component
   };
 
   if (isLoading) {
@@ -168,10 +182,18 @@ const Invoices = () => {
                         <TableCell>{new Date(invoice.invoice_date).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleViewInvoice(invoice)}
+                            >
                               <Eye className="h-3 w-3" />
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleDownloadInvoice(invoice)}
+                            >
                               <Download className="h-3 w-3" />
                             </Button>
                           </div>
@@ -215,11 +237,21 @@ const Invoices = () => {
                     </div>
                   </div>
                   <div className="flex gap-2 mt-4">
-                    <Button size="sm" variant="outline" className="flex-1">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => handleViewInvoice(invoice)}
+                    >
                       <Eye className="h-3 w-3 mr-1" />
                       View
                     </Button>
-                    <Button size="sm" variant="outline" className="flex-1">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => handleDownloadInvoice(invoice)}
+                    >
                       <Download className="h-3 w-3 mr-1" />
                       Download
                     </Button>
@@ -230,6 +262,15 @@ const Invoices = () => {
           </div>
         </>
       )}
+
+      <InvoiceViewer
+        invoice={selectedInvoice}
+        isOpen={isViewerOpen}
+        onClose={() => {
+          setIsViewerOpen(false);
+          setSelectedInvoice(null);
+        }}
+      />
     </div>
   );
 };
