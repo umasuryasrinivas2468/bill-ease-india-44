@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,10 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Plus, Trash2, Save, Send, QrCode } from 'lucide-react';
+import { Plus, Trash2, Save, Send, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateInvoice } from '@/hooks/useInvoices';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '@clerk/clerk-react';
 
 interface InvoiceItem {
   id: string;
@@ -24,6 +26,8 @@ const CreateInvoice = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const createInvoiceMutation = useCreateInvoice();
+  const { user } = useUser();
+  const printRef = useRef<HTMLDivElement>(null);
   
   const [invoiceData, setInvoiceData] = useState({
     clientName: '',
@@ -79,7 +83,188 @@ const CreateInvoice = () => {
     return { subtotal, gstAmount, total };
   };
 
-  const handleSave = async (sendToClient = false, sendUPIRequest = false) => {
+  const handleDownload = () => {
+    if (!invoiceData.clientName.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Client name is required to download invoice.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (items.some(item => !item.description.trim())) {
+      toast({
+        title: "Validation Error",
+        description: "All items must have a description to download invoice.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create a temporary invoice object for preview
+    const { subtotal, gstAmount, total } = calculateTotals();
+    const tempInvoice = {
+      id: 'temp',
+      invoice_number: invoiceData.invoiceNumber,
+      client_name: invoiceData.clientName,
+      client_email: invoiceData.clientEmail || undefined,
+      client_gst_number: invoiceData.clientGST || undefined,
+      client_address: invoiceData.clientAddress || undefined,
+      amount: subtotal,
+      gst_amount: gstAmount,
+      total_amount: total,
+      status: 'pending' as const,
+      invoice_date: invoiceData.invoiceDate,
+      due_date: invoiceData.dueDate || invoiceData.invoiceDate,
+      items: items,
+      notes: invoiceData.notes || undefined,
+      created_at: new Date().toISOString(),
+    };
+
+    // Generate and download the invoice
+    generateInvoicePDF(tempInvoice);
+  };
+
+  const generateInvoicePDF = (invoice: any) => {
+    const businessInfo = user?.unsafeMetadata?.businessInfo as any;
+    const logoUrl = user?.imageUrl;
+
+    const printContent = `
+      <html>
+        <head>
+          <title>Invoice ${invoice.invoice_number}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+            .header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 30px; }
+            .logo { display: flex; align-items: center; gap: 15px; }
+            .logo img { width: 64px; height: 64px; object-fit: contain; border-radius: 8px; }
+            .company-name { font-size: 24px; font-weight: bold; color: #2563eb; }
+            .business-name { font-size: 18px; font-weight: 600; }
+            .invoice-title { text-align: right; }
+            .invoice-title h2 { font-size: 20px; font-weight: bold; margin: 0; }
+            .invoice-number { font-size: 14px; color: #666; }
+            .info-section { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 30px; }
+            .info-block h3 { font-weight: 600; margin-bottom: 10px; }
+            .info-block p { margin: 2px 0; font-size: 14px; }
+            .dates { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 30px; }
+            .status { margin-left: 8px; padding: 4px 8px; border-radius: 4px; font-size: 12px; background: #fef3c7; color: #92400e; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+            th, td { border: 1px solid #d1d5db; padding: 12px; text-align: left; }
+            th { background-color: #f9fafb; font-weight: 600; }
+            .text-right { text-align: right; }
+            .totals { display: flex; justify-content: flex-end; margin-bottom: 30px; }
+            .totals-table { width: 300px; }
+            .totals-table div { display: flex; justify-content: space-between; padding: 8px 0; }
+            .total-final { font-weight: bold; font-size: 18px; border-top: 2px solid #000; padding-top: 8px; }
+            .notes { margin-top: 30px; }
+            .notes h3 { font-weight: 600; margin-bottom: 10px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="logo">
+              ${logoUrl ? `<img src="${logoUrl}" alt="Business Logo" />` : ''}
+              <div>
+                <div class="company-name">Aczen Bilz</div>
+                ${businessInfo?.businessName ? `<div class="business-name">${businessInfo.businessName}</div>` : ''}
+              </div>
+            </div>
+            <div class="invoice-title">
+              <h2>INVOICE</h2>
+              <div class="invoice-number">#${invoice.invoice_number}</div>
+            </div>
+          </div>
+
+          <div class="info-section">
+            <div>
+              <h3>From:</h3>
+              ${businessInfo ? `
+                <p><strong>${businessInfo.businessName || ''}</strong></p>
+                <p>${businessInfo.ownerName || ''}</p>
+                <p>${businessInfo.email || ''}</p>
+                <p>${businessInfo.phone || ''}</p>
+                ${businessInfo.address ? `<p>${businessInfo.address}</p>` : ''}
+                ${businessInfo.city && businessInfo.state ? `<p>${businessInfo.city}, ${businessInfo.state} ${businessInfo.pincode || ''}</p>` : ''}
+                ${businessInfo.gstNumber ? `<p>GST: ${businessInfo.gstNumber}</p>` : ''}
+              ` : ''}
+            </div>
+            <div>
+              <h3>To:</h3>
+              <p><strong>${invoice.client_name}</strong></p>
+              ${invoice.client_email ? `<p>${invoice.client_email}</p>` : ''}
+              ${invoice.client_address ? `<p>${invoice.client_address}</p>` : ''}
+              ${invoice.client_gst_number ? `<p>GST: ${invoice.client_gst_number}</p>` : ''}
+            </div>
+          </div>
+
+          <div class="dates">
+            <div>
+              <p><strong>Invoice Date:</strong> ${new Date(invoice.invoice_date).toLocaleDateString()}</p>
+              <p><strong>Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString()}</p>
+            </div>
+            <div>
+              <p><strong>Status:</strong><span class="status">PENDING</span></p>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th class="text-right">Qty</th>
+                <th class="text-right">Rate</th>
+                <th class="text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${invoice.items.map((item: any) => `
+                <tr>
+                  <td>${item.description}</td>
+                  <td class="text-right">${item.quantity}</td>
+                  <td class="text-right">₹${item.rate.toFixed(2)}</td>
+                  <td class="text-right">₹${item.amount.toFixed(2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <div class="totals">
+            <div class="totals-table">
+              <div>
+                <span>Subtotal:</span>
+                <span>₹${Number(invoice.amount).toFixed(2)}</span>
+              </div>
+              <div>
+                <span>GST:</span>
+                <span>₹${Number(invoice.gst_amount).toFixed(2)}</span>
+              </div>
+              <div class="total-final">
+                <span>Total:</span>
+                <span>₹${Number(invoice.total_amount).toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+
+          ${invoice.notes ? `
+            <div class="notes">
+              <h3>Notes:</h3>
+              <p>${invoice.notes}</p>
+            </div>
+          ` : ''}
+        </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
+  const handleSave = async (sendToClient = false) => {
     if (!invoiceData.clientName.trim()) {
       toast({
         title: "Validation Error",
@@ -110,6 +295,7 @@ const CreateInvoice = () => {
     const { subtotal, gstAmount, total } = calculateTotals();
 
     try {
+      console.log('Attempting to save invoice with user:', user?.id);
       const savedInvoice = await createInvoiceMutation.mutateAsync({
         invoice_number: invoiceData.invoiceNumber,
         client_name: invoiceData.clientName,
@@ -132,19 +318,6 @@ const CreateInvoice = () => {
           ? "Invoice has been saved and sent to the client."
           : "Your invoice has been saved successfully.",
       });
-
-      // If UPI request is needed, redirect to UPI collections with prefilled data
-      if (sendUPIRequest) {
-        navigate('/upi-collections', { 
-          state: { 
-            invoiceId: savedInvoice.id,
-            amount: total,
-            purpose: `Payment for Invoice ${invoiceData.invoiceNumber}`,
-            payerUPI: invoiceData.clientEmail || ''
-          }
-        });
-        return;
-      }
 
       navigate('/invoices');
     } catch (error) {
@@ -404,12 +577,11 @@ const CreateInvoice = () => {
                   {createInvoiceMutation.isPending ? "Saving..." : "Save & Send"}
                 </Button>
                 <Button 
-                  onClick={() => handleSave(false, true)} 
+                  onClick={handleDownload} 
                   className="w-full"
-                  disabled={createInvoiceMutation.isPending}
                 >
-                  <QrCode className="h-4 w-4 mr-2" />
-                  {createInvoiceMutation.isPending ? "Saving..." : "Save & Request UPI Payment"}
+                  <Download className="h-4 w-4 mr-2" />
+                  Download
                 </Button>
               </div>
             </CardContent>

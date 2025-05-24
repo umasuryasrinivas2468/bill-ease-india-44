@@ -1,7 +1,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/components/ClerkAuthProvider';
+import { useUser } from '@clerk/clerk-react';
 import { normalizeUserId, isValidUserId } from '@/lib/userUtils';
 
 export interface Client {
@@ -15,12 +15,13 @@ export interface Client {
 }
 
 export const useClients = () => {
-  const { user } = useAuth();
+  const { user } = useUser();
   
   return useQuery({
     queryKey: ['clients', user?.id],
     queryFn: async () => {
       if (!user || !isValidUserId(user.id)) {
+        console.error('User not authenticated or invalid user ID:', user?.id);
         throw new Error('User not authenticated or invalid user ID');
       }
       
@@ -47,11 +48,12 @@ export const useClients = () => {
 
 export const useCreateClient = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user } = useUser();
   
   return useMutation({
     mutationFn: async (clientData: Omit<Client, 'id' | 'created_at'>) => {
       if (!user || !isValidUserId(user.id)) {
+        console.error('User not authenticated or invalid user ID:', user?.id);
         throw new Error('User not authenticated or invalid user ID');
       }
       
