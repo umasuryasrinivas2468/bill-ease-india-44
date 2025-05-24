@@ -8,6 +8,8 @@ import {
   Calculator,
   Plus,
   LogOut,
+  Send,
+  CreditCard,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -24,7 +26,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "./AuthProvider";
+import { useAuth } from "./ClerkAuthProvider";
 
 const menuItems = [
   {
@@ -43,6 +45,11 @@ const menuItems = [
     icon: Plus,
   },
   {
+    title: "UPI Collections",
+    url: "/upi-collections",
+    icon: CreditCard,
+  },
+  {
     title: "Clients",
     url: "/clients",
     icon: Users,
@@ -56,6 +63,11 @@ const menuItems = [
     title: "CA Tools",
     url: "/ca",
     icon: Calculator,
+  },
+  {
+    title: "Payout",
+    url: "/payout",
+    icon: Send,
   },
   {
     title: "Settings",

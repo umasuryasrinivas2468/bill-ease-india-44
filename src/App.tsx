@@ -13,10 +13,13 @@ import Clients from "./pages/Clients";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import CA from "./pages/CA";
-import Login from "./pages/Login";
+import Payout from "./pages/Payout";
+import UPICollections from "./pages/UPICollections";
+import ClerkLogin from "./pages/ClerkLogin";
+import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
-import { AuthProvider } from "./components/AuthProvider";
-import ProtectedRoute from "./components/ProtectedRoute";
+import { AuthProvider } from "./components/ClerkAuthProvider";
+import ClerkProtectedRoute from "./components/ClerkProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -28,9 +31,10 @@ const App = () => (
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/login" element={<Login />} />
+            <Route path="/login" element={<ClerkLogin />} />
+            <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/" element={
-              <ProtectedRoute>
+              <ClerkProtectedRoute>
                 <SidebarProvider>
                   <div className="min-h-screen flex w-full">
                     <AppSidebar />
@@ -39,10 +43,10 @@ const App = () => (
                     </main>
                   </div>
                 </SidebarProvider>
-              </ProtectedRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/invoices" element={
-              <ProtectedRoute>
+              <ClerkProtectedRoute>
                 <SidebarProvider>
                   <div className="min-h-screen flex w-full">
                     <AppSidebar />
@@ -51,10 +55,10 @@ const App = () => (
                     </main>
                   </div>
                 </SidebarProvider>
-              </ProtectedRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/create-invoice" element={
-              <ProtectedRoute>
+              <ClerkProtectedRoute>
                 <SidebarProvider>
                   <div className="min-h-screen flex w-full">
                     <AppSidebar />
@@ -63,10 +67,22 @@ const App = () => (
                     </main>
                   </div>
                 </SidebarProvider>
-              </ProtectedRoute>
+              </ClerkProtectedRoute>
+            } />
+            <Route path="/upi-collections" element={
+              <ClerkProtectedRoute>
+                <SidebarProvider>
+                  <div className="min-h-screen flex w-full">
+                    <AppSidebar />
+                    <main className="flex-1 overflow-auto">
+                      <UPICollections />
+                    </main>
+                  </div>
+                </SidebarProvider>
+              </ClerkProtectedRoute>
             } />
             <Route path="/clients" element={
-              <ProtectedRoute>
+              <ClerkProtectedRoute>
                 <SidebarProvider>
                   <div className="min-h-screen flex w-full">
                     <AppSidebar />
@@ -75,10 +91,10 @@ const App = () => (
                     </main>
                   </div>
                 </SidebarProvider>
-              </ProtectedRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/reports" element={
-              <ProtectedRoute>
+              <ClerkProtectedRoute>
                 <SidebarProvider>
                   <div className="min-h-screen flex w-full">
                     <AppSidebar />
@@ -87,10 +103,10 @@ const App = () => (
                     </main>
                   </div>
                 </SidebarProvider>
-              </ProtectedRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/settings" element={
-              <ProtectedRoute>
+              <ClerkProtectedRoute>
                 <SidebarProvider>
                   <div className="min-h-screen flex w-full">
                     <AppSidebar />
@@ -99,10 +115,10 @@ const App = () => (
                     </main>
                   </div>
                 </SidebarProvider>
-              </ProtectedRoute>
+              </ClerkProtectedRoute>
             } />
             <Route path="/ca" element={
-              <ProtectedRoute>
+              <ClerkProtectedRoute>
                 <SidebarProvider>
                   <div className="min-h-screen flex w-full">
                     <AppSidebar />
@@ -111,7 +127,19 @@ const App = () => (
                     </main>
                   </div>
                 </SidebarProvider>
-              </ProtectedRoute>
+              </ClerkProtectedRoute>
+            } />
+            <Route path="/payout" element={
+              <ClerkProtectedRoute>
+                <SidebarProvider>
+                  <div className="min-h-screen flex w-full">
+                    <AppSidebar />
+                    <main className="flex-1 overflow-auto">
+                      <Payout />
+                    </main>
+                  </div>
+                </SidebarProvider>
+              </ClerkProtectedRoute>
             } />
             <Route path="*" element={<NotFound />} />
           </Routes>

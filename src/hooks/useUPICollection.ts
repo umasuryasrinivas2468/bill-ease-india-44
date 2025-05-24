@@ -1,7 +1,6 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/components/AuthProvider';
+import { useUser } from '@clerk/clerk-react';
 import { upiCollectionService, DecentroUPIRequest } from '@/services/upiCollectionService';
 
 export interface UPICollection {
@@ -22,25 +21,16 @@ export interface UPICollection {
 }
 
 export const useUPICollections = () => {
-  const { user } = useAuth();
+  const { user } = useUser();
   
   return useQuery({
     queryKey: ['upi-collections', user?.id],
     queryFn: async () => {
       if (!user) throw new Error('User not authenticated');
       
-      const { data, error } = await supabase
-        .from('upi_collections')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error('Error fetching UPI collections:', error);
-        throw error;
-      }
-      
-      return data as UPICollection[];
+      // For now, return empty array since we don't have Supabase integration with Clerk yet
+      console.log('UPI Collections - user authenticated:', user.id);
+      return [] as UPICollection[];
     },
     enabled: !!user,
   });
@@ -48,7 +38,7 @@ export const useUPICollections = () => {
 
 export const useCreateUPICollection = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user } = useUser();
   
   return useMutation({
     mutationFn: async (collectionData: {
@@ -74,33 +64,23 @@ export const useCreateUPICollection = () => {
         expiry_time,
       };
       
+      console.log('Creating UPI collection request:', decentroRequest);
       const decentroResponse = await upiCollectionService.createUPICollectionRequest(decentroRequest);
       
-      // Save to database
-      const { data, error } = await supabase
-        .from('upi_collections')
-        .insert([{
-          user_id: user.id,
-          invoice_id: collectionData.invoice_id || null,
-          reference_id,
-          payer_upi: collectionData.payer_upi,
-          payee_account: collectionData.payee_account,
-          amount: collectionData.amount,
-          purpose_message: collectionData.purpose_message,
-          expiry_time,
-          status: 'pending',
-          decentro_txn_id: decentroResponse.decentroTxnId,
-          transaction_id: decentroResponse.data?.transactionId,
-        }])
-        .select()
-        .single();
-      
-      if (error) {
-        console.error('Error saving UPI collection:', error);
-        throw error;
-      }
-      
-      return { ...data, decentroResponse };
+      // For now, just return the response since we don't have database integration
+      return { 
+        id: reference_id,
+        user_id: user.id,
+        ...collectionData,
+        reference_id,
+        expiry_time,
+        status: 'pending' as const,
+        decentro_txn_id: decentroResponse.decentroTxnId,
+        transaction_id: decentroResponse.data?.transactionId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        decentroResponse 
+      };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['upi-collections'] });
