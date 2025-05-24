@@ -28,7 +28,7 @@ export const useUPICollections = () => {
     queryFn: async () => {
       if (!user) throw new Error('User not authenticated');
       
-      // For now, return empty array since we don't have Supabase integration with Clerk yet
+      // For now, return empty array since we don't have database integration yet
       console.log('UPI Collections - user authenticated:', user.id);
       return [] as UPICollection[];
     },
@@ -51,35 +51,32 @@ export const useCreateUPICollection = () => {
     }) => {
       if (!user) throw new Error('User not authenticated');
       
-      const reference_id = upiCollectionService.generateReferenceId();
-      const expiry_time = upiCollectionService.generateExpiryTime(collectionData.expiry_minutes || 30);
-      
-      // Create UPI collection request with Decentro
       const decentroRequest: DecentroUPIRequest = {
-        reference_id,
         payer_upi: collectionData.payer_upi,
         payee_account: collectionData.payee_account,
         amount: collectionData.amount,
         purpose_message: collectionData.purpose_message,
-        expiry_time,
+        expiry_minutes: collectionData.expiry_minutes || 30,
       };
       
       console.log('Creating UPI collection request:', decentroRequest);
-      const decentroResponse = await upiCollectionService.createUPICollectionRequest(decentroRequest);
+      const response = await upiCollectionService.createUPICollectionRequest(decentroRequest);
       
-      // For now, just return the response since we don't have database integration
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to create UPI collection');
+      }
+      
       return { 
-        id: reference_id,
+        id: response.data!.reference_id,
         user_id: user.id,
         ...collectionData,
-        reference_id,
-        expiry_time,
+        reference_id: response.data!.reference_id,
+        expiry_time: response.data!.expiry_time,
         status: 'pending' as const,
-        decentro_txn_id: decentroResponse.decentroTxnId,
-        transaction_id: decentroResponse.data?.transactionId,
+        decentro_txn_id: response.data!.decentroTxnId,
+        transaction_id: response.data!.transactionId,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        decentroResponse 
       };
     },
     onSuccess: () => {
