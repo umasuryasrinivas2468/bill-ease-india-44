@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Upload, FileText, Download, AlertCircle, CheckCircle, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Tesseract from 'tesseract.js';
-import { Parser } from 'json2csv';
+import { parse } from 'json2csv';
 
 interface ExtractedInvoiceData {
   fileName: string;
@@ -152,8 +152,7 @@ const BulkInvoiceProcessor = () => {
       'error'
     ];
 
-    const parser = new Parser({ fields: csvFields });
-    const csv = parser.parse(processedData);
+    const csv = parse(processedData, { fields: csvFields });
     
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
