@@ -20,6 +20,7 @@ import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./components/ClerkAuthProvider";
 import ClerkProtectedRoute from "./components/ClerkProtectedRoute";
+import Chatbot from "./components/Chatbot";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <Chatbot />
       <AuthProvider>
         <BrowserRouter>
           <Routes>

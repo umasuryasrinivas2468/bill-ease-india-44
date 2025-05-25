@@ -74,7 +74,7 @@ const Dashboard = () => {
           <SidebarTrigger className="md:hidden" />
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">Welcome to your BillEase dashboard</p>
+            <p className="text-muted-foreground">Welcome to your Aczen Bilz dashboard</p>
           </div>
         </div>
         <Button asChild className="hidden sm:flex">

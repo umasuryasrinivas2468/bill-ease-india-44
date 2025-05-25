@@ -87,7 +87,7 @@ export function AppSidebar() {
           <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
             <FileText className="h-5 w-5 text-white" />
           </div>
-          <span className="font-bold text-xl">BillEase</span>
+          <span className="font-bold text-xl">Aczen Bilz</span>
         </div>
         <SidebarTrigger className="md:hidden" />
       </SidebarHeader>
