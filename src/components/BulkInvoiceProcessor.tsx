@@ -6,7 +6,6 @@ import { Progress } from '@/components/ui/progress';
 import { Upload, FileText, Download, AlertCircle, CheckCircle, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Tesseract from 'tesseract.js';
-import { parse } from 'json2csv';
 
 interface ExtractedInvoiceData {
   fileName: string;
@@ -136,23 +135,43 @@ const BulkInvoiceProcessor = () => {
     });
   };
 
+  const generateCSV = (data: ExtractedInvoiceData[]): string => {
+    const headers = [
+      'File Name',
+      'Invoice Number',
+      'Client Name',
+      'Amount',
+      'GST Amount',
+      'Total Amount',
+      'Invoice Date',
+      'Due Date',
+      'Status',
+      'Error'
+    ];
+
+    const csvRows = [
+      headers.join(','),
+      ...data.map(row => [
+        `"${row.fileName}"`,
+        `"${row.invoiceNumber}"`,
+        `"${row.clientName}"`,
+        `"${row.amount}"`,
+        `"${row.gstAmount}"`,
+        `"${row.totalAmount}"`,
+        `"${row.invoiceDate}"`,
+        `"${row.dueDate}"`,
+        `"${row.status}"`,
+        `"${row.error || ''}"`
+      ].join(','))
+    ];
+
+    return csvRows.join('\n');
+  };
+
   const downloadCSV = () => {
     if (processedData.length === 0) return;
 
-    const csvFields = [
-      'fileName',
-      'invoiceNumber',
-      'clientName',
-      'amount',
-      'gstAmount',
-      'totalAmount',
-      'invoiceDate',
-      'dueDate',
-      'status',
-      'error'
-    ];
-
-    const csv = parse(processedData, { fields: csvFields });
+    const csv = generateCSV(processedData);
     
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
