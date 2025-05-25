@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
@@ -17,6 +16,7 @@ const Onboarding = () => {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState('business');
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   const [businessInfo, setBusinessInfo] = useState({
     businessName: '',
@@ -76,22 +76,36 @@ const Onboarding = () => {
     });
   };
 
-  const handleComplete = () => {
-    // Save all data to user metadata or your database
-    user?.update({
-      unsafeMetadata: {
-        businessInfo,
-        bankDetails,
-        onboardingCompleted: true,
-      }
-    });
+  const handleComplete = async () => {
+    setIsCompleting(true);
+    
+    try {
+      // Save all data to user metadata
+      await user?.update({
+        unsafeMetadata: {
+          businessInfo,
+          bankDetails,
+          onboardingCompleted: true,
+        }
+      });
 
-    toast({
-      title: "Setup Complete!",
-      description: "Welcome to BillEase. You're ready to start creating invoices.",
-    });
+      toast({
+        title: "Setup Complete!",
+        description: "Welcome to Aczen Bilz. You're ready to start creating invoices.",
+      });
 
-    navigate('/');
+      // Navigate to main dashboard
+      navigate('/', { replace: true });
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      toast({
+        title: "Error",
+        description: "There was an issue completing your setup. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCompleting(false);
+    }
   };
 
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,7 +123,7 @@ const Onboarding = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-2xl mx-auto pt-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold">Welcome to BillEase!</h1>
+          <h1 className="text-3xl font-bold">Welcome to Aczen Bilz!</h1>
           <p className="text-muted-foreground mt-2">Let's set up your business profile</p>
         </div>
 
@@ -351,8 +365,19 @@ const Onboarding = () => {
                   </div>
                 </div>
                 
-                <Button onClick={handleComplete} className="w-full">
-                  Complete Setup & Start Using BillEase
+                <Button 
+                  onClick={handleComplete} 
+                  className="w-full"
+                  disabled={isCompleting}
+                >
+                  {isCompleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Completing Setup...
+                    </>
+                  ) : (
+                    "Complete Setup & Go to Dashboard"
+                  )}
                 </Button>
               </CardContent>
             </Card>
