@@ -1,13 +1,13 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle } from 'lucide-react';
+import { FileSpreadsheet, Download, CheckCircle, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useInvoices } from '@/hooks/useInvoices';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import BulkInvoiceProcessor from '@/components/BulkInvoiceProcessor';
+import VirtualCFO from '@/components/VirtualCFO';
 
 const CA = () => {
   const { toast } = useToast();
@@ -168,137 +168,126 @@ const CA = () => {
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Invoices</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{invoices.length}</div>
-            <p className="text-xs text-muted-foreground">Available for processing</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ₹{invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + Number(inv.total_amount), 0).toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">From paid invoices</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">GST Collected</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ₹{invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + Number(inv.gst_amount), 0).toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">Total GST amount</p>
-          </CardContent>
-        </Card>
-      </div>
+      <Tabs defaultValue="reports" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="reports">Reports & Stats</TabsTrigger>
+          <TabsTrigger value="bulk-processing">Bulk Processing</TabsTrigger>
+          <TabsTrigger value="virtual-cfo">Virtual CFO</TabsTrigger>
+        </TabsList>
 
-      {/* Report Generation */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>GST Returns</CardTitle>
-            <CardDescription>Generate GST return files for filing</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <CheckCircle className="h-4 w-4 text-green-500" />
-              <span>GSTR-1 format compatible</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <CheckCircle className="h-4 w-4 text-green-500" />
-              <span>All tax slabs included</span>
-            </div>
-            
-            <Button 
-              onClick={downloadGSTReport} 
-              className="w-full"
-              disabled={isProcessing || invoices.length === 0}
-            >
-              <FileSpreadsheet className="h-4 w-4 mr-2" />
-              {isProcessing ? "Generating..." : "Download GST Report"}
-            </Button>
-            
-            {invoices.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center">
-                No invoices available. Create some invoices first.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Sales Reports</CardTitle>
-            <CardDescription>Comprehensive sales and revenue analysis</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <CheckCircle className="h-4 w-4 text-green-500" />
-              <span>Detailed transaction records</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <CheckCircle className="h-4 w-4 text-green-500" />
-              <span>Payment status tracking</span>
-            </div>
-            
-            <Button 
-              onClick={downloadSalesReport} 
-              variant="outline" 
-              className="w-full"
-              disabled={isProcessing || invoices.length === 0}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              {isProcessing ? "Generating..." : "Download Sales Report"}
-            </Button>
-            
-            {invoices.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center">
-                No invoices available. Create some invoices first.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* File Upload Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Bulk Data Processing</CardTitle>
-          <CardDescription>Upload and process large datasets</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-            <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <div className="space-y-2">
-              <Label htmlFor="file-upload" className="cursor-pointer">
-                <span className="text-sm font-medium">Upload CSV or Excel files</span>
-                <Input id="file-upload" type="file" accept=".csv,.xlsx,.xls" className="hidden" />
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Supported formats: CSV, Excel (.xlsx, .xls)
-              </p>
-            </div>
+        <TabsContent value="reports" className="space-y-6">
+          {/* Quick Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Total Invoices</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{invoices.length}</div>
+                <p className="text-xs text-muted-foreground">Available for processing</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  ₹{invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + Number(inv.total_amount), 0).toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">From paid invoices</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">GST Collected</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  ₹{invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + Number(inv.gst_amount), 0).toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">Total GST amount</p>
+              </CardContent>
+            </Card>
           </div>
-          
-          <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
-            <AlertCircle className="h-4 w-4 text-blue-500" />
-            <p className="text-sm text-blue-700">
-              Upload feature coming soon. Currently generating reports from your invoice data.
-            </p>
+
+          {/* Report Generation */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>GST Returns</CardTitle>
+                <CardDescription>Generate GST return files for filing</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>GSTR-1 format compatible</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>All tax slabs included</span>
+                </div>
+                
+                <Button 
+                  onClick={downloadGSTReport} 
+                  className="w-full"
+                  disabled={isProcessing || invoices.length === 0}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  {isProcessing ? "Generating..." : "Download GST Report"}
+                </Button>
+                
+                {invoices.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center">
+                    No invoices available. Create some invoices first.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Sales Reports</CardTitle>
+                <CardDescription>Comprehensive sales and revenue analysis</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>Detailed transaction records</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>Payment status tracking</span>
+                </div>
+                
+                <Button 
+                  onClick={downloadSalesReport} 
+                  variant="outline" 
+                  className="w-full"
+                  disabled={isProcessing || invoices.length === 0}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {isProcessing ? "Generating..." : "Download Sales Report"}
+                </Button>
+                
+                {invoices.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center">
+                    No invoices available. Create some invoices first.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
+        </TabsContent>
+
+        <TabsContent value="bulk-processing">
+          <BulkInvoiceProcessor />
+        </TabsContent>
+
+        <TabsContent value="virtual-cfo">
+          <VirtualCFO />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
