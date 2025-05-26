@@ -1,6 +1,13 @@
 
 import React, { useEffect } from 'react';
 
+// Extend the Window interface to include chatbase
+declare global {
+  interface Window {
+    chatbase?: any;
+  }
+}
+
 const Chatbot = () => {
   useEffect(() => {
     // Add the chatbase script
@@ -41,7 +48,9 @@ const Chatbot = () => {
     // Cleanup function to remove script when component unmounts
     return () => {
       // Remove the script element
-      document.head.removeChild(scriptElement);
+      if (scriptElement.parentNode) {
+        scriptElement.parentNode.removeChild(scriptElement);
+      }
       
       // Clean up chatbase if it exists
       if (window.chatbase) {
