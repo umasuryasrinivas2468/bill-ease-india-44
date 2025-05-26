@@ -1,5 +1,5 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useUser } from '@clerk/clerk-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const Settings = () => {
+  const { user } = useUser();
   const { toast } = useToast();
   
   const [businessInfo, setBusinessInfo] = useState({
@@ -35,40 +36,166 @@ const Settings = () => {
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>('');
+  const [signaturePreview, setSignaturePreview] = useState<string>('');
 
-  const handleSaveBusinessInfo = () => {
-    toast({
-      title: "Business Information Updated",
-      description: "Your business information has been saved successfully.",
+  // Load data from user metadata on component mount
+  useEffect(() => {
+    if (user?.unsafeMetadata) {
+      const metadata = user.unsafeMetadata as any;
+      
+      if (metadata.businessInfo) {
+        setBusinessInfo(metadata.businessInfo);
+      }
+      
+      if (metadata.bankDetails) {
+        setBankDetails(metadata.bankDetails);
+      }
+      
+      if (metadata.logoBase64) {
+        setLogoPreview(metadata.logoBase64);
+      }
+      
+      if (metadata.signatureBase64) {
+        setSignaturePreview(metadata.signatureBase64);
+      }
+    }
+  }, [user]);
+
+  const validateAccountNumber = (accountNumber: string) => {
+    return /^\d{9,18}$/.test(accountNumber);
+  };
+
+  const validateIFSCCode = (ifsc: string) => {
+    return /^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc);
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
     });
   };
 
-  const handleSaveBankDetails = () => {
-    toast({
-      title: "Bank Details Updated",
-      description: "Your bank details have been saved successfully.",
-    });
-  };
-
-  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setLogoFile(file);
+  const handleSaveBusinessInfo = async () => {
+    try {
+      await user?.update({
+        unsafeMetadata: {
+          ...user.unsafeMetadata,
+          businessInfo,
+        }
+      });
+      
       toast({
-        title: "Logo Uploaded",
-        description: "Your business logo has been uploaded successfully.",
+        title: "Business Information Updated",
+        description: "Your business information has been saved successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save business information.",
+        variant: "destructive",
       });
     }
   };
 
-  const handleSignatureUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSaveBankDetails = async () => {
+    if (!validateAccountNumber(bankDetails.accountNumber)) {
+      toast({
+        title: "Invalid Account Number",
+        description: "Account number must be 9-18 digits long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!validateIFSCCode(bankDetails.ifscCode)) {
+      toast({
+        title: "Invalid IFSC Code",
+        description: "IFSC code format is invalid. Example: SBIN0001234",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await user?.update({
+        unsafeMetadata: {
+          ...user.unsafeMetadata,
+          bankDetails,
+        }
+      });
+      
+      toast({
+        title: "Bank Details Updated",
+        description: "Your bank details have been saved successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save bank details.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setLogoFile(file);
+      const base64 = await fileToBase64(file);
+      setLogoPreview(base64);
+      
+      try {
+        await user?.update({
+          unsafeMetadata: {
+            ...user.unsafeMetadata,
+            logoBase64: base64,
+          }
+        });
+        
+        toast({
+          title: "Logo Uploaded",
+          description: "Your business logo has been uploaded successfully.",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to save logo.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleSignatureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setSignatureFile(file);
-      toast({
-        title: "Signature Uploaded",
-        description: "Your signature has been uploaded successfully.",
-      });
+      const base64 = await fileToBase64(file);
+      setSignaturePreview(base64);
+      
+      try {
+        await user?.update({
+          unsafeMetadata: {
+            ...user.unsafeMetadata,
+            signatureBase64: base64,
+          }
+        });
+        
+        toast({
+          title: "Signature Uploaded",
+          description: "Your signature has been uploaded successfully.",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to save signature.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -79,6 +206,9 @@ const Settings = () => {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Settings</h1>
           <p className="text-muted-foreground">Manage your business information and preferences</p>
+          <div className="mt-2 text-sm text-muted-foreground bg-blue-50 rounded-lg p-2 inline-block">
+            🔐 Secured By Aczen Auth 3.0
+          </div>
         </div>
       </div>
 
@@ -219,17 +349,27 @@ const Settings = () => {
                     id="accountNumber"
                     value={bankDetails.accountNumber}
                     onChange={(e) => setBankDetails({...bankDetails, accountNumber: e.target.value})}
-                    placeholder="1234567890"
+                    placeholder="1234567890123456"
+                    maxLength={18}
+                    pattern="\d*"
                   />
+                  {bankDetails.accountNumber && !validateAccountNumber(bankDetails.accountNumber) && (
+                    <p className="text-sm text-red-500">Account number must be 9-18 digits long</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ifscCode">IFSC Code *</Label>
                   <Input
                     id="ifscCode"
                     value={bankDetails.ifscCode}
-                    onChange={(e) => setBankDetails({...bankDetails, ifscCode: e.target.value})}
-                    placeholder="SBIN0000123"
+                    onChange={(e) => setBankDetails({...bankDetails, ifscCode: e.target.value.toUpperCase()})}
+                    placeholder="SBIN0001234"
+                    maxLength={11}
+                    style={{ textTransform: 'uppercase' }}
                   />
+                  {bankDetails.ifscCode && !validateIFSCCode(bankDetails.ifscCode) && (
+                    <p className="text-sm text-red-500">Invalid IFSC format. Example: SBIN0001234</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="bankName">Bank Name *</Label>
@@ -283,9 +423,9 @@ const Settings = () => {
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                    {logoFile ? (
+                    {logoPreview ? (
                       <img 
-                        src={URL.createObjectURL(logoFile)} 
+                        src={logoPreview} 
                         alt="Logo preview" 
                         className="w-full h-full object-contain rounded-lg" 
                       />
@@ -330,9 +470,9 @@ const Settings = () => {
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                    {signatureFile ? (
+                    {signaturePreview ? (
                       <img 
-                        src={URL.createObjectURL(signatureFile)} 
+                        src={signaturePreview} 
                         alt="Signature preview" 
                         className="w-full h-full object-contain rounded-lg" 
                       />
