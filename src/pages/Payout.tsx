@@ -7,12 +7,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Send, History, AlertCircle, CheckCircle, Clock, Brain } from 'lucide-react';
+import { Send, History, AlertCircle, CheckCircle, Clock, Brain, Phone } from 'lucide-react';
 
 const Payout = () => {
   const handleVirtualCFOClick = () => {
     window.open(
       'https://app.relevanceai.com/agents/f1db6c/2f7fdb99e2f5-4f72-aeb4-a9ca62e34066/6191bc84-a88b-4efa-94c1-5d16ad667040/share?starting_message_prompts=&hide_tool_steps=false&hide_file_uploads=false&hide_conversation_list=false&bubble_style=icon&primary_color=%23685FFF&bubble_icon=pd%2Fchat&input_placeholder_text=Hi+there+%2C+i+am+your+V-CFO+.&hide_logo=false&hide_description=false',
+      '_blank',
+      'width=800,height=600,scrollbars=yes,resizable=yes'
+    );
+  };
+
+  const handleCallCFO = () => {
+    window.open(
+      'https://forms.fillout.com/t/4LpuZL29Fgus',
       '_blank',
       'width=800,height=600,scrollbars=yes,resizable=yes'
     );
@@ -29,6 +37,22 @@ const Payout = () => {
           </p>
         </div>
       </div>
+
+      {/* Service Unavailable Message */}
+      <Card className="border-orange-200 bg-orange-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-orange-800">
+            <AlertCircle className="h-5 w-5" />
+            Service Temporarily Unavailable
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-orange-700">
+            Dear User, Sorry for the inconvenience, this service will not currently operating in your region, 
+            will be starting the service from July 9th 2025.
+          </p>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="send" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2">
@@ -178,8 +202,8 @@ const Payout = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Virtual CFO Button */}
-      <div className="flex justify-center mt-8">
+      {/* CFO Buttons */}
+      <div className="flex justify-center gap-4 mt-8">
         <Button 
           onClick={handleVirtualCFOClick}
           className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-3 text-lg"
@@ -187,6 +211,15 @@ const Payout = () => {
         >
           <Brain className="h-5 w-5 mr-2" />
           Virtual CFO
+        </Button>
+        
+        <Button 
+          onClick={handleCallCFO}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
+          size="lg"
+        >
+          <Phone className="h-5 w-5 mr-2" />
+          Call CFO
         </Button>
       </div>
     </div>
