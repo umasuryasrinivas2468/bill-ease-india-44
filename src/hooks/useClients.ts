@@ -81,3 +81,71 @@ export const useCreateClient = () => {
     },
   });
 };
+
+export const useUpdateClient = () => {
+  const queryClient = useQueryClient();
+  const { user } = useUser();
+  
+  return useMutation({
+    mutationFn: async ({ id, ...clientData }: Partial<Client> & { id: string }) => {
+      if (!user || !isValidUserId(user.id)) {
+        throw new Error('User not authenticated or invalid user ID');
+      }
+      
+      const normalizedUserId = normalizeUserId(user.id);
+      console.log('Updating client:', id, clientData);
+      
+      const { data, error } = await supabase
+        .from('clients')
+        .update(clientData)
+        .eq('id', id)
+        .eq('user_id', normalizedUserId)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error updating client:', error);
+        throw error;
+      }
+      
+      console.log('Updated client:', data);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+    },
+  });
+};
+
+export const useDeleteClient = () => {
+  const queryClient = useQueryClient();
+  const { user } = useUser();
+  
+  return useMutation({
+    mutationFn: async (clientId: string) => {
+      if (!user || !isValidUserId(user.id)) {
+        throw new Error('User not authenticated or invalid user ID');
+      }
+      
+      const normalizedUserId = normalizeUserId(user.id);
+      console.log('Deleting client:', clientId);
+      
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', clientId)
+        .eq('user_id', normalizedUserId);
+      
+      if (error) {
+        console.error('Error deleting client:', error);
+        throw error;
+      }
+      
+      console.log('Deleted client:', clientId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    },
+  });
+};

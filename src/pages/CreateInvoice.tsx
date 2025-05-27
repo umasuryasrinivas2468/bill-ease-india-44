@@ -12,6 +12,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useCreateInvoice } from '@/hooks/useInvoices';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
+import ClientSelector from '@/components/ClientSelector';
+import PDFProcessor from '@/components/PDFProcessor';
+import { Client } from '@/hooks/useClients';
 
 interface InvoiceItem {
   id: string;
@@ -28,6 +31,7 @@ const CreateInvoice = () => {
   const { user } = useUser();
   const printRef = useRef<HTMLDivElement>(null);
   
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [invoiceData, setInvoiceData] = useState({
     clientName: '',
     clientEmail: '',
@@ -46,6 +50,27 @@ const CreateInvoice = () => {
   ]);
 
   const [gstRate, setGstRate] = useState('18');
+
+  const handleClientSelect = (client: Client | null) => {
+    setSelectedClient(client);
+    if (client) {
+      setInvoiceData({
+        ...invoiceData,
+        clientName: client.name,
+        clientEmail: client.email || '',
+        clientGST: client.gst_number || '',
+        clientAddress: client.address || '',
+      });
+    } else {
+      setInvoiceData({
+        ...invoiceData,
+        clientName: '',
+        clientEmail: '',
+        clientGST: '',
+        clientAddress: '',
+      });
+    }
+  };
 
   const addItem = () => {
     setItems([...items, {
@@ -449,12 +474,21 @@ ${businessInfo?.businessName || 'Aczen Bilz'}`;
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Invoice Form */}
         <div className="lg:col-span-2 space-y-6">
+          {/* PDF Processor */}
+          <PDFProcessor />
+
           {/* Client Information */}
           <Card>
             <CardHeader>
               <CardTitle>Client Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <ClientSelector 
+                onClientSelect={handleClientSelect}
+                selectedClientId={selectedClient?.id}
+              />
+              
+              {/* Manual client fields - only show if no client is selected or allow override */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="clientName">Client Name *</Label>

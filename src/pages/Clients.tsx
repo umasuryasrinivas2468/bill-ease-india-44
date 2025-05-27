@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,15 +5,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Search, Plus, Mail, Phone, MapPin, FileText, Users } from 'lucide-react';
+import { Search, Plus, Mail, Phone, MapPin, FileText, Users, Edit, Trash2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { useClients, useCreateClient } from '@/hooks/useClients';
+import { useClients, useCreateClient, useUpdateClient, useDeleteClient, Client } from '@/hooks/useClients';
+import { useNavigate } from 'react-router-dom';
+import { useInvoices } from '@/hooks/useInvoices';
 
 const Clients = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [newClient, setNewClient] = useState({
     name: '',
     email: '',
@@ -24,12 +27,19 @@ const Clients = () => {
   });
 
   const { data: clients = [], isLoading } = useClients();
+  const { data: invoices = [] } = useInvoices();
   const createClientMutation = useCreateClient();
+  const updateClientMutation = useUpdateClient();
+  const deleteClientMutation = useDeleteClient();
 
   const filteredClients = clients.filter(client =>
     client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  const getClientInvoiceCount = (clientId: string) => {
+    return invoices.filter(invoice => invoice.client_name === clients.find(c => c.id === clientId)?.name).length;
+  };
 
   const handleAddClient = async () => {
     if (!newClient.name.trim()) {
@@ -56,6 +66,54 @@ const Clients = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleEditClient = async () => {
+    if (!editingClient || !editingClient.name.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Client name is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await updateClientMutation.mutateAsync(editingClient);
+      toast({
+        title: "Client Updated",
+        description: `${editingClient.name} has been updated successfully.`,
+      });
+      setEditingClient(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update client. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteClient = async (client: Client) => {
+    if (window.confirm(`Are you sure you want to delete ${client.name}? This action cannot be undone.`)) {
+      try {
+        await deleteClientMutation.mutateAsync(client.id);
+        toast({
+          title: "Client Deleted",
+          description: `${client.name} has been deleted successfully.`,
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete client. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const viewClientInvoices = (client: Client) => {
+    navigate(`/invoices?client=${encodeURIComponent(client.name)}`);
   };
 
   if (isLoading) {
@@ -214,7 +272,7 @@ const Clients = () => {
             <Card key={client.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex justify-between items-start">
-                  <div>
+                  <div className="flex-1">
                     <CardTitle className="text-lg">{client.name}</CardTitle>
                     {client.email && (
                       <CardDescription className="flex items-center gap-1 mt-1">
@@ -223,9 +281,23 @@ const Clients = () => {
                       </CardDescription>
                     )}
                   </div>
-                  <Button variant="outline" size="sm">
-                    <FileText className="h-3 w-3" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setEditingClient(client)}
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleDeleteClient(client)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -239,7 +311,7 @@ const Clients = () => {
                   {client.address && (
                     <div className="flex items-center gap-2">
                       <MapPin className="h-3 w-3 text-muted-foreground" />
-                      <span>{client.address}</span>
+                      <span className="truncate">{client.address}</span>
                     </div>
                   )}
                   {client.gst_number && (
@@ -250,11 +322,14 @@ const Clients = () => {
                 </div>
                 
                 <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    Edit
-                  </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
-                    Invoices
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => viewClientInvoices(client)}
+                  >
+                    <FileText className="h-3 w-3 mr-1" />
+                    Invoices ({getClientInvoiceCount(client.id)})
                   </Button>
                 </div>
               </CardContent>
@@ -262,6 +337,77 @@ const Clients = () => {
           ))}
         </div>
       )}
+
+      {/* Edit Client Dialog */}
+      <Dialog open={!!editingClient} onOpenChange={() => setEditingClient(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Client</DialogTitle>
+            <DialogDescription>
+              Update the client details below.
+            </DialogDescription>
+          </DialogHeader>
+          {editingClient && (
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Client Name *</Label>
+                <Input
+                  id="edit-name"
+                  value={editingClient.name}
+                  onChange={(e) => setEditingClient({...editingClient, name: e.target.value})}
+                  placeholder="Enter client name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">Email</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editingClient.email}
+                  onChange={(e) => setEditingClient({...editingClient, email: e.target.value})}
+                  placeholder="client@example.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-phone">Phone</Label>
+                <Input
+                  id="edit-phone"
+                  value={editingClient.phone}
+                  onChange={(e) => setEditingClient({...editingClient, phone: e.target.value})}
+                  placeholder="+91 98765 43210"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-gstNumber">GST Number</Label>
+                <Input
+                  id="edit-gstNumber"
+                  value={editingClient.gst_number}
+                  onChange={(e) => setEditingClient({...editingClient, gst_number: e.target.value})}
+                  placeholder="22AAAAA0000A1Z5"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-address">Address</Label>
+                <Textarea
+                  id="edit-address"
+                  value={editingClient.address}
+                  onChange={(e) => setEditingClient({...editingClient, address: e.target.value})}
+                  placeholder="Enter client address"
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button 
+              onClick={handleEditClient}
+              disabled={updateClientMutation.isPending}
+            >
+              {updateClientMutation.isPending ? "Updating..." : "Update Client"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
