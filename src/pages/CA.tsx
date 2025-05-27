@@ -8,6 +8,7 @@ import { useInvoices } from '@/hooks/useInvoices';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import BulkInvoiceProcessor from '@/components/BulkInvoiceProcessor';
 import VirtualCFO from '@/components/VirtualCFO';
+import PDFProcessor from '@/components/PDFProcessor';
 
 const CA = () => {
   const { toast } = useToast();
@@ -169,9 +170,10 @@ const CA = () => {
       </div>
 
       <Tabs defaultValue="reports" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="reports">Reports & Stats</TabsTrigger>
           <TabsTrigger value="bulk-processing">Bulk Processing</TabsTrigger>
+          <TabsTrigger value="data-extraction">Data Extraction</TabsTrigger>
           <TabsTrigger value="virtual-cfo">Virtual CFO</TabsTrigger>
         </TabsList>
 
@@ -282,6 +284,10 @@ const CA = () => {
 
         <TabsContent value="bulk-processing">
           <BulkInvoiceProcessor />
+        </TabsContent>
+
+        <TabsContent value="data-extraction">
+          <PDFProcessor />
         </TabsContent>
 
         <TabsContent value="virtual-cfo">
