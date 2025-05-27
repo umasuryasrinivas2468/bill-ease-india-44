@@ -10,6 +10,7 @@ import {
   LogOut,
   Send,
   CreditCard,
+  Phone,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -80,6 +81,14 @@ export function AppSidebar() {
   const location = useLocation();
   const { signOut } = useAuth();
 
+  const handleCallCFO = () => {
+    window.open(
+      'https://forms.fillout.com/t/4LpuZL29Fgus',
+      '_blank',
+      'width=800,height=600,scrollbars=yes,resizable=yes'
+    );
+  };
+
   return (
     <Sidebar className="border-r">
       <SidebarHeader className="border-b p-4">
@@ -110,7 +119,14 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4">
+      <SidebarFooter className="p-4 space-y-2">
+        <Button
+          onClick={handleCallCFO}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          <Phone className="h-4 w-4 mr-2" />
+          Call CFO
+        </Button>
         <Button
           variant="outline"
           className="w-full"
