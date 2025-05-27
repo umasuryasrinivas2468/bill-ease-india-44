@@ -1,7 +1,7 @@
 
 const express = require('express');
 const cors = require('cors');
-const axios = require('axios');
+const federalBankService = require('./federalBankService');
 require('dotenv').config();
 
 const app = express();
@@ -11,130 +11,217 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Decentro configuration
-const decentroConfig = {
-  baseURL: process.env.DECENTRO_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-    'client_id': process.env.DECENTRO_CLIENT_ID,
-    'client_secret': process.env.DECENTRO_CLIENT_SECRET,
-    'module_secret': process.env.DECENTRO_MODULE_SECRET,
-    'provider_secret': process.env.DECENTRO_PROVIDER_SECRET
-  }
-};
+// In-memory storage for user VPAs (in production, use a database)
+const userVPAs = new Map();
+const transactions = new Map();
 
 // Generate reference ID
 const generateReferenceId = () => {
   return `UPI_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
 
-// Generate expiry time
-const generateExpiryTime = (minutes = 30) => {
-  const now = new Date();
-  now.setMinutes(now.getMinutes() + minutes);
-  return now.toISOString();
-};
-
-// POST /collect - Create UPI collection request
-app.post('/collect', async (req, res) => {
+// POST /create-vpa - Create VPA for user
+app.post('/create-vpa', async (req, res) => {
   try {
     const {
-      payer_upi,
-      payee_account,
-      amount,
-      purpose_message,
-      expiry_minutes = 30
+      businessName,
+      accountNumber,
+      ifscCode,
+      phone,
+      email,
+      userId
     } = req.body;
 
     // Validate required fields
-    if (!payer_upi || !payee_account || !amount || !purpose_message) {
+    if (!businessName || !accountNumber || !ifscCode || !phone || !email || !userId) {
       return res.status(400).json({
         success: false,
         error: 'Missing required fields'
       });
     }
 
-    const reference_id = generateReferenceId();
-    const expiry_time = generateExpiryTime(expiry_minutes);
+    console.log('Creating VPA for user:', { businessName, userId });
 
-    const requestData = {
-      reference_id,
-      payer_upi,
-      payee_account,
+    const vpaResponse = await federalBankService.createVPA({
+      businessName,
+      accountNumber,
+      ifscCode,
+      phone,
+      email
+    });
+
+    // Store VPA for user
+    userVPAs.set(userId, {
+      vpa: vpaResponse.VirtualID,
+      transactionId: vpaResponse.TransactionId,
+      businessName,
+      accountNumber,
+      ifscCode,
+      phone,
+      email,
+      createdAt: new Date().toISOString()
+    });
+
+    res.json({
+      success: true,
+      data: {
+        vpa: vpaResponse.VirtualID,
+        transactionId: vpaResponse.TransactionId,
+        status: vpaResponse.Status
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creating VPA:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create VPA',
+      details: error.message
+    });
+  }
+});
+
+// POST /collect - Create UPI collection request
+app.post('/collect', async (req, res) => {
+  try {
+    const {
+      userId,
       amount,
       purpose_message,
-      expiry_time
-    };
+      expiry_minutes = 30
+    } = req.body;
 
-    console.log('Creating UPI collection request:', requestData);
+    // Validate required fields
+    if (!userId || !amount || !purpose_message) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields'
+      });
+    }
 
-    // Make request to Decentro
-    const response = await axios.post(
-      `${decentroConfig.baseURL}/v2/payments/collection`,
-      requestData,
-      { headers: decentroConfig.headers }
+    // Get user's VPA
+    const userVPA = userVPAs.get(userId);
+    if (!userVPA) {
+      return res.status(404).json({
+        success: false,
+        error: 'VPA not found for user. Please create VPA first.'
+      });
+    }
+
+    const reference_id = generateReferenceId();
+    const expiry_time = new Date();
+    expiry_time.setMinutes(expiry_time.getMinutes() + expiry_minutes);
+
+    // Generate UPI deep link
+    const upiLink = federalBankService.generateUPILink(
+      userVPA.vpa,
+      userVPA.businessName,
+      amount,
+      purpose_message
     );
 
-    console.log('Decentro response:', response.data);
+    // Store transaction details
+    const transactionData = {
+      reference_id,
+      userId,
+      vpa: userVPA.vpa,
+      amount,
+      purpose_message,
+      upiLink,
+      status: 'pending',
+      expiry_time: expiry_time.toISOString(),
+      created_at: new Date().toISOString()
+    };
+
+    transactions.set(reference_id, transactionData);
+
+    console.log('UPI collection request created:', { reference_id, amount, vpa: userVPA.vpa });
 
     res.json({
       success: true,
       data: {
         reference_id,
-        decentroTxnId: response.data.decentroTxnId,
-        transactionId: response.data.data?.transactionId,
-        status: response.data.status,
-        expiry_time
+        vpa: userVPA.vpa,
+        upiLink,
+        amount,
+        purpose_message,
+        expiry_time: expiry_time.toISOString(),
+        status: 'pending'
       }
     });
 
   } catch (error) {
-    console.error('Error creating UPI collection:', error.response?.data || error.message);
+    console.error('Error creating UPI collection:', error.message);
     res.status(500).json({
       success: false,
       error: 'Failed to create UPI collection request',
-      details: error.response?.data || error.message
+      details: error.message
     });
   }
 });
 
-// POST /webhook - Handle Decentro webhooks
-app.post('/webhook', (req, res) => {
+// GET /status/:referenceId - Check transaction status
+app.get('/status/:referenceId', async (req, res) => {
   try {
-    console.log('Received webhook:', req.body);
+    const { referenceId } = req.params;
     
-    const { reference_id, status, transaction_id } = req.body;
-    
-    // Here you would typically:
-    // 1. Validate webhook signature
-    // 2. Update database with payment status
-    // 3. Send notifications to users
-    
-    console.log(`Payment ${reference_id} status updated to: ${status}`);
-    
-    res.json({ success: true, message: 'Webhook processed' });
-  } catch (error) {
-    console.error('Webhook error:', error);
-    res.status(500).json({ success: false, error: 'Webhook processing failed' });
-  }
-});
+    const transaction = transactions.get(referenceId);
+    if (!transaction) {
+      return res.status(404).json({
+        success: false,
+        error: 'Transaction not found'
+      });
+    }
 
-// GET /status/:transactionId - Check transaction status
-app.get('/status/:transactionId', async (req, res) => {
-  try {
-    const { transactionId } = req.params;
-    
-    const response = await axios.get(
-      `${decentroConfig.baseURL}/v2/payments/status/${transactionId}`,
-      { headers: decentroConfig.headers }
-    );
+    // Get user's VPA data to access transaction ID
+    const userVPA = userVPAs.get(transaction.userId);
+    if (!userVPA) {
+      return res.status(404).json({
+        success: false,
+        error: 'User VPA data not found'
+      });
+    }
 
-    res.json({
-      success: true,
-      data: response.data
-    });
+    try {
+      const statusResponse = await federalBankService.checkTransactionStatus(
+        userVPA.transactionId
+      );
+
+      // Update transaction status based on Federal Bank response
+      if (statusResponse.Status === 'SUCCESS') {
+        transaction.status = 'completed';
+        transaction.payer_vpa = statusResponse.PayerVpa;
+        transaction.transaction_ref_id = statusResponse.TransactionRefId;
+        transaction.completed_at = statusResponse.Timestamp;
+        transactions.set(referenceId, transaction);
+      }
+
+      res.json({
+        success: true,
+        data: {
+          reference_id: referenceId,
+          status: transaction.status,
+          amount: transaction.amount,
+          federal_bank_status: statusResponse.Status,
+          payer_vpa: statusResponse.PayerVpa,
+          timestamp: statusResponse.Timestamp
+        }
+      });
+    } catch (statusError) {
+      // If status check fails, return current stored status
+      res.json({
+        success: true,
+        data: {
+          reference_id: referenceId,
+          status: transaction.status,
+          amount: transaction.amount,
+          note: 'Status check from Federal Bank failed, showing cached status'
+        }
+      });
+    }
+
   } catch (error) {
-    console.error('Error checking status:', error.response?.data || error.message);
+    console.error('Error checking status:', error.message);
     res.status(500).json({
       success: false,
       error: 'Failed to check transaction status'
@@ -142,16 +229,73 @@ app.get('/status/:transactionId', async (req, res) => {
   }
 });
 
+// GET /user-vpa/:userId - Get user's VPA
+app.get('/user-vpa/:userId', (req, res) => {
+  try {
+    const { userId } = req.params;
+    const userVPA = userVPAs.get(userId);
+    
+    if (!userVPA) {
+      return res.status(404).json({
+        success: false,
+        error: 'VPA not found for user'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        vpa: userVPA.vpa,
+        businessName: userVPA.businessName,
+        createdAt: userVPA.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Error getting user VPA:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get user VPA'
+    });
+  }
+});
+
+// GET /transactions/:userId - Get user's transactions
+app.get('/transactions/:userId', (req, res) => {
+  try {
+    const { userId } = req.params;
+    const userTransactions = Array.from(transactions.values())
+      .filter(t => t.userId === userId)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    res.json({
+      success: true,
+      data: userTransactions
+    });
+  } catch (error) {
+    console.error('Error getting transactions:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get transactions'
+    });
+  }
+});
+
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    service: 'Federal Bank UPI Integration'
+  });
 });
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log('Required env variables:');
-  console.log('- DECENTRO_CLIENT_ID:', !!process.env.DECENTRO_CLIENT_ID);
-  console.log('- DECENTRO_CLIENT_SECRET:', !!process.env.DECENTRO_CLIENT_SECRET);
-  console.log('- DECENTRO_MODULE_SECRET:', !!process.env.DECENTRO_MODULE_SECRET);
-  console.log('- DECENTRO_PROVIDER_SECRET:', !!process.env.DECENTRO_PROVIDER_SECRET);
+  console.log('Federal Bank UPI Integration Server');
+  console.log('Endpoints:');
+  console.log('- POST /create-vpa - Create VPA for user');
+  console.log('- POST /collect - Create UPI collection request');
+  console.log('- GET /status/:referenceId - Check transaction status');
+  console.log('- GET /user-vpa/:userId - Get user VPA');
+  console.log('- GET /transactions/:userId - Get user transactions');
 });

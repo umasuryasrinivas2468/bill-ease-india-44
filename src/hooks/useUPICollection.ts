@@ -1,24 +1,81 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/clerk-react';
-import { upiCollectionService, DecentroUPIRequest } from '@/services/upiCollectionService';
+import { upiCollectionService, FederalBankUPIRequest, CreateVPARequest } from '@/services/upiCollectionService';
+import { useBusinessData } from './useBusinessData';
 
 export interface UPICollection {
   id: string;
-  user_id: string;
+  userId: string;
   invoice_id?: string;
   reference_id: string;
-  payer_upi: string;
-  payee_account: string;
+  vpa: string;
   amount: number;
   purpose_message: string;
+  upiLink: string;
   expiry_time: string;
   status: 'pending' | 'completed' | 'failed' | 'expired';
-  decentro_txn_id?: string;
-  transaction_id?: string;
   created_at: string;
-  updated_at: string;
+  payer_vpa?: string;
+  transaction_ref_id?: string;
+  completed_at?: string;
 }
+
+export const useCreateVPA = () => {
+  const { user } = useUser();
+  const { getBusinessInfo, getBankDetails } = useBusinessData();
+  
+  return useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('User not authenticated');
+      
+      const businessInfo = getBusinessInfo();
+      const bankDetails = getBankDetails();
+      
+      if (!businessInfo || !bankDetails) {
+        throw new Error('Business information or bank details not found. Please complete onboarding first.');
+      }
+
+      const vpaRequest: CreateVPARequest = {
+        businessName: businessInfo.businessName,
+        accountNumber: bankDetails.accountNumber,
+        ifscCode: bankDetails.ifscCode,
+        phone: businessInfo.phone,
+        email: businessInfo.email,
+        userId: user.id
+      };
+      
+      console.log('Creating VPA for user:', vpaRequest);
+      const response = await upiCollectionService.createVPA(vpaRequest);
+      
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to create VPA');
+      }
+      
+      return response.data;
+    },
+  });
+};
+
+export const useUserVPA = () => {
+  const { user } = useUser();
+  
+  return useQuery({
+    queryKey: ['user-vpa', user?.id],
+    queryFn: async () => {
+      if (!user) throw new Error('User not authenticated');
+      
+      try {
+        const response = await upiCollectionService.getUserVPA(user.id);
+        return response.data;
+      } catch (error) {
+        // VPA doesn't exist yet
+        return null;
+      }
+    },
+    enabled: !!user,
+  });
+};
 
 export const useUPICollections = () => {
   const { user } = useUser();
@@ -28,9 +85,8 @@ export const useUPICollections = () => {
     queryFn: async () => {
       if (!user) throw new Error('User not authenticated');
       
-      // For now, return empty array since we don't have database integration yet
-      console.log('UPI Collections - user authenticated:', user.id);
-      return [] as UPICollection[];
+      const response = await upiCollectionService.getUserTransactions(user.id);
+      return response.data as UPICollection[];
     },
     enabled: !!user,
   });
@@ -43,24 +99,21 @@ export const useCreateUPICollection = () => {
   return useMutation({
     mutationFn: async (collectionData: {
       invoice_id?: string;
-      payer_upi: string;
-      payee_account: string;
       amount: number;
       purpose_message: string;
       expiry_minutes?: number;
     }) => {
       if (!user) throw new Error('User not authenticated');
       
-      const decentroRequest: DecentroUPIRequest = {
-        payer_upi: collectionData.payer_upi,
-        payee_account: collectionData.payee_account,
+      const federalBankRequest: FederalBankUPIRequest = {
+        userId: user.id,
         amount: collectionData.amount,
         purpose_message: collectionData.purpose_message,
         expiry_minutes: collectionData.expiry_minutes || 30,
       };
       
-      console.log('Creating UPI collection request:', decentroRequest);
-      const response = await upiCollectionService.createUPICollectionRequest(decentroRequest);
+      console.log('Creating UPI collection request:', federalBankRequest);
+      const response = await upiCollectionService.createUPICollectionRequest(federalBankRequest);
       
       if (!response.success) {
         throw new Error(response.error || 'Failed to create UPI collection');
@@ -68,15 +121,14 @@ export const useCreateUPICollection = () => {
       
       return { 
         id: response.data!.reference_id,
-        user_id: user.id,
+        userId: user.id,
         ...collectionData,
         reference_id: response.data!.reference_id,
+        vpa: response.data!.vpa,
+        upiLink: response.data!.upiLink,
         expiry_time: response.data!.expiry_time,
         status: 'pending' as const,
-        decentro_txn_id: response.data!.decentroTxnId,
-        transaction_id: response.data!.transactionId,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       };
     },
     onSuccess: () => {
@@ -86,9 +138,14 @@ export const useCreateUPICollection = () => {
 };
 
 export const useCheckUPIStatus = () => {
+  const queryClient = useQueryClient();
+  
   return useMutation({
-    mutationFn: async (transactionId: string) => {
-      return await upiCollectionService.checkTransactionStatus(transactionId);
+    mutationFn: async (referenceId: string) => {
+      return await upiCollectionService.checkTransactionStatus(referenceId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['upi-collections'] });
     },
   });
 };

@@ -2,7 +2,7 @@
 {
   "name": "billease-backend",
   "version": "1.0.0",
-  "description": "Backend for UPI collections via Decentro",
+  "description": "Backend for Federal Bank UPI collections",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
