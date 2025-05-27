@@ -43,18 +43,18 @@ const UPICollectionHistory = () => {
     );
   };
 
-  const handleCheckStatus = async (transactionId: string) => {
-    if (!transactionId) {
+  const handleCheckStatus = async (transactionRefId: string) => {
+    if (!transactionRefId) {
       toast({
         title: "Error",
-        description: "No transaction ID available for status check.",
+        description: "No transaction reference ID available for status check.",
         variant: "destructive",
       });
       return;
     }
 
     try {
-      const status = await checkStatus.mutateAsync(transactionId);
+      const status = await checkStatus.mutateAsync(transactionRefId);
       toast({
         title: "Status Updated",
         description: `Transaction status: ${status.status || 'Unknown'}`,
@@ -116,7 +116,7 @@ const UPICollectionHistory = () => {
                     <TableCell className="font-mono text-sm">
                       {collection.reference_id}
                     </TableCell>
-                    <TableCell>{collection.payer_upi}</TableCell>
+                    <TableCell>{collection.payer_vpa || '-'}</TableCell>
                     <TableCell>₹{collection.amount.toLocaleString()}</TableCell>
                     <TableCell className="max-w-xs truncate">
                       {collection.purpose_message}
@@ -134,8 +134,8 @@ const UPICollectionHistory = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleCheckStatus(collection.transaction_id || '')}
-                        disabled={checkStatus.isPending || !collection.transaction_id}
+                        onClick={() => handleCheckStatus(collection.transaction_ref_id || '')}
+                        disabled={checkStatus.isPending || !collection.transaction_ref_id}
                       >
                         <RefreshCw className="h-3 w-3 mr-1" />
                         Check Status
