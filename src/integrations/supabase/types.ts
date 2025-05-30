@@ -47,6 +47,7 @@ export type Database = {
       }
       invoices: {
         Row: {
+          advance: number | null
           amount: number
           client_address: string | null
           client_email: string | null
@@ -54,19 +55,24 @@ export type Database = {
           client_id: string | null
           client_name: string
           created_at: string | null
+          discount: number | null
           due_date: string
+          from_email: string | null
           gst_amount: number
+          gst_rate: number | null
           id: string
           invoice_date: string
           invoice_number: string
           items: Json
           notes: string | null
+          roundoff: number | null
           status: string | null
           total_amount: number
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          advance?: number | null
           amount: number
           client_address?: string | null
           client_email?: string | null
@@ -74,19 +80,24 @@ export type Database = {
           client_id?: string | null
           client_name: string
           created_at?: string | null
+          discount?: number | null
           due_date: string
+          from_email?: string | null
           gst_amount: number
+          gst_rate?: number | null
           id?: string
           invoice_date: string
           invoice_number: string
           items?: Json
           notes?: string | null
+          roundoff?: number | null
           status?: string | null
           total_amount: number
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          advance?: number | null
           amount?: number
           client_address?: string | null
           client_email?: string | null
@@ -94,13 +105,17 @@ export type Database = {
           client_id?: string | null
           client_name?: string
           created_at?: string | null
+          discount?: number | null
           due_date?: string
+          from_email?: string | null
           gst_amount?: number
+          gst_rate?: number | null
           id?: string
           invoice_date?: string
           invoice_number?: string
           items?: Json
           notes?: string | null
+          roundoff?: number | null
           status?: string | null
           total_amount?: number
           updated_at?: string | null
@@ -112,6 +127,56 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_reminders: {
+        Row: {
+          created_at: string | null
+          email_sent_to: string
+          id: string
+          invoice_id: string
+          reminder_type: string
+          response_token: string | null
+          scheduled_date: string
+          sent_at: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email_sent_to: string
+          id?: string
+          invoice_id: string
+          reminder_type: string
+          response_token?: string | null
+          scheduled_date: string
+          sent_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          email_sent_to?: string
+          id?: string
+          invoice_id?: string
+          reminder_type?: string
+          response_token?: string | null
+          scheduled_date?: string
+          sent_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_reminders_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
         ]
@@ -151,6 +216,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      reminder_responses: {
+        Row: {
+          id: string
+          ip_address: string | null
+          reminder_id: string
+          responded_at: string | null
+          response_type: string
+          user_agent: string | null
+        }
+        Insert: {
+          id?: string
+          ip_address?: string | null
+          reminder_id: string
+          responded_at?: string | null
+          response_type: string
+          user_agent?: string | null
+        }
+        Update: {
+          id?: string
+          ip_address?: string | null
+          reminder_id?: string
+          responded_at?: string | null
+          response_type?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_responses_reminder_id_fkey"
+            columns: ["reminder_id"]
+            isOneToOne: false
+            referencedRelation: "payment_reminders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reports: {
         Row: {

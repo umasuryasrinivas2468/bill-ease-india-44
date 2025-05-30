@@ -14,6 +14,11 @@ export interface Invoice {
   amount: number;
   gst_amount: number;
   total_amount: number;
+  advance?: number;
+  discount?: number;
+  roundoff?: number;
+  gst_rate?: number;
+  from_email?: string;
   status: 'paid' | 'pending' | 'overdue';
   invoice_date: string;
   due_date: string;

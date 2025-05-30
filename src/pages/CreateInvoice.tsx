@@ -11,6 +11,7 @@ import { Plus, Minus, FileText, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateInvoice } from '@/hooks/useInvoices';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '@clerk/clerk-react';
 import ClientSelector from '@/components/ClientSelector';
 import { Client } from '@/hooks/useClients';
 
@@ -24,6 +25,7 @@ interface InvoiceItem {
 const CreateInvoice = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useUser();
   const createInvoiceMutation = useCreateInvoice();
   
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -31,6 +33,10 @@ const CreateInvoice = () => {
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [dueDate, setDueDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [gstRate, setGstRate] = useState(18);
+  const [advance, setAdvance] = useState(0);
+  const [discount, setDiscount] = useState(0);
+  const [roundoff, setRoundoff] = useState(0);
   const [items, setItems] = useState<InvoiceItem[]>([
     { description: '', quantity: 1, rate: 0, amount: 0 }
   ]);
@@ -57,9 +63,11 @@ const CreateInvoice = () => {
   };
 
   const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
-  const gstRate = 0.18; // 18% GST
-  const gstAmount = subtotal * gstRate;
-  const total = subtotal + gstAmount;
+  const discountAmount = discount;
+  const afterDiscount = subtotal - discountAmount;
+  const gstAmount = afterDiscount * (gstRate / 100);
+  const beforeRoundoff = afterDiscount + gstAmount - advance;
+  const total = beforeRoundoff + roundoff;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,6 +109,11 @@ const CreateInvoice = () => {
         amount: subtotal,
         gst_amount: gstAmount,
         total_amount: total,
+        advance: advance,
+        discount: discountAmount,
+        roundoff: roundoff,
+        gst_rate: gstRate,
+        from_email: user?.emailAddresses?.[0]?.emailAddress || '',
         status: 'pending' as const,
         invoice_date: invoiceDate,
         due_date: dueDate,
@@ -175,6 +188,13 @@ const CreateInvoice = () => {
               <CardTitle>Invoice Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* From Email Display */}
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm font-medium text-blue-800">
+                  From: {user?.emailAddresses?.[0]?.emailAddress || 'No email available'}
+                </p>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="invoiceNumber">Invoice Number</Label>
                 <div className="flex gap-2">
@@ -213,6 +233,20 @@ const CreateInvoice = () => {
                     required
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="gstRate">GST Rate (%)</Label>
+                <Select value={gstRate.toString()} onValueChange={(value) => setGstRate(Number(value))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select GST Rate" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5%</SelectItem>
+                    <SelectItem value="12">12%</SelectItem>
+                    <SelectItem value="18">18%</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>
@@ -294,6 +328,54 @@ const CreateInvoice = () => {
           </CardContent>
         </Card>
 
+        {/* Additional Charges and Discounts */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Additional Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="advance">Advance (₹)</Label>
+                <Input
+                  id="advance"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={advance}
+                  onChange={(e) => setAdvance(Number(e.target.value))}
+                  placeholder="0.00"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="discount">Discount (₹)</Label>
+                <Input
+                  id="discount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={discount}
+                  onChange={(e) => setDiscount(Number(e.target.value))}
+                  placeholder="0.00"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="roundoff">Round Off (₹)</Label>
+                <Input
+                  id="roundoff"
+                  type="number"
+                  step="0.01"
+                  value={roundoff}
+                  onChange={(e) => setRoundoff(Number(e.target.value))}
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Invoice Summary */}
         <Card>
           <CardHeader>
@@ -305,10 +387,32 @@ const CreateInvoice = () => {
                 <span>Subtotal:</span>
                 <span>₹{subtotal.toFixed(2)}</span>
               </div>
+              {discount > 0 && (
+                <div className="flex justify-between text-red-600">
+                  <span>Discount:</span>
+                  <span>-₹{discountAmount.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
-                <span>GST (18%):</span>
+                <span>After Discount:</span>
+                <span>₹{afterDiscount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>GST ({gstRate}%):</span>
                 <span>₹{gstAmount.toFixed(2)}</span>
               </div>
+              {advance > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Advance:</span>
+                  <span>-₹{advance.toFixed(2)}</span>
+                </div>
+              )}
+              {roundoff !== 0 && (
+                <div className="flex justify-between">
+                  <span>Round Off:</span>
+                  <span>{roundoff >= 0 ? '+' : ''}₹{roundoff.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold text-lg border-t pt-2">
                 <span>Total:</span>
                 <span>₹{total.toFixed(2)}</span>
