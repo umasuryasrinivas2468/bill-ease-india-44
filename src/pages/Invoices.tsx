@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Search, Plus, Download, Eye, FileText } from 'lucide-react';
+import { Search, Plus, Download, Eye, FileText, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useInvoices, Invoice } from '@/hooks/useInvoices';
+import { useInvoices, useDeleteInvoice, Invoice } from '@/hooks/useInvoices';
 import InvoiceViewer from '@/components/InvoiceViewer';
+import { useToast } from '@/hooks/use-toast';
 
 const Invoices = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,6 +17,8 @@ const Invoices = () => {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const { data: invoices = [], isLoading } = useInvoices();
+  const deleteInvoice = useDeleteInvoice();
+  const { toast } = useToast();
 
   const filteredInvoices = invoices.filter(invoice => {
     const matchesSearch = invoice.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -47,6 +49,24 @@ const Invoices = () => {
     setSelectedInvoice(invoice);
     setIsViewerOpen(true);
     // The download will be handled inside the viewer component
+  };
+
+  const handleDeleteInvoice = async (invoice: Invoice) => {
+    if (window.confirm(`Are you sure you want to delete invoice ${invoice.invoice_number}?`)) {
+      try {
+        await deleteInvoice.mutateAsync(invoice.id);
+        toast({
+          title: "Invoice deleted",
+          description: `Invoice ${invoice.invoice_number} has been deleted successfully.`,
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete invoice. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   if (isLoading) {
@@ -196,6 +216,14 @@ const Invoices = () => {
                             >
                               <Download className="h-3 w-3" />
                             </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleDeleteInvoice(invoice)}
+                              disabled={deleteInvoice.isPending}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -254,6 +282,14 @@ const Invoices = () => {
                     >
                       <Download className="h-3 w-3 mr-1" />
                       Download
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleDeleteInvoice(invoice)}
+                      disabled={deleteInvoice.isPending}
+                    >
+                      <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
                 </CardContent>

@@ -9,6 +9,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import Dashboard from "./pages/Dashboard";
 import Invoices from "./pages/Invoices";
 import CreateInvoice from "./pages/CreateInvoice";
+import Notifications from "./pages/Notifications";
 import Clients from "./pages/Clients";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
@@ -66,6 +67,18 @@ const App = () => (
                     <AppSidebar />
                     <main className="flex-1 overflow-auto">
                       <CreateInvoice />
+                    </main>
+                  </div>
+                </SidebarProvider>
+              </ClerkProtectedRoute>
+            } />
+            <Route path="/notifications" element={
+              <ClerkProtectedRoute>
+                <SidebarProvider>
+                  <div className="min-h-screen flex w-full">
+                    <AppSidebar />
+                    <main className="flex-1 overflow-auto">
+                      <Notifications />
                     </main>
                   </div>
                 </SidebarProvider>

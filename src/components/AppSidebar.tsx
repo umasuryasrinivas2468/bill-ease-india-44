@@ -11,6 +11,7 @@ import {
   Send,
   CreditCard,
   Phone,
+  Bell,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -44,6 +45,11 @@ const menuItems = [
     title: "Create Invoice",
     url: "/create-invoice",
     icon: Plus,
+  },
+  {
+    title: "Notifications",
+    url: "/notifications",
+    icon: Bell,
   },
   {
     title: "UPI Collections",
