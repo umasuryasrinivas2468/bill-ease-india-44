@@ -19,30 +19,6 @@ const Support = () => {
           frameBorder="0"
           className="rounded-lg border"
         />
-        
-        {/* CSS to hide the "powered by relevance ai" branding */}
-        <style jsx>{`
-          .branding-overlay {
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
-          }
-          
-          iframe {
-            position: relative;
-          }
-          
-          iframe::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 40px;
-            background: white;
-            z-index: 1000;
-          }
-        `}</style>
       </div>
     </div>
   );
