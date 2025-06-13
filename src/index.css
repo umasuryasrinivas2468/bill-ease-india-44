@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -98,4 +99,18 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Hide Relevance AI branding overlay */
+.branding-overlay,
+[class*="branding"],
+[class*="powered-by"],
+[data-testid*="branding"],
+iframe[src*="relevanceai"] + div,
+iframe[src*="relevanceai"] ~ div[style*="position: absolute"],
+iframe[src*="relevanceai"] ~ div[style*="bottom"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  z-index: -1 !important;
 }

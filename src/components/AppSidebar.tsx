@@ -12,6 +12,7 @@ import {
   CreditCard,
   Phone,
   Bell,
+  HelpCircle,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -80,6 +81,11 @@ const menuItems = [
     title: "Settings",
     url: "/settings",
     icon: Settings,
+  },
+  {
+    title: "Support",
+    url: "/support",
+    icon: HelpCircle,
   },
 ];
 

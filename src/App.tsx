@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +12,7 @@ import Notifications from "./pages/Notifications";
 import Clients from "./pages/Clients";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import Support from "./pages/Support";
 import CA from "./pages/CA";
 import Payout from "./pages/Payout";
 import UPICollections from "./pages/UPICollections";
@@ -127,6 +127,18 @@ const App = () => (
                     <AppSidebar />
                     <main className="flex-1 overflow-auto">
                       <Settings />
+                    </main>
+                  </div>
+                </SidebarProvider>
+              </ClerkProtectedRoute>
+            } />
+            <Route path="/support" element={
+              <ClerkProtectedRoute>
+                <SidebarProvider>
+                  <div className="min-h-screen flex w-full">
+                    <AppSidebar />
+                    <main className="flex-1 overflow-auto">
+                      <Support />
                     </main>
                   </div>
                 </SidebarProvider>
