@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building, CreditCard, FileImage, Upload, CheckCircle, Search } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Building, CreditCard, FileImage, Upload, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useGSTVerification } from '@/hooks/useGSTVerification';
 
@@ -24,12 +26,13 @@ const Onboarding = () => {
     businessName: '',
     ownerName: '',
     email: user?.primaryEmailAddress?.emailAddress || '',
-    phone: '',
+    phone: user?.primaryPhoneNumber?.phoneNumber || '',
     gstNumber: '',
     address: '',
     city: '',
     state: '',
     pincode: '',
+    gstRate: '18', // Default GST rate
   });
 
   const [bankDetails, setBankDetails] = useState({
@@ -43,41 +46,51 @@ const Onboarding = () => {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
 
-  const handleGSTVerification = async () => {
-    if (!businessInfo.gstNumber) {
-      toast({
-        title: "GST Number Required",
-        description: "Please enter a GST number to verify.",
-        variant: "destructive",
-      });
-      return;
+  // Auto-fetch email and phone from Clerk when user data loads
+  useEffect(() => {
+    if (user) {
+      setBusinessInfo(prev => ({
+        ...prev,
+        email: user.primaryEmailAddress?.emailAddress || prev.email,
+        phone: user.primaryPhoneNumber?.phoneNumber || prev.phone,
+      }));
     }
+  }, [user]);
 
-    try {
-      const result = await verifyGST(businessInfo.gstNumber);
-      
-      if (result.success && result.data) {
-        // Auto-fill the business information
-        setBusinessInfo(prev => ({
-          ...prev,
-          businessName: result.data.tradeNam || result.data.lgnm || prev.businessName,
-          address: result.data.pradr?.addr?.bno && result.data.pradr?.addr?.st 
-            ? `${result.data.pradr.addr.bno}, ${result.data.pradr.addr.st}, ${result.data.pradr.addr.loc}`
-            : prev.address,
-          city: result.data.pradr?.addr?.dst || prev.city,
-          state: result.data.pradr?.addr?.stcd || prev.state,
-          pincode: result.data.pradr?.addr?.pncd || prev.pincode,
-        }));
+  // Auto-verify GST when GST number changes
+  useEffect(() => {
+    const verifyGSTNumber = async () => {
+      if (businessInfo.gstNumber && businessInfo.gstNumber.length === 15) {
+        try {
+          const result = await verifyGST(businessInfo.gstNumber);
+          
+          if (result.success && result.data) {
+            // Auto-fill the business information
+            setBusinessInfo(prev => ({
+              ...prev,
+              businessName: result.data.tradeNam || result.data.lgnm || prev.businessName,
+              address: result.data.pradr?.addr?.bno && result.data.pradr?.addr?.st 
+                ? `${result.data.pradr.addr.bno}, ${result.data.pradr.addr.st}, ${result.data.pradr.addr.loc}`
+                : prev.address,
+              city: result.data.pradr?.addr?.dst || prev.city,
+              state: result.data.pradr?.addr?.stcd || prev.state,
+              pincode: result.data.pradr?.addr?.pncd || prev.pincode,
+            }));
 
-        toast({
-          title: "GST Verified Successfully",
-          description: "Business information has been auto-filled.",
-        });
+            toast({
+              title: "GST Verified Successfully",
+              description: "Business information has been auto-filled.",
+            });
+          }
+        } catch (error) {
+          // Error handling is done in the hook
+        }
       }
-    } catch (error) {
-      // Error handling is done in the hook
-    }
-  };
+    };
+
+    const timeoutId = setTimeout(verifyGSTNumber, 500); // Debounce the API call
+    return () => clearTimeout(timeoutId);
+  }, [businessInfo.gstNumber, verifyGST, toast]);
 
   const validateAccountNumber = (accountNumber: string) => {
     return /^\d{9,18}$/.test(accountNumber);
@@ -88,7 +101,9 @@ const Onboarding = () => {
   };
 
   const handleBusinessSubmit = () => {
-    if (!businessInfo.businessName || !businessInfo.ownerName || !businessInfo.phone) {
+    if (!businessInfo.businessName || !businessInfo.ownerName || !businessInfo.phone || 
+        !businessInfo.email || !businessInfo.gstNumber || !businessInfo.address || 
+        !businessInfo.city || !businessInfo.state || !businessInfo.pincode) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
@@ -106,7 +121,8 @@ const Onboarding = () => {
   };
 
   const handleBankingSubmit = () => {
-    if (!bankDetails.accountNumber || !bankDetails.ifscCode || !bankDetails.bankName) {
+    if (!bankDetails.accountNumber || !bankDetails.ifscCode || !bankDetails.bankName || 
+        !bankDetails.branchName || !bankDetails.accountHolderName) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required banking fields.",
@@ -142,20 +158,21 @@ const Onboarding = () => {
   };
 
   const handleComplete = async () => {
+    if (!logoFile || !signatureFile) {
+      toast({
+        title: "Missing Files",
+        description: "Both business logo and digital signature are mandatory.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsCompleting(true);
     
     try {
       // Convert files to base64 for storage
-      let logoBase64 = '';
-      let signatureBase64 = '';
-
-      if (logoFile) {
-        logoBase64 = await fileToBase64(logoFile);
-      }
-
-      if (signatureFile) {
-        signatureBase64 = await fileToBase64(signatureFile);
-      }
+      const logoBase64 = await fileToBase64(logoFile);
+      const signatureBase64 = await fileToBase64(signatureFile);
 
       // Save all data to user metadata
       await user?.update({
@@ -255,7 +272,7 @@ const Onboarding = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Business Information</CardTitle>
-                <CardDescription>Tell us about your business</CardDescription>
+                <CardDescription>Tell us about your business (All fields are mandatory)</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -280,14 +297,14 @@ const Onboarding = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">Email *</Label>
                     <Input
                       id="email"
                       type="email"
                       value={businessInfo.email}
                       onChange={(e) => setBusinessInfo({...businessInfo, email: e.target.value})}
                       placeholder="business@example.com"
-                      disabled
+                      required
                     />
                   </div>
                   <div className="space-y-2">
@@ -301,72 +318,90 @@ const Onboarding = () => {
                     />
                   </div>
                   <div className="md:col-span-2 space-y-2">
-                    <Label htmlFor="gstNumber">GST Number</Label>
-                    <div className="flex gap-2">
+                    <Label htmlFor="gstNumber">GST Number *</Label>
+                    <div className="relative">
                       <Input
                         id="gstNumber"
                         value={businessInfo.gstNumber}
                         onChange={(e) => setBusinessInfo({...businessInfo, gstNumber: e.target.value.toUpperCase()})}
                         placeholder="22AAAAA0000A1Z5"
-                        className="flex-1"
+                        required
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleGSTVerification}
-                        disabled={isVerifying || !businessInfo.gstNumber}
-                        className="shrink-0"
-                      >
-                        {isVerifying ? (
+                      {isVerifying && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
-                        ) : (
-                          <Search className="h-4 w-4" />
-                        )}
-                        {isVerifying ? 'Verifying...' : 'Verify'}
-                      </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="pincode">PIN Code</Label>
+                    <Label htmlFor="pincode">PIN Code *</Label>
                     <Input
                       id="pincode"
                       value={businessInfo.pincode}
                       onChange={(e) => setBusinessInfo({...businessInfo, pincode: e.target.value})}
                       placeholder="400001"
+                      required
                     />
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="address">Business Address</Label>
+                  <Label htmlFor="address">Business Address *</Label>
                   <Textarea
                     id="address"
                     value={businessInfo.address}
                     onChange={(e) => setBusinessInfo({...businessInfo, address: e.target.value})}
                     placeholder="Enter complete business address"
                     rows={3}
+                    required
                   />
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
+                    <Label htmlFor="city">City *</Label>
                     <Input
                       id="city"
                       value={businessInfo.city}
                       onChange={(e) => setBusinessInfo({...businessInfo, city: e.target.value})}
                       placeholder="Mumbai"
+                      required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="state">State</Label>
+                    <Label htmlFor="state">State *</Label>
                     <Input
                       id="state"
                       value={businessInfo.state}
                       onChange={(e) => setBusinessInfo({...businessInfo, state: e.target.value})}
                       placeholder="Maharashtra"
+                      required
                     />
                   </div>
+                </div>
+
+                <div className="space-y-4">
+                  <Label className="text-base font-medium">GST Rate Selection *</Label>
+                  <RadioGroup 
+                    value={businessInfo.gstRate} 
+                    onValueChange={(value) => setBusinessInfo({...businessInfo, gstRate: value})}
+                    className="flex flex-col space-y-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="18" id="gst18" />
+                      <Label htmlFor="gst18">18%</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="12" id="gst12" />
+                      <Label htmlFor="gst12">12%</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="5" id="gst5" />
+                      <Label htmlFor="gst5">5%</Label>
+                    </div>
+                  </RadioGroup>
+                  <p className="text-sm text-muted-foreground">This will apply for the invoice</p>
                 </div>
                 
                 <Button onClick={handleBusinessSubmit} className="w-full">
@@ -380,7 +415,7 @@ const Onboarding = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Banking Details</CardTitle>
-                <CardDescription>Add your bank account for payment information</CardDescription>
+                <CardDescription>Add your bank account for payment information (All fields are mandatory)</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -426,21 +461,23 @@ const Onboarding = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="branchName">Branch Name</Label>
+                    <Label htmlFor="branchName">Branch Name *</Label>
                     <Input
                       id="branchName"
                       value={bankDetails.branchName}
                       onChange={(e) => setBankDetails({...bankDetails, branchName: e.target.value})}
                       placeholder="Mumbai Main Branch"
+                      required
                     />
                   </div>
                   <div className="md:col-span-2 space-y-2">
-                    <Label htmlFor="accountHolderName">Account Holder Name</Label>
+                    <Label htmlFor="accountHolderName">Account Holder Name *</Label>
                     <Input
                       id="accountHolderName"
                       value={bankDetails.accountHolderName}
                       onChange={(e) => setBankDetails({...bankDetails, accountHolderName: e.target.value})}
                       placeholder="As per bank records"
+                      required
                     />
                   </div>
                 </div>
@@ -456,12 +493,12 @@ const Onboarding = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Business Branding</CardTitle>
-                <CardDescription>Upload your logo and signature for invoices</CardDescription>
+                <CardDescription>Upload your logo and signature for invoices (Both are mandatory)</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
                   <div>
-                    <Label className="text-base font-medium">Business Logo</Label>
+                    <Label className="text-base font-medium">Business Logo *</Label>
                     <div className="flex items-center gap-4 mt-2">
                       <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
                         {logoFile ? (
@@ -481,6 +518,7 @@ const Onboarding = () => {
                           onChange={handleLogoUpload}
                           className="hidden"
                           id="logo-upload"
+                          required
                         />
                         <Label htmlFor="logo-upload" className="cursor-pointer">
                           <Button variant="outline" asChild>
@@ -491,14 +529,14 @@ const Onboarding = () => {
                           </Button>
                         </Label>
                         <p className="text-sm text-muted-foreground mt-2">
-                          PNG, JPG up to 2MB. Recommended: 200x200px
+                          PNG, JPG up to 2MB. Recommended: 200x200px (Required)
                         </p>
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <Label className="text-base font-medium">Digital Signature</Label>
+                    <Label className="text-base font-medium">Digital Signature *</Label>
                     <div className="flex items-center gap-4 mt-2">
                       <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
                         {signatureFile ? (
@@ -518,6 +556,7 @@ const Onboarding = () => {
                           onChange={handleSignatureUpload}
                           className="hidden"
                           id="signature-upload"
+                          required
                         />
                         <Label htmlFor="signature-upload" className="cursor-pointer">
                           <Button variant="outline" asChild>
@@ -528,7 +567,7 @@ const Onboarding = () => {
                           </Button>
                         </Label>
                         <p className="text-sm text-muted-foreground mt-2">
-                          PNG, JPG up to 1MB. Transparent background recommended
+                          PNG, JPG up to 1MB. Transparent background recommended (Required)
                         </p>
                       </div>
                     </div>
