@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
@@ -8,13 +7,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building, CreditCard, FileImage, Upload, CheckCircle } from 'lucide-react';
+import { Building, CreditCard, FileImage, Upload, CheckCircle, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useGSTVerification } from '@/hooks/useGSTVerification';
 
 const Onboarding = () => {
   const { user } = useUser();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { verifyGST, isVerifying } = useGSTVerification();
   const [currentStep, setCurrentStep] = useState('business');
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [isCompleting, setIsCompleting] = useState(false);
@@ -41,6 +42,42 @@ const Onboarding = () => {
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
+
+  const handleGSTVerification = async () => {
+    if (!businessInfo.gstNumber) {
+      toast({
+        title: "GST Number Required",
+        description: "Please enter a GST number to verify.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const result = await verifyGST(businessInfo.gstNumber);
+      
+      if (result.success && result.data) {
+        // Auto-fill the business information
+        setBusinessInfo(prev => ({
+          ...prev,
+          businessName: result.data.tradeNam || result.data.lgnm || prev.businessName,
+          address: result.data.pradr?.addr?.bno && result.data.pradr?.addr?.st 
+            ? `${result.data.pradr.addr.bno}, ${result.data.pradr.addr.st}, ${result.data.pradr.addr.loc}`
+            : prev.address,
+          city: result.data.pradr?.addr?.dst || prev.city,
+          state: result.data.pradr?.addr?.stcd || prev.state,
+          pincode: result.data.pradr?.addr?.pncd || prev.pincode,
+        }));
+
+        toast({
+          title: "GST Verified Successfully",
+          description: "Business information has been auto-filled.",
+        });
+      }
+    } catch (error) {
+      // Error handling is done in the hook
+    }
+  };
 
   const validateAccountNumber = (accountNumber: string) => {
     return /^\d{9,18}$/.test(accountNumber);
@@ -263,14 +300,31 @@ const Onboarding = () => {
                       required
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="md:col-span-2 space-y-2">
                     <Label htmlFor="gstNumber">GST Number</Label>
-                    <Input
-                      id="gstNumber"
-                      value={businessInfo.gstNumber}
-                      onChange={(e) => setBusinessInfo({...businessInfo, gstNumber: e.target.value})}
-                      placeholder="22AAAAA0000A1Z5"
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="gstNumber"
+                        value={businessInfo.gstNumber}
+                        onChange={(e) => setBusinessInfo({...businessInfo, gstNumber: e.target.value.toUpperCase()})}
+                        placeholder="22AAAAA0000A1Z5"
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleGSTVerification}
+                        disabled={isVerifying || !businessInfo.gstNumber}
+                        className="shrink-0"
+                      >
+                        {isVerifying ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+                        ) : (
+                          <Search className="h-4 w-4" />
+                        )}
+                        {isVerifying ? 'Verifying...' : 'Verify'}
+                      </Button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="pincode">PIN Code</Label>
