@@ -36,12 +36,15 @@ const Support = () => {
           frameBorder="0"
           className="rounded-lg border"
         />
+        {/* White overlay to cover branding */}
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-white pointer-events-none z-10"></div>
       </div>
 
       <div className="flex gap-4 justify-center">
         <Button
           onClick={handleRaiseTicket}
-          className="flex items-center gap-2 px-6 py-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white"
+          variant="outline"
+          className="flex items-center gap-2 px-6 py-3 bg-transparent border-2 border-blue-600 text-blue-600 hover:bg-blue-50"
         >
           <Ticket className="h-5 w-5" />
           Raise a Ticket
@@ -49,7 +52,8 @@ const Support = () => {
 
         <Button
           onClick={handleKnowledgeBase}
-          className="flex items-center gap-2 px-6 py-3 rounded-full bg-green-600 hover:bg-green-700 text-white"
+          variant="outline"
+          className="flex items-center gap-2 px-6 py-3 bg-transparent border-2 border-green-600 text-green-600 hover:bg-green-50"
         >
           <BookOpen className="h-5 w-5" />
           Knowledge Base
@@ -57,7 +61,8 @@ const Support = () => {
 
         <Button
           onClick={handleWriteToUs}
-          className="flex items-center gap-2 px-6 py-3 rounded-full bg-purple-600 hover:bg-purple-700 text-white"
+          variant="outline"
+          className="flex items-center gap-2 px-6 py-3 bg-transparent border-2 border-purple-600 text-purple-600 hover:bg-purple-50"
         >
           <Mail className="h-5 w-5" />
           Write to Us
