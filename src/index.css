@@ -101,16 +101,62 @@
   }
 }
 
-/* Hide Relevance AI branding overlay */
+/* Enhanced Relevance AI branding hiding with better coverage */
 .branding-overlay,
 [class*="branding"],
 [class*="powered-by"],
+[class*="powered_by"],
+[class*="poweredBy"],
+[class*="relevance"],
+[class*="logo"],
 [data-testid*="branding"],
+[data-testid*="powered"],
+[data-testid*="logo"],
 iframe[src*="relevanceai"] + div,
 iframe[src*="relevanceai"] ~ div[style*="position: absolute"],
-iframe[src*="relevanceai"] ~ div[style*="bottom"] {
+iframe[src*="relevanceai"] ~ div[style*="bottom"],
+iframe[src*="relevanceai"] ~ div[style*="fixed"],
+iframe[src*="relevanceai"] ~ div[style*="z-index"],
+div[style*="bottom: 0px"],
+div[style*="bottom:0px"],
+div[style*="position: fixed"][style*="bottom"],
+div[style*="position:fixed"][style*="bottom"],
+a[href*="relevanceai"],
+a[href*="relevance.ai"],
+span:contains("Powered by"),
+span:contains("powered by"),
+div:contains("Powered by Relevance"),
+div:contains("powered by relevance") {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
-  z-index: -1 !important;
+  z-index: -9999 !important;
+  height: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+}
+
+/* Additional overlay to cover any remaining branding */
+iframe[src*="relevanceai"] {
+  position: relative;
+}
+
+iframe[src*="relevanceai"]::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.95), transparent);
+  pointer-events: none;
+  z-index: 1000;
+}
+
+/* Dark mode overlay */
+.dark iframe[src*="relevanceai"]::after {
+  background: linear-gradient(to top, rgba(34, 34, 34, 0.95), transparent);
 }
