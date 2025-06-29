@@ -2,10 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -13,10 +10,6 @@ const ClerkLogin = () => {
   const { user, isLoaded } = useUser();
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (isLoaded && user) {
@@ -31,27 +24,6 @@ const ClerkLogin = () => {
   const handleClose = () => {
     setShowModal(false);
     navigate('/');
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    // Integrated API authentication logic would go here
-    // For now, we'll use Clerk's programmatic sign in/up
-    try {
-      if (isSignUp) {
-        // Sign up logic
-        console.log('Signing up with:', email);
-      } else {
-        // Sign in logic
-        console.log('Signing in with:', email);
-      }
-    } catch (error) {
-      console.error('Authentication error:', error);
-    } finally {
-      setLoading(false);
-    }
   };
 
   return (
@@ -77,63 +49,33 @@ const ClerkLogin = () => {
             <div className="pl-24 pr-8 py-8">
               <DialogHeader className="mb-8">
                 <DialogTitle className="text-2xl font-semibold text-gray-900 text-left">
-                  {isSignUp ? 'Sign up' : 'Sign in'}
+                  Welcome to AczenX
                 </DialogTitle>
-                <p className="text-gray-600 text-sm text-left">to continue to AczenX</p>
+                <p className="text-gray-600 text-sm text-left">Sign in or create an account to continue</p>
               </DialogHeader>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                    Email address
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full"
-                    placeholder="Enter your email"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                    Password
-                  </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full"
-                    placeholder="Enter your password"
-                    required
-                  />
-                </div>
-
-                <Button 
-                  type="submit"
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg h-12 text-base font-medium"
-                  disabled={loading}
+              <div className="space-y-4">
+                <SignInButton 
+                  mode="modal"
+                  fallbackRedirectUrl="/"
                 >
-                  {loading ? 'Loading...' : (isSignUp ? 'CREATE ACCOUNT' : 'CONTINUE')}
-                </Button>
+                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg h-12 text-base font-medium">
+                    SIGN IN
+                  </Button>
+                </SignInButton>
 
-                <div className="text-center mt-6">
-                  <span className="text-gray-600 text-sm">
-                    {isSignUp ? 'Already have an account? ' : 'No account? '}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setIsSignUp(!isSignUp)}
-                    className="text-blue-600 text-sm hover:underline font-medium"
+                <SignUpButton 
+                  mode="modal"
+                  fallbackRedirectUrl="/onboarding"
+                >
+                  <Button 
+                    variant="outline"
+                    className="w-full border-2 border-blue-600 text-blue-600 hover:bg-blue-50 rounded-lg h-12 text-base font-medium"
                   >
-                    {isSignUp ? 'Sign in' : 'Sign up'}
-                  </button>
-                </div>
-              </form>
+                    SIGN UP
+                  </Button>
+                </SignUpButton>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
