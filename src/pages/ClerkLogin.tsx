@@ -134,29 +134,6 @@ const ClerkLogin = () => {
                   </button>
                 </div>
               </form>
-
-              {/* Development mode fallback with Clerk buttons */}
-              <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-xs text-blue-700 mb-3 font-medium">Development Mode - Clerk Integration</p>
-                <div className="space-y-2">
-                  <SignInButton 
-                    mode="modal"
-                    fallbackRedirectUrl="/"
-                  >
-                    <Button variant="outline" size="sm" className="w-full text-xs border-blue-300 text-blue-700 hover:bg-blue-100">
-                      Clerk Sign In
-                    </Button>
-                  </SignInButton>
-                  <SignUpButton 
-                    mode="modal"
-                    fallbackRedirectUrl="/onboarding"
-                  >
-                    <Button variant="outline" size="sm" className="w-full text-xs border-blue-300 text-blue-700 hover:bg-blue-100">
-                      Clerk Sign Up
-                    </Button>
-                  </SignUpButton>
-                </div>
-              </div>
             </div>
           </DialogContent>
         </Dialog>
