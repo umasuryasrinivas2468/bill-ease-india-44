@@ -21,6 +21,51 @@ const ClerkLogin = () => {
     }
   }, [user, isLoaded, navigate]);
 
+  useEffect(() => {
+    // Hide Clerk branding and development mode indicators
+    const hideClerkBranding = () => {
+      const style = document.createElement('style');
+      style.textContent = `
+        .cl-footerAction,
+        .cl-footer,
+        .cl-formFooter,
+        .cl-card .cl-footer,
+        .cl-modal .cl-footer,
+        .cl-modalContent .cl-footer,
+        [data-localization-key="signIn.start.subtitle"],
+        [data-localization-key="signUp.start.subtitle"],
+        .cl-internal-b3fm6y,
+        .cl-internal-1w8pvrk,
+        .cl-dividerRow,
+        .cl-alternativeMethods__dividerRow,
+        .cl-divider,
+        .cl-card__footer,
+        .cl-modal__footer,
+        .cl-formFooter__poweredBy,
+        .cl-poweredBy,
+        .cl-internal-vfes3t {
+          display: none !important;
+        }
+        
+        .cl-card,
+        .cl-modal,
+        .cl-modalContent {
+          box-shadow: none !important;
+          border: none !important;
+        }
+      `;
+      document.head.appendChild(style);
+    };
+
+    // Apply immediately and after a short delay to catch dynamically loaded content
+    hideClerkBranding();
+    const timer = setTimeout(hideClerkBranding, 500);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, []);
+
   const handleClose = () => {
     setShowModal(false);
     navigate('/');
