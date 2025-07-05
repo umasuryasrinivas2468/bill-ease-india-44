@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Download, X } from 'lucide-react';
 import { Invoice } from '@/hooks/useInvoices';
 import { useUser } from '@clerk/clerk-react';
+import { useBusinessData } from '@/hooks/useBusinessData';
+import { toWords } from 'number-to-words';
 
 interface InvoiceViewerProps {
   invoice: Invoice | null;
@@ -15,6 +17,7 @@ interface InvoiceViewerProps {
 const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose }) => {
   const printRef = useRef<HTMLDivElement>(null);
   const { user } = useUser();
+  const { getBusinessInfo, getBankDetails } = useBusinessData();
 
   if (!invoice) return null;
 
@@ -31,8 +34,13 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
     window.location.reload();
   };
 
-  const businessInfo = user?.unsafeMetadata?.businessInfo as any;
+  const businessInfo = getBusinessInfo();
+  const bankDetails = getBankDetails();
   const logoUrl = user?.imageUrl;
+
+  // Convert total amount to words
+  const totalInWords = toWords(Math.floor(Number(invoice.total_amount)));
+  const totalAmountInWords = `${totalInWords.charAt(0).toUpperCase() + totalInWords.slice(1)} rupees only`;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -133,6 +141,7 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
               <thead>
                 <tr className="bg-gray-50">
                   <th className="border border-gray-300 p-2 text-left">Description</th>
+                  <th className="border border-gray-300 p-2 text-left">HSN/SAC</th>
                   <th className="border border-gray-300 p-2 text-right">Qty</th>
                   <th className="border border-gray-300 p-2 text-right">Rate</th>
                   <th className="border border-gray-300 p-2 text-right">Amount</th>
@@ -142,6 +151,7 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
                 {invoice.items.map((item: any, index: number) => (
                   <tr key={index}>
                     <td className="border border-gray-300 p-2">{item.description}</td>
+                    <td className="border border-gray-300 p-2">{item.hsn_sac || '-'}</td>
                     <td className="border border-gray-300 p-2 text-right">{item.quantity}</td>
                     <td className="border border-gray-300 p-2 text-right">₹{item.rate.toFixed(2)}</td>
                     <td className="border border-gray-300 p-2 text-right">₹{item.amount.toFixed(2)}</td>
@@ -151,6 +161,12 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
             </table>
           </div>
 
+          {/* Amount in Words */}
+          <div className="bg-gray-50 p-4 rounded">
+            <p className="font-semibold">Amount in Words:</p>
+            <p className="text-sm italic">{totalAmountInWords}</p>
+          </div>
+
           {/* Totals */}
           <div className="flex justify-end">
             <div className="w-64 space-y-2">
@@ -158,16 +174,52 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
                 <span>Subtotal:</span>
                 <span>₹{Number(invoice.amount).toFixed(2)}</span>
               </div>
+              {invoice.discount && invoice.discount > 0 && (
+                <div className="flex justify-between text-red-600">
+                  <span>Discount:</span>
+                  <span>-₹{Number(invoice.discount).toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
-                <span>GST:</span>
+                <span>GST ({invoice.gst_rate || 18}%):</span>
                 <span>₹{Number(invoice.gst_amount).toFixed(2)}</span>
               </div>
+              {invoice.advance && invoice.advance > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Advance:</span>
+                  <span>-₹{Number(invoice.advance).toFixed(2)}</span>
+                </div>
+              )}
+              {invoice.roundoff && invoice.roundoff !== 0 && (
+                <div className="flex justify-between">
+                  <span>Round Off:</span>
+                  <span>{invoice.roundoff >= 0 ? '+' : ''}₹{Number(invoice.roundoff).toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold text-lg border-t pt-2">
                 <span>Total:</span>
                 <span>₹{Number(invoice.total_amount).toFixed(2)}</span>
               </div>
             </div>
           </div>
+
+          {/* Bank Details */}
+          {bankDetails && (
+            <div className="bg-blue-50 p-4 rounded space-y-2">
+              <h3 className="font-semibold text-blue-800">Bank Details:</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p><span className="font-medium">Account Holder:</span> {bankDetails.accountHolderName}</p>
+                  <p><span className="font-medium">Account Number:</span> {bankDetails.accountNumber}</p>
+                  <p><span className="font-medium">IFSC Code:</span> {bankDetails.ifscCode}</p>
+                </div>
+                <div>
+                  <p><span className="font-medium">Bank Name:</span> {bankDetails.bankName}</p>
+                  <p><span className="font-medium">Branch:</span> {bankDetails.branchName}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Notes */}
           {invoice.notes && (
@@ -176,6 +228,11 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
               <p className="text-sm">{invoice.notes}</p>
             </div>
           )}
+
+          {/* Footer */}
+          <div className="text-center text-sm text-gray-600 pt-4 border-t">
+            <p>Thank you for your business!</p>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

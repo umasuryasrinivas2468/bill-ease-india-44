@@ -17,6 +17,7 @@ import { Client } from '@/hooks/useClients';
 
 interface InvoiceItem {
   description: string;
+  hsn_sac: string;
   quantity: number;
   rate: number;
   amount: number;
@@ -38,11 +39,11 @@ const CreateInvoice = () => {
   const [discount, setDiscount] = useState(0);
   const [roundoff, setRoundoff] = useState(0);
   const [items, setItems] = useState<InvoiceItem[]>([
-    { description: '', quantity: 1, rate: 0, amount: 0 }
+    { description: '', hsn_sac: '', quantity: 1, rate: 0, amount: 0 }
   ]);
 
   const addItem = () => {
-    setItems([...items, { description: '', quantity: 1, rate: 0, amount: 0 }]);
+    setItems([...items, { description: '', hsn_sac: '', quantity: 1, rate: 0, amount: 0 }]);
   };
 
   const removeItem = (index: number) => {
@@ -260,7 +261,7 @@ const CreateInvoice = () => {
           <CardContent>
             <div className="space-y-4">
               {items.map((item, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border rounded-lg">
+                <div key={index} className="grid grid-cols-1 md:grid-cols-7 gap-4 p-4 border rounded-lg">
                   <div className="md:col-span-2">
                     <Label htmlFor={`description-${index}`}>Description</Label>
                     <Input
@@ -269,6 +270,16 @@ const CreateInvoice = () => {
                       onChange={(e) => updateItem(index, 'description', e.target.value)}
                       placeholder="Item description"
                       required
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor={`hsn-sac-${index}`}>HSN/SAC</Label>
+                    <Input
+                      id={`hsn-sac-${index}`}
+                      value={item.hsn_sac}
+                      onChange={(e) => updateItem(index, 'hsn_sac', e.target.value)}
+                      placeholder="HSN/SAC Code"
                     />
                   </div>
                   
