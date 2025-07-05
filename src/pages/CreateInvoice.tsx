@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,7 +35,7 @@ const CreateInvoice = () => {
   const [notes, setNotes] = useState('');
   const [gstRate, setGstRate] = useState(18);
   const [advance, setAdvance] = useState(0);
-  const [discount, setDiscount] = useState(0);
+  const [discountPercentage, setDiscountPercentage] = useState(0);
   const [roundoff, setRoundoff] = useState(0);
   const [items, setItems] = useState<InvoiceItem[]>([
     { description: '', hsn_sac: '', quantity: 1, rate: 0, amount: 0 }
@@ -64,7 +63,7 @@ const CreateInvoice = () => {
   };
 
   const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
-  const discountAmount = discount;
+  const discountAmount = subtotal * (discountPercentage / 100);
   const afterDiscount = subtotal - discountAmount;
   const gstAmount = afterDiscount * (gstRate / 100);
   const beforeRoundoff = afterDiscount + gstAmount - advance;
@@ -360,14 +359,15 @@ const CreateInvoice = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="discount">Discount (₹)</Label>
+                <Label htmlFor="discount">Discount (%)</Label>
                 <Input
                   id="discount"
                   type="number"
                   min="0"
+                  max="100"
                   step="0.01"
-                  value={discount}
-                  onChange={(e) => setDiscount(Number(e.target.value))}
+                  value={discountPercentage}
+                  onChange={(e) => setDiscountPercentage(Number(e.target.value))}
                   placeholder="0.00"
                 />
               </div>
@@ -398,9 +398,9 @@ const CreateInvoice = () => {
                 <span>Subtotal:</span>
                 <span>₹{subtotal.toFixed(2)}</span>
               </div>
-              {discount > 0 && (
+              {discountPercentage > 0 && (
                 <div className="flex justify-between text-red-600">
-                  <span>Discount:</span>
+                  <span>Discount ({discountPercentage}%):</span>
                   <span>-₹{discountAmount.toFixed(2)}</span>
                 </div>
               )}
