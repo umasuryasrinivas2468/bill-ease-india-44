@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
@@ -33,6 +32,9 @@ const Onboarding = () => {
     state: '',
     pincode: '',
     gstRate: '18', // Default GST rate
+    isImportExportApplicable: 'no',
+    iecNumber: '',
+    lutNumber: '',
   });
 
   const [bankDetails, setBankDetails] = useState({
@@ -46,7 +48,6 @@ const Onboarding = () => {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
 
-  // Auto-fetch email and phone from Clerk when user data loads
   useEffect(() => {
     if (user) {
       setBusinessInfo(prev => ({
@@ -57,7 +58,6 @@ const Onboarding = () => {
     }
   }, [user]);
 
-  // Auto-verify GST when GST number changes
   useEffect(() => {
     const verifyGSTNumber = async () => {
       if (businessInfo.gstNumber && businessInfo.gstNumber.length === 15) {
@@ -65,7 +65,6 @@ const Onboarding = () => {
           const result = await verifyGST(businessInfo.gstNumber);
           
           if (result.success && result.data) {
-            // Auto-fill the business information
             setBusinessInfo(prev => ({
               ...prev,
               businessName: result.data.tradeNam || result.data.lgnm || prev.businessName,
@@ -83,14 +82,22 @@ const Onboarding = () => {
             });
           }
         } catch (error) {
-          // Error handling is done in the hook
         }
       }
     };
 
-    const timeoutId = setTimeout(verifyGSTNumber, 500); // Debounce the API call
+    const timeoutId = setTimeout(verifyGSTNumber, 500);
     return () => clearTimeout(timeoutId);
   }, [businessInfo.gstNumber, verifyGST, toast]);
+
+  const validateGSTNumber = (gstNumber: string) => {
+    const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$/;
+    return gstRegex.test(gstNumber);
+  };
+
+  const validateIECNumber = (iecNumber: string) => {
+    return /^\d{10}$/.test(iecNumber);
+  };
 
   const validateAccountNumber = (accountNumber: string) => {
     return /^\d{9,18}$/.test(accountNumber);
@@ -110,6 +117,35 @@ const Onboarding = () => {
         variant: "destructive",
       });
       return;
+    }
+
+    if (!validateGSTNumber(businessInfo.gstNumber)) {
+      toast({
+        title: "Invalid GST Number",
+        description: "GST number format is invalid. Example: 36AAFCL5374E1ZG",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (businessInfo.isImportExportApplicable === 'yes') {
+      if (!businessInfo.iecNumber || !businessInfo.lutNumber) {
+        toast({
+          title: "Missing Import/Export Information",
+          description: "Please fill in both IEC Number and LUT Number.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!validateIECNumber(businessInfo.iecNumber)) {
+        toast({
+          title: "Invalid IEC Number",
+          description: "IEC number must be exactly 10 digits.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setCompletedSteps([...completedSteps, 'business']);
@@ -170,11 +206,9 @@ const Onboarding = () => {
     setIsCompleting(true);
     
     try {
-      // Convert files to base64 for storage
       const logoBase64 = await fileToBase64(logoFile);
       const signatureBase64 = await fileToBase64(signatureFile);
 
-      // Save all data to user metadata
       await user?.update({
         unsafeMetadata: {
           businessInfo,
@@ -190,7 +224,6 @@ const Onboarding = () => {
         description: "Welcome to Aczen Bilz. You're ready to start creating invoices.",
       });
 
-      // Navigate to main dashboard
       navigate('/', { replace: true });
     } catch (error) {
       console.error('Error completing onboarding:', error);
@@ -324,7 +357,8 @@ const Onboarding = () => {
                         id="gstNumber"
                         value={businessInfo.gstNumber}
                         onChange={(e) => setBusinessInfo({...businessInfo, gstNumber: e.target.value.toUpperCase()})}
-                        placeholder="22AAAAA0000A1Z5"
+                        placeholder="36AAFCL5374E1ZG"
+                        maxLength={15}
                         required
                       />
                       {isVerifying && (
@@ -333,6 +367,9 @@ const Onboarding = () => {
                         </div>
                       )}
                     </div>
+                    {businessInfo.gstNumber && !validateGSTNumber(businessInfo.gstNumber) && (
+                      <p className="text-sm text-red-500">Invalid GST format. Example: 36AAFCL5374E1ZG</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="pincode">PIN Code *</Label>
@@ -380,6 +417,54 @@ const Onboarding = () => {
                     />
                   </div>
                 </div>
+
+                <div className="space-y-4">
+                  <Label className="text-base font-medium">Import/Export Applicable *</Label>
+                  <RadioGroup 
+                    value={businessInfo.isImportExportApplicable} 
+                    onValueChange={(value) => setBusinessInfo({...businessInfo, isImportExportApplicable: value, iecNumber: value === 'no' ? '' : businessInfo.iecNumber, lutNumber: value === 'no' ? '' : businessInfo.lutNumber})}
+                    className="flex flex-row space-x-6"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="importExportYes" />
+                      <Label htmlFor="importExportYes">Yes</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="importExportNo" />
+                      <Label htmlFor="importExportNo">No</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {businessInfo.isImportExportApplicable === 'yes' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="iecNumber">IEC Number *</Label>
+                      <Input
+                        id="iecNumber"
+                        value={businessInfo.iecNumber}
+                        onChange={(e) => setBusinessInfo({...businessInfo, iecNumber: e.target.value})}
+                        placeholder="1234567890"
+                        maxLength={10}
+                        pattern="\d*"
+                        required
+                      />
+                      {businessInfo.iecNumber && !validateIECNumber(businessInfo.iecNumber) && (
+                        <p className="text-sm text-red-500">IEC number must be exactly 10 digits</p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lutNumber">LUT Number *</Label>
+                      <Input
+                        id="lutNumber"
+                        value={businessInfo.lutNumber}
+                        onChange={(e) => setBusinessInfo({...businessInfo, lutNumber: e.target.value})}
+                        placeholder="Enter LUT number"
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-4">
                   <Label className="text-base font-medium">GST Rate Selection *</Label>

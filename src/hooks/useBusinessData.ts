@@ -11,6 +11,9 @@ export interface BusinessInfo {
   city: string;
   state: string;
   pincode: string;
+  isImportExportApplicable: string;
+  iecNumber: string;
+  lutNumber: string;
 }
 
 export interface BankDetails {
