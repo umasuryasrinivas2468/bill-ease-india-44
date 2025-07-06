@@ -2,14 +2,12 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building, CreditCard, FileImage, CheckCircle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { BusinessInfoStep } from '@/components/onboarding/BusinessInfoStep';
 import { BankingDetailsStep } from '@/components/onboarding/BankingDetailsStep';
 import { BrandingStep } from '@/components/onboarding/BrandingStep';
 
 const Onboarding = () => {
-  const { toast } = useToast();
   const {
     currentStep,
     setCurrentStep,
@@ -30,29 +28,17 @@ const Onboarding = () => {
   const handleBusinessNext = () => {
     setCompletedSteps([...completedSteps, 'business']);
     setCurrentStep('banking');
-    toast({
-      title: "Business Information Saved",
-      description: "Moving to banking details.",
-    });
   };
 
   const handleBankingNext = () => {
     setCompletedSteps([...completedSteps, 'banking']);
     setCurrentStep('branding');
-    toast({
-      title: "Banking Details Saved",
-      description: "Moving to branding setup.",
-    });
   };
 
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setLogoFile(file);
-      toast({
-        title: "Logo Uploaded",
-        description: "Your business logo has been uploaded successfully.",
-      });
     }
   };
 
@@ -60,10 +46,6 @@ const Onboarding = () => {
     const file = event.target.files?.[0];
     if (file) {
       setSignatureFile(file);
-      toast({
-        title: "Signature Uploaded",
-        description: "Your signature has been uploaded successfully.",
-      });
     }
   };
 
@@ -105,7 +87,6 @@ const Onboarding = () => {
               businessInfo={businessInfo}
               setBusinessInfo={setBusinessInfo}
               onNext={handleBusinessNext}
-              toast={toast}
             />
           </TabsContent>
 
@@ -114,7 +95,6 @@ const Onboarding = () => {
               bankDetails={bankDetails}
               setBankDetails={setBankDetails}
               onNext={handleBankingNext}
-              toast={toast}
             />
           </TabsContent>
 

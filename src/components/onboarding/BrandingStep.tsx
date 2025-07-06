@@ -62,7 +62,7 @@ export const BrandingStep: React.FC<BrandingStepProps> = ({
                   </Button>
                 </Label>
                 <p className="text-sm text-muted-foreground mt-2">
-                  PNG, JPG up to 2MB. Recommended: 200x200px (Required)
+                  PNG, JPG up to 10MB. Recommended: 200x200px (Required)
                 </p>
               </div>
             </div>
@@ -100,7 +100,7 @@ export const BrandingStep: React.FC<BrandingStepProps> = ({
                   </Button>
                 </Label>
                 <p className="text-sm text-muted-foreground mt-2">
-                  PNG, JPG up to 1MB. Transparent background recommended (Required)
+                  PNG, JPG up to 5MB. Transparent background recommended (Required)
                 </p>
               </div>
             </div>
