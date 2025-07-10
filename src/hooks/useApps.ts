@@ -174,7 +174,7 @@ export const useApps = () => {
       console.error('Error installing app:', error);
       toast({
         title: "Error",
-        description: "Failed to install app",
+        description: "Failed to install app. Please try again.",
         variant: "destructive"
       });
       return false;
