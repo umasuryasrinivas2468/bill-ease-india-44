@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,7 +32,7 @@ export const useApps = () => {
   const [userApps, setUserApps] = useState<UserApp[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Create demo app if none exist
+  // Create demo apps if none exist
   const createDemoApp = async () => {
     try {
       const { data: existingApps, error: checkError } = await supabase
@@ -43,23 +42,35 @@ export const useApps = () => {
 
       if (checkError) throw checkError;
 
-      // Only create demo app if no apps exist
+      // Only create demo apps if no apps exist
       if (!existingApps || existingApps.length === 0) {
-        const { error: insertError } = await supabase
-          .from('apps')
-          .insert({
+        const demoApps = [
+          {
             name: 'QuickBooks Integration',
             description: 'Seamlessly sync your invoices and financial data with QuickBooks. Automate your accounting workflow and keep your books up to date.',
             icon_url: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=100&h=100&fit=crop&crop=center',
             category: 'accounting',
             developer: 'FinTech Solutions',
             version: '2.1.0'
-          });
+          },
+          {
+            name: 'Aczen Inventory',
+            description: 'An inventory logo serves as a visual representation of your business\'s core function: managing and tracking goods. A strong logo for comprehensive inventory management.',
+            icon_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTixbDnlVd-0O4xIMt7mS1LgZEbgMfIMm2wTg&s',
+            category: 'inventory',
+            developer: 'Aczen Solutions',
+            version: '1.5.2'
+          }
+        ];
+
+        const { error: insertError } = await supabase
+          .from('apps')
+          .insert(demoApps);
 
         if (insertError) throw insertError;
       }
     } catch (error) {
-      console.error('Error creating demo app:', error);
+      console.error('Error creating demo apps:', error);
     }
   };
 
