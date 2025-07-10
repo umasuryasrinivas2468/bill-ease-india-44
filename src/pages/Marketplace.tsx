@@ -1,14 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Grid, Package } from 'lucide-react';
+import { Search, Grid, Package, ExternalLink } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useApps, App } from '@/hooks/useApps';
+import { useUser } from '@clerk/clerk-react';
 
 const Marketplace = () => {
+  const { user } = useUser();
   const {
     apps,
     loading,
@@ -45,6 +47,11 @@ const Marketplace = () => {
   }, [apps, searchQuery, selectedCategory]);
 
   const handleAppAction = async (appId: string, installed: boolean) => {
+    if (!user) {
+      console.error('User not authenticated');
+      return;
+    }
+
     if (installed) {
       await uninstallApp(appId);
     } else {
@@ -52,7 +59,26 @@ const Marketplace = () => {
     }
   };
 
-  const AppCard = ({ app }: { app: App }) => {
+  const handleOpenApp = (app: App) => {
+    // For demo purposes, we'll open a placeholder URL
+    // In a real app, each app would have its own URL or launch mechanism
+    const appUrl = getAppUrl(app);
+    window.open(appUrl, '_blank');
+  };
+
+  const getAppUrl = (app: App) => {
+    // Demo URLs for different apps
+    switch (app.name) {
+      case 'QuickBooks Integration':
+        return 'https://quickbooks.intuit.com/';
+      case 'Aczen Inventory':
+        return 'https://aczen.com/inventory';
+      default:
+        return '#';
+    }
+  };
+
+  const AppCard = ({ app, showOpenButton = false }: { app: App; showOpenButton?: boolean }) => {
     const installed = isAppInstalled(app.id);
 
     return (
@@ -81,13 +107,26 @@ const Marketplace = () => {
           </CardDescription>
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">v{app.version}</span>
-            <Button
-              onClick={() => handleAppAction(app.id, installed)}
-              variant={installed ? "outline" : "default"}
-              size="sm"
-            >
-              {installed ? "Uninstall" : "Install"}
-            </Button>
+            <div className="flex gap-2">
+              {showOpenButton && installed && (
+                <Button
+                  onClick={() => handleOpenApp(app)}
+                  variant="outline"
+                  size="sm"
+                >
+                  <ExternalLink className="w-4 h-4 mr-1" />
+                  Open
+                </Button>
+              )}
+              <Button
+                onClick={() => handleAppAction(app.id, installed)}
+                variant={installed ? "outline" : "default"}
+                size="sm"
+                disabled={!user}
+              >
+                {installed ? "Uninstall" : "Install"}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -104,6 +143,18 @@ const Marketplace = () => {
               <div key={i} className="h-48 bg-gray-200 rounded"></div>
             ))}
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Authentication Required</h2>
+          <p className="text-muted-foreground">Please sign in to access the marketplace</p>
         </div>
       </div>
     );
@@ -192,7 +243,7 @@ const Marketplace = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {installedApps.map((app) => (
-                  <AppCard key={app.id} app={app} />
+                  <AppCard key={app.id} app={app} showOpenButton={true} />
                 ))}
               </div>
             )}

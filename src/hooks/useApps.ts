@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,7 +27,7 @@ export interface UserApp {
 }
 
 export const useApps = () => {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const { toast } = useToast();
   const [apps, setApps] = useState<App[]>([]);
   const [userApps, setUserApps] = useState<UserApp[]>([]);
@@ -113,16 +114,22 @@ export const useApps = () => {
 
   // Fetch user's installed apps
   const fetchUserApps = async () => {
-    if (!user) return;
+    if (!user || !isLoaded) return;
 
     try {
+      console.log('Fetching user apps for user:', user.id);
       const { data, error } = await supabase
         .from('user_apps')
         .select('*')
         .eq('user_id', normalizeUserId(user.id))
         .eq('is_active', true);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching user apps:', error);
+        throw error;
+      }
+      
+      console.log('User apps fetched:', data);
       setUserApps(data || []);
     } catch (error) {
       console.error('Error fetching user apps:', error);
@@ -131,9 +138,18 @@ export const useApps = () => {
 
   // Install an app
   const installApp = async (appId: string) => {
-    if (!user) return false;
+    if (!user || !isLoaded) {
+      toast({
+        title: "Error",
+        description: "Please log in to install apps",
+        variant: "destructive"
+      });
+      return false;
+    }
 
     try {
+      console.log('Installing app:', appId, 'for user:', user.id);
+      
       const { error } = await supabase
         .from('user_apps')
         .insert({
@@ -141,7 +157,10 @@ export const useApps = () => {
           app_id: appId
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error installing app:', error);
+        throw error;
+      }
 
       toast({
         title: "Success",
@@ -164,7 +183,7 @@ export const useApps = () => {
 
   // Uninstall an app
   const uninstallApp = async (appId: string) => {
-    if (!user) return false;
+    if (!user || !isLoaded) return false;
 
     try {
       const { error } = await supabase
@@ -217,17 +236,21 @@ export const useApps = () => {
       setLoading(true);
       await createDemoApp();
       await fetchApps();
-      if (user) {
+      if (user && isLoaded) {
         await fetchUserApps();
       }
       setLoading(false);
     };
 
-    initializeData();
-  }, [user]);
+    if (isLoaded) {
+      initializeData();
+    }
+  }, [user, isLoaded]);
 
   // Set up real-time subscriptions
   useEffect(() => {
+    if (!isLoaded) return;
+
     const appsChannel = supabase
       .channel('apps-changes')
       .on('postgres_changes', {
@@ -246,7 +269,7 @@ export const useApps = () => {
         schema: 'public',
         table: 'user_apps'
       }, () => {
-        if (user) {
+        if (user && isLoaded) {
           fetchUserApps();
         }
       })
@@ -256,7 +279,7 @@ export const useApps = () => {
       supabase.removeChannel(appsChannel);
       supabase.removeChannel(userAppsChannel);
     };
-  }, [user]);
+  }, [user, isLoaded]);
 
   return {
     apps,
@@ -269,7 +292,7 @@ export const useApps = () => {
     getCategories,
     refetch: async () => {
       await fetchApps();
-      if (user) {
+      if (user && isLoaded) {
         await fetchUserApps();
       }
     }
