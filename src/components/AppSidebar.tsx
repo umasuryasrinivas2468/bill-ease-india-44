@@ -45,10 +45,11 @@ const menuItems = [
 ];
 
 export function AppSidebar() {
-  const { collapsed } = useSidebar();
+  const { state } = useSidebar();
   const location = useLocation();
   const { signOut } = useClerk();
   const currentPath = location.pathname;
+  const isCollapsed = state === "collapsed";
 
   const isActive = (path: string) => {
     if (path === "/" && currentPath === "/") return true;
@@ -66,13 +67,13 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible>
+    <Sidebar className={isCollapsed ? "w-14" : "w-60"} collapsible="icon">
       <SidebarTrigger className="m-2 self-end" />
       
       <SidebarContent className="flex flex-col h-full">
         <div className="flex-1">
           <SidebarGroup>
-            <SidebarGroupLabel className={collapsed ? "sr-only" : ""}>
+            <SidebarGroupLabel className={isCollapsed ? "sr-only" : ""}>
               Navigation
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -86,7 +87,7 @@ export function AppSidebar() {
                         title={item.title}
                       >
                         <item.icon className="h-4 w-4" />
-                        {!collapsed && <span>{item.title}</span>}
+                        {!isCollapsed && <span>{item.title}</span>}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -104,7 +105,7 @@ export function AppSidebar() {
             title="Sign Out"
           >
             <LogOut className="h-4 w-4" />
-            {!collapsed && <span className="ml-2">Sign Out</span>}
+            {!isCollapsed && <span className="ml-2">Sign Out</span>}
           </Button>
         </div>
       </SidebarContent>
