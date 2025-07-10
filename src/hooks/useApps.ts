@@ -37,13 +37,29 @@ export const useApps = () => {
     try {
       const { data: existingApps, error: checkError } = await supabase
         .from('apps')
-        .select('id')
-        .limit(1);
+        .select('*');
 
       if (checkError) throw checkError;
 
-      // Only create demo apps if no apps exist
-      if (!existingApps || existingApps.length === 0) {
+      // Check if Aczen Inventory exists and needs updating
+      const aczenApp = existingApps?.find(app => app.name === 'Aczen Inventory');
+      
+      if (aczenApp) {
+        // Update existing Aczen Inventory app with new details
+        const { error: updateError } = await supabase
+          .from('apps')
+          .update({
+            description: 'An inventory logo serves as a visual representation of your business\'s core function: managing and tracking goods. A strong logo',
+            icon_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTixbDnlVd-0O4xIMt7mS1LgZEbgMfIMm2wTg&s',
+            category: 'inventory',
+            developer: 'Aczen Solutions',
+            version: '1.5.2'
+          })
+          .eq('id', aczenApp.id);
+
+        if (updateError) throw updateError;
+      } else if (!existingApps || existingApps.length === 0) {
+        // Only create demo apps if no apps exist
         const demoApps = [
           {
             name: 'QuickBooks Integration',
@@ -55,7 +71,7 @@ export const useApps = () => {
           },
           {
             name: 'Aczen Inventory',
-            description: 'An inventory logo serves as a visual representation of your business\'s core function: managing and tracking goods. A strong logo for comprehensive inventory management.',
+            description: 'An inventory logo serves as a visual representation of your business\'s core function: managing and tracking goods. A strong logo',
             icon_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTixbDnlVd-0O4xIMt7mS1LgZEbgMfIMm2wTg&s',
             category: 'inventory',
             developer: 'Aczen Solutions',
@@ -70,7 +86,7 @@ export const useApps = () => {
         if (insertError) throw insertError;
       }
     } catch (error) {
-      console.error('Error creating demo apps:', error);
+      console.error('Error creating/updating demo apps:', error);
     }
   };
 
