@@ -33,6 +33,36 @@ export const useApps = () => {
   const [userApps, setUserApps] = useState<UserApp[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Create demo app if none exist
+  const createDemoApp = async () => {
+    try {
+      const { data: existingApps, error: checkError } = await supabase
+        .from('apps')
+        .select('id')
+        .limit(1);
+
+      if (checkError) throw checkError;
+
+      // Only create demo app if no apps exist
+      if (!existingApps || existingApps.length === 0) {
+        const { error: insertError } = await supabase
+          .from('apps')
+          .insert({
+            name: 'QuickBooks Integration',
+            description: 'Seamlessly sync your invoices and financial data with QuickBooks. Automate your accounting workflow and keep your books up to date.',
+            icon_url: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=100&h=100&fit=crop&crop=center',
+            category: 'accounting',
+            developer: 'FinTech Solutions',
+            version: '2.1.0'
+          });
+
+        if (insertError) throw insertError;
+      }
+    } catch (error) {
+      console.error('Error creating demo app:', error);
+    }
+  };
+
   // Fetch all available apps
   const fetchApps = async () => {
     try {
@@ -91,6 +121,8 @@ export const useApps = () => {
         description: "App installed successfully"
       });
 
+      // Refresh user apps
+      await fetchUserApps();
       return true;
     } catch (error) {
       console.error('Error installing app:', error);
@@ -121,6 +153,8 @@ export const useApps = () => {
         description: "App uninstalled successfully"
       });
 
+      // Refresh user apps
+      await fetchUserApps();
       return true;
     } catch (error) {
       console.error('Error uninstalling app:', error);
@@ -154,6 +188,7 @@ export const useApps = () => {
   useEffect(() => {
     const initializeData = async () => {
       setLoading(true);
+      await createDemoApp();
       await fetchApps();
       if (user) {
         await fetchUserApps();
