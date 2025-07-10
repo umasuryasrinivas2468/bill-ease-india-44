@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,6 +17,7 @@ import Support from "./pages/Support";
 import CA from "./pages/CA";
 import Payout from "./pages/Payout";
 import UPICollections from "./pages/UPICollections";
+import Marketplace from "./pages/Marketplace";
 import ClerkLogin from "./pages/ClerkLogin";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
@@ -163,6 +165,18 @@ const App = () => (
                     <AppSidebar />
                     <main className="flex-1 overflow-auto">
                       <Payout />
+                    </main>
+                  </div>
+                </SidebarProvider>
+              </ClerkProtectedRoute>
+            } />
+            <Route path="/marketplace" element={
+              <ClerkProtectedRoute>
+                <SidebarProvider>
+                  <div className="min-h-screen flex w-full">
+                    <AppSidebar />
+                    <main className="flex-1 overflow-auto">
+                      <Marketplace />
                     </main>
                   </div>
                 </SidebarProvider>

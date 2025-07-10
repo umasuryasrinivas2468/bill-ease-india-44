@@ -1,153 +1,113 @@
 
+import React from "react";
+import { NavLink, useLocation } from "react-router-dom";
 import {
+  LayoutDashboard,
   FileText,
-  Home,
   Users,
   BarChart3,
   Settings,
-  Calculator,
-  Plus,
-  LogOut,
-  Send,
-  CreditCard,
-  Phone,
-  Bell,
   HelpCircle,
+  Calculator,
+  CreditCard,
+  Smartphone,
+  Bell,
+  Store,
+  LogOut,
 } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { useClerk } from "@clerk/clerk-react";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "./ClerkAuthProvider";
 
 const menuItems = [
-  {
-    title: "Dashboard",
-    url: "/",
-    icon: Home,
-  },
-  {
-    title: "Invoices",
-    url: "/invoices",
-    icon: FileText,
-  },
-  {
-    title: "Create Invoice",
-    url: "/create-invoice",
-    icon: Plus,
-  },
-  {
-    title: "Notifications",
-    url: "/notifications",
-    icon: Bell,
-  },
-  {
-    title: "UPI Collections",
-    url: "/upi-collections",
-    icon: CreditCard,
-  },
-  {
-    title: "Clients",
-    url: "/clients",
-    icon: Users,
-  },
-  {
-    title: "Reports",
-    url: "/reports",
-    icon: BarChart3,
-  },
-  {
-    title: "CA Tools",
-    url: "/ca",
-    icon: Calculator,
-  },
-  {
-    title: "Payout",
-    url: "/payout",
-    icon: Send,
-  },
-  {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
-  },
-  {
-    title: "Support",
-    url: "/support",
-    icon: HelpCircle,
-  },
+  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Invoices", url: "/invoices", icon: FileText },
+  { title: "Clients", url: "/clients", icon: Users },
+  { title: "UPI Collections", url: "/upi-collections", icon: Smartphone },
+  { title: "Reports", url: "/reports", icon: BarChart3 },
+  { title: "Payout", url: "/payout", icon: CreditCard },
+  { title: "CA", url: "/ca", icon: Calculator },
+  { title: "Marketplace", url: "/marketplace", icon: Store },
+  { title: "Notifications", url: "/notifications", icon: Bell },
+  { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Support", url: "/support", icon: HelpCircle },
 ];
 
 export function AppSidebar() {
+  const { collapsed } = useSidebar();
   const location = useLocation();
-  const { signOut } = useAuth();
+  const { signOut } = useClerk();
+  const currentPath = location.pathname;
 
-  const handleCallCFO = () => {
-    window.open(
-      'https://forms.fillout.com/t/4LpuZL29Fgus',
-      '_blank',
-      'width=800,height=600,scrollbars=yes,resizable=yes'
-    );
+  const isActive = (path: string) => {
+    if (path === "/" && currentPath === "/") return true;
+    if (path !== "/" && currentPath.startsWith(path)) return true;
+    return false;
+  };
+
+  const getNavCls = (path: string) =>
+    isActive(path)
+      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+      : "hover:bg-accent hover:text-accent-foreground";
+
+  const handleSignOut = () => {
+    signOut();
   };
 
   return (
-    <Sidebar className="border-r">
-      <SidebarHeader className="border-b p-4">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <FileText className="h-5 w-5 text-white" />
-          </div>
-          <span className="font-bold text-xl">Aczen Bilz</span>
+    <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible>
+      <SidebarTrigger className="m-2 self-end" />
+      
+      <SidebarContent className="flex flex-col h-full">
+        <div className="flex-1">
+          <SidebarGroup>
+            <SidebarGroupLabel className={collapsed ? "sr-only" : ""}>
+              Navigation
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {menuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        className={getNavCls(item.url)}
+                        title={item.title}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
         </div>
-        <SidebarTrigger className="md:hidden" />
-      </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={location.pathname === item.url}>
-                    <Link to={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+
+        <div className="p-2 border-t">
+          <Button
+            variant="ghost"
+            onClick={handleSignOut}
+            className="w-full justify-start"
+            title="Sign Out"
+          >
+            <LogOut className="h-4 w-4" />
+            {!collapsed && <span className="ml-2">Sign Out</span>}
+          </Button>
+        </div>
       </SidebarContent>
-      <SidebarFooter className="p-4 space-y-2">
-        <Button
-          onClick={handleCallCFO}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          <Phone className="h-4 w-4 mr-2" />
-          Call CFO
-        </Button>
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={() => signOut()}
-        >
-          <LogOut className="h-4 w-4 mr-2" />
-          Sign Out
-        </Button>
-      </SidebarFooter>
     </Sidebar>
   );
 }
