@@ -6,9 +6,13 @@ import { FileText, Users, IndianRupee, TrendingUp, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
+import { useAuth } from '@/components/ClerkAuthProvider';
+import { useSupabaseUser } from '@/hooks/useSupabaseUser';
 
 const Dashboard = () => {
   const { data: dashboardData, isLoading } = useDashboardStats();
+  const { user: clerkUser } = useAuth();
+  const { supabaseUser, loading: userLoading } = useSupabaseUser();
 
   if (isLoading) {
     return (
@@ -84,6 +88,31 @@ const Dashboard = () => {
           </Link>
         </Button>
       </div>
+
+      {/* Debug User Info */}
+      {process.env.NODE_ENV === 'development' && (
+        <Card className="border-dashed border-2">
+          <CardHeader>
+            <CardTitle className="text-sm">Debug: User Sync Status</CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs space-y-2">
+            <div>
+              <strong>Clerk User ID:</strong> {clerkUser?.id || 'Not logged in'}
+            </div>
+            <div>
+              <strong>Clerk Email:</strong> {clerkUser?.primaryEmailAddress?.emailAddress || 'N/A'}
+            </div>
+            <div>
+              <strong>Supabase User:</strong> {userLoading ? 'Loading...' : supabaseUser ? 'Found' : 'Not found'}
+            </div>
+            {supabaseUser && (
+              <div>
+                <strong>Supabase Record ID:</strong> {supabaseUser.id}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

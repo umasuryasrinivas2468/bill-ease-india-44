@@ -1,7 +1,8 @@
 
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 import { useUser, useAuth as useClerkAuth } from '@clerk/clerk-react';
 import type { UserResource } from '@clerk/types';
+import { syncUserWithSupabase } from '@/utils/userSync';
 
 interface AuthContextType {
   user: UserResource | null;
@@ -22,6 +23,14 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoaded } = useUser();
   const { signOut: clerkSignOut } = useClerkAuth();
+
+  // Sync user with Supabase when user is loaded and authenticated
+  useEffect(() => {
+    if (isLoaded && user) {
+      console.log('User loaded, syncing with Supabase:', user.id);
+      syncUserWithSupabase(user);
+    }
+  }, [user, isLoaded]);
 
   const signOut = async (): Promise<void> => {
     await clerkSignOut();
