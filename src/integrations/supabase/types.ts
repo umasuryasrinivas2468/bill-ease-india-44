@@ -53,6 +53,141 @@ export type Database = {
         }
         Relationships: []
       }
+      bank_details: {
+        Row: {
+          account_holder_name: string | null
+          account_number: string
+          bank_name: string
+          branch_name: string | null
+          created_at: string | null
+          id: string
+          ifsc_code: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_holder_name?: string | null
+          account_number: string
+          bank_name: string
+          branch_name?: string | null
+          created_at?: string | null
+          id?: string
+          ifsc_code: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_holder_name?: string | null
+          account_number?: string
+          bank_name?: string
+          branch_name?: string | null
+          created_at?: string | null
+          id?: string
+          ifsc_code?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      business_assets: {
+        Row: {
+          asset_data: string
+          asset_type: string
+          created_at: string | null
+          file_name: string | null
+          id: string
+          mime_type: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          asset_data: string
+          asset_type: string
+          created_at?: string | null
+          file_name?: string | null
+          id?: string
+          mime_type?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          asset_data?: string
+          asset_type?: string
+          created_at?: string | null
+          file_name?: string | null
+          id?: string
+          mime_type?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      business_profiles: {
+        Row: {
+          address: string | null
+          business_name: string
+          city: string | null
+          country: string | null
+          created_at: string | null
+          currency: string | null
+          email: string | null
+          gst_number: string | null
+          gst_rate: string | null
+          id: string
+          iec_number: string | null
+          is_import_export_applicable: string | null
+          lut_number: string | null
+          owner_name: string
+          phone: string | null
+          pincode: string | null
+          state: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          business_name: string
+          city?: string | null
+          country?: string | null
+          created_at?: string | null
+          currency?: string | null
+          email?: string | null
+          gst_number?: string | null
+          gst_rate?: string | null
+          id?: string
+          iec_number?: string | null
+          is_import_export_applicable?: string | null
+          lut_number?: string | null
+          owner_name: string
+          phone?: string | null
+          pincode?: string | null
+          state?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          business_name?: string
+          city?: string | null
+          country?: string | null
+          created_at?: string | null
+          currency?: string | null
+          email?: string | null
+          gst_number?: string | null
+          gst_rate?: string | null
+          id?: string
+          iec_number?: string | null
+          is_import_export_applicable?: string | null
+          lut_number?: string | null
+          owner_name?: string
+          phone?: string | null
+          pincode?: string | null
+          state?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           address: string | null
