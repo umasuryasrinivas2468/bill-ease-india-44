@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BusinessInfo } from '@/hooks/useOnboardingState';
-import { validateGSTNumber, validateIECNumber } from '@/utils/onboardingValidation';
+import { validateGSTByCountry, getGSTPlaceholder, getGSTRateOptions, getCurrencySymbol } from '@/utils/countryValidation';
+import { validateIECNumber } from '@/utils/onboardingValidation';
 
 interface BusinessInfoStepProps {
   businessInfo: BusinessInfo;
@@ -27,7 +28,7 @@ export const BusinessInfoStep: React.FC<BusinessInfoStepProps> = ({
       return;
     }
 
-    if (!validateGSTNumber(businessInfo.gstNumber)) {
+    if (!validateGSTByCountry(businessInfo.gstNumber, businessInfo.country)) {
       return;
     }
 
@@ -37,6 +38,17 @@ export const BusinessInfoStep: React.FC<BusinessInfoStepProps> = ({
 
     onNext();
   };
+
+  const handleCountryChange = (value: string) => {
+    setBusinessInfo({
+      ...businessInfo,
+      country: value,
+      gstNumber: '', // Reset GST number when country changes
+    });
+  };
+
+  const gstRateOptions = getGSTRateOptions(businessInfo.country);
+  const currencySymbol = getCurrencySymbol(businessInfo.currency);
 
   return (
     <Card>
@@ -91,12 +103,41 @@ export const BusinessInfoStep: React.FC<BusinessInfoStepProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="gstNumber">GST Number *</Label>
+              <Label htmlFor="country">Country *</Label>
+              <Select
+                value={businessInfo.country}
+                onValueChange={handleCountryChange}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="india">🇮🇳 India</SelectItem>
+                  <SelectItem value="singapore">🇸🇬 Singapore</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="currency">Currency</Label>
+              <Input
+                id="currency"
+                value={`${businessInfo.currency} (${currencySymbol})`}
+                readOnly
+                className="bg-gray-100"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="gstNumber">
+                {businessInfo.country === 'singapore' ? 'GST Registration Number' : 'GST Number'} *
+              </Label>
               <Input
                 id="gstNumber"
                 value={businessInfo.gstNumber}
                 onChange={(e) => setBusinessInfo({ ...businessInfo, gstNumber: e.target.value.toUpperCase() })}
-                placeholder="36AAFCL5374E1ZG"
+                placeholder={getGSTPlaceholder(businessInfo.country)}
                 required
               />
             </div>
@@ -110,11 +151,11 @@ export const BusinessInfoStep: React.FC<BusinessInfoStepProps> = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="0">0%</SelectItem>
-                  <SelectItem value="5">5%</SelectItem>
-                  <SelectItem value="12">12%</SelectItem>
-                  <SelectItem value="18">18%</SelectItem>
-                  <SelectItem value="28">28%</SelectItem>
+                  {gstRateOptions.map((rate) => (
+                    <SelectItem key={rate} value={rate}>
+                      {rate}%
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -150,7 +191,9 @@ export const BusinessInfoStep: React.FC<BusinessInfoStepProps> = ({
               />
             </div>
             <div>
-              <Label htmlFor="pincode">Pincode *</Label>
+              <Label htmlFor="pincode">
+                {businessInfo.country === 'singapore' ? 'Postal Code' : 'Pincode'} *
+              </Label>
               <Input
                 id="pincode"
                 value={businessInfo.pincode}
@@ -160,43 +203,47 @@ export const BusinessInfoStep: React.FC<BusinessInfoStepProps> = ({
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="importExport">Is Import/Export Applicable?</Label>
-            <Select
-              value={businessInfo.isImportExportApplicable}
-              onValueChange={(value) => setBusinessInfo({ ...businessInfo, isImportExportApplicable: value })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="no">No</SelectItem>
-                <SelectItem value="yes">Yes</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {businessInfo.country === 'india' && (
+            <>
+              <div>
+                <Label htmlFor="importExport">Is Import/Export Applicable?</Label>
+                <Select
+                  value={businessInfo.isImportExportApplicable}
+                  onValueChange={(value) => setBusinessInfo({ ...businessInfo, isImportExportApplicable: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="no">No</SelectItem>
+                    <SelectItem value="yes">Yes</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          {businessInfo.isImportExportApplicable === 'yes' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="iecNumber">IEC Number</Label>
-                <Input
-                  id="iecNumber"
-                  value={businessInfo.iecNumber}
-                  onChange={(e) => setBusinessInfo({ ...businessInfo, iecNumber: e.target.value })}
-                  placeholder="10 digit number"
-                  maxLength={10}
-                />
-              </div>
-              <div>
-                <Label htmlFor="lutNumber">LUT Number</Label>
-                <Input
-                  id="lutNumber"
-                  value={businessInfo.lutNumber}
-                  onChange={(e) => setBusinessInfo({ ...businessInfo, lutNumber: e.target.value })}
-                />
-              </div>
-            </div>
+              {businessInfo.isImportExportApplicable === 'yes' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="iecNumber">IEC Number</Label>
+                    <Input
+                      id="iecNumber"
+                      value={businessInfo.iecNumber}
+                      onChange={(e) => setBusinessInfo({ ...businessInfo, iecNumber: e.target.value })}
+                      placeholder="10 digit number"
+                      maxLength={10}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lutNumber">LUT Number</Label>
+                    <Input
+                      id="lutNumber"
+                      value={businessInfo.lutNumber}
+                      onChange={(e) => setBusinessInfo({ ...businessInfo, lutNumber: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           <Button type="submit" className="w-full">

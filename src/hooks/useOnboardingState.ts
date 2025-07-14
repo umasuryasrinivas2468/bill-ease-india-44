@@ -14,6 +14,8 @@ export interface BusinessInfo {
   city: string;
   state: string;
   pincode: string;
+  country: string;
+  currency: string;
   gstRate: string;
   isImportExportApplicable: string;
   iecNumber: string;
@@ -46,6 +48,8 @@ export const useOnboardingState = () => {
     city: '',
     state: '',
     pincode: '',
+    country: 'india',
+    currency: 'INR',
     gstRate: '18',
     isImportExportApplicable: 'no',
     iecNumber: '',
@@ -72,6 +76,23 @@ export const useOnboardingState = () => {
       }));
     }
   }, [user]);
+
+  // Update currency and GST rate when country changes
+  useEffect(() => {
+    if (businessInfo.country === 'singapore') {
+      setBusinessInfo(prev => ({
+        ...prev,
+        currency: 'SGD',
+        gstRate: prev.gstRate === '18' ? '8' : prev.gstRate, // Set default to 8% for Singapore
+      }));
+    } else if (businessInfo.country === 'india') {
+      setBusinessInfo(prev => ({
+        ...prev,
+        currency: 'INR',
+        gstRate: prev.gstRate === '8' || prev.gstRate === '7' || prev.gstRate === '9' ? '18' : prev.gstRate, // Set default to 18% for India
+      }));
+    }
+  }, [businessInfo.country]);
 
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
