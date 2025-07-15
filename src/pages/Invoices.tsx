@@ -97,7 +97,7 @@ const Invoices = () => {
             <p className="text-muted-foreground">Manage your invoices and track payments</p>
           </div>
         </div>
-        <Button asChild>
+        <Button asChild variant="orange">
           <Link to="/create-invoice">
             <Plus className="h-4 w-4 mr-2" />
             Create Invoice
@@ -163,7 +163,7 @@ const Invoices = () => {
                 : 'No invoices created yet.'}
             </div>
             {!searchTerm && statusFilter === 'all' && (
-              <Button asChild className="mt-4">
+              <Button asChild className="mt-4" variant="orange">
                 <Link to="/create-invoice">
                   <Plus className="h-4 w-4 mr-2" />
                   Create Your First Invoice

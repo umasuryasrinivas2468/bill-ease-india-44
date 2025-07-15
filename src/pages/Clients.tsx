@@ -159,7 +159,7 @@ const Clients = () => {
         
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button variant="orange">
               <Plus className="h-4 w-4 mr-2" />
               Add Client
             </Button>
@@ -222,6 +222,7 @@ const Clients = () => {
             </div>
             <DialogFooter>
               <Button 
+                variant="orange"
                 onClick={handleAddClient}
                 disabled={createClientMutation.isPending}
               >
@@ -257,6 +258,7 @@ const Clients = () => {
             </div>
             {!searchTerm && (
               <Button 
+                variant="orange"
                 className="mt-4"
                 onClick={() => setIsAddDialogOpen(true)}
               >
@@ -400,6 +402,7 @@ const Clients = () => {
           )}
           <DialogFooter>
             <Button 
+              variant="orange"
               onClick={handleEditClient}
               disabled={updateClientMutation.isPending}
             >

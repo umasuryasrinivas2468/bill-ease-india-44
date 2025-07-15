@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -79,22 +78,6 @@ const Dashboard = () => {
       date: "2024-07-15",
       type: "feature",
       status: "completed"
-    },
-    {
-      id: 2,
-      title: "GST Report Generation",
-      description: "Enhanced GST reporting with better export options",
-      date: "2024-07-10",
-      type: "improvement",
-      status: "completed"
-    },
-    {
-      id: 3,
-      title: "UPI Collections Update",
-      description: "UPI Collections service will be available from July 9th, 2025",
-      date: "2024-07-08",
-      type: "announcement",
-      status: "upcoming"
     }
   ];
 
@@ -127,20 +110,12 @@ const Dashboard = () => {
             {updates.map((update) => (
               <div key={update.id} className="flex items-start gap-3 p-3 border rounded-lg">
                 <div className="mt-1">
-                  {update.status === 'completed' && <CheckCircle className="h-4 w-4 text-green-600" />}
-                  {update.status === 'upcoming' && <Clock className="h-4 w-4 text-orange-600" />}
-                  {update.status === 'in-progress' && <AlertCircle className="h-4 w-4 text-blue-600" />}
+                  <CheckCircle className="h-4 w-4 text-green-600" />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h4 className="font-medium">{update.title}</h4>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      update.type === 'feature' 
-                        ? 'bg-blue-100 text-blue-800' 
-                        : update.type === 'improvement'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-orange-100 text-orange-800'
-                    }`}>
+                    <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
                       {update.type}
                     </span>
                   </div>
