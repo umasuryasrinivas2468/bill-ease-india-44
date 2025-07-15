@@ -29,6 +29,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -97,7 +98,10 @@ export function AppSidebar() {
           </SidebarGroup>
         </div>
 
-        <div className="p-2 border-t">
+        <div className="p-2 border-t space-y-2">
+          <div className="flex justify-center">
+            <ThemeToggle />
+          </div>
           <Button
             variant="ghost"
             onClick={handleSignOut}

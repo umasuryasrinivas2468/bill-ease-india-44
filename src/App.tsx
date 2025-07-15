@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import Dashboard from "./pages/Dashboard";
 import Invoices from "./pages/Invoices";
 import CreateInvoice from "./pages/CreateInvoice";
@@ -29,164 +30,166 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <Chatbot />
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<ClerkLogin />} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/" element={
-              <ClerkProtectedRoute>
-                <SidebarProvider>
-                  <div className="min-h-screen flex w-full">
-                    <AppSidebar />
-                    <main className="flex-1 overflow-auto">
-                      <Dashboard />
-                    </main>
-                  </div>
-                </SidebarProvider>
-              </ClerkProtectedRoute>
-            } />
-            <Route path="/invoices" element={
-              <ClerkProtectedRoute>
-                <SidebarProvider>
-                  <div className="min-h-screen flex w-full">
-                    <AppSidebar />
-                    <main className="flex-1 overflow-auto">
-                      <Invoices />
-                    </main>
-                  </div>
-                </SidebarProvider>
-              </ClerkProtectedRoute>
-            } />
-            <Route path="/create-invoice" element={
-              <ClerkProtectedRoute>
-                <SidebarProvider>
-                  <div className="min-h-screen flex w-full">
-                    <AppSidebar />
-                    <main className="flex-1 overflow-auto">
-                      <CreateInvoice />
-                    </main>
-                  </div>
-                </SidebarProvider>
-              </ClerkProtectedRoute>
-            } />
-            <Route path="/notifications" element={
-              <ClerkProtectedRoute>
-                <SidebarProvider>
-                  <div className="min-h-screen flex w-full">
-                    <AppSidebar />
-                    <main className="flex-1 overflow-auto">
-                      <Notifications />
-                    </main>
-                  </div>
-                </SidebarProvider>
-              </ClerkProtectedRoute>
-            } />
-            <Route path="/upi-collections" element={
-              <ClerkProtectedRoute>
-                <SidebarProvider>
-                  <div className="min-h-screen flex w-full">
-                    <AppSidebar />
-                    <main className="flex-1 overflow-auto">
-                      <UPICollections />
-                    </main>
-                  </div>
-                </SidebarProvider>
-              </ClerkProtectedRoute>
-            } />
-            <Route path="/clients" element={
-              <ClerkProtectedRoute>
-                <SidebarProvider>
-                  <div className="min-h-screen flex w-full">
-                    <AppSidebar />
-                    <main className="flex-1 overflow-auto">
-                      <Clients />
-                    </main>
-                  </div>
-                </SidebarProvider>
-              </ClerkProtectedRoute>
-            } />
-            <Route path="/reports" element={
-              <ClerkProtectedRoute>
-                <SidebarProvider>
-                  <div className="min-h-screen flex w-full">
-                    <AppSidebar />
-                    <main className="flex-1 overflow-auto">
-                      <Reports />
-                    </main>
-                  </div>
-                </SidebarProvider>
-              </ClerkProtectedRoute>
-            } />
-            <Route path="/settings" element={
-              <ClerkProtectedRoute>
-                <SidebarProvider>
-                  <div className="min-h-screen flex w-full">
-                    <AppSidebar />
-                    <main className="flex-1 overflow-auto">
-                      <Settings />
-                    </main>
-                  </div>
-                </SidebarProvider>
-              </ClerkProtectedRoute>
-            } />
-            <Route path="/support" element={
-              <ClerkProtectedRoute>
-                <SidebarProvider>
-                  <div className="min-h-screen flex w-full">
-                    <AppSidebar />
-                    <main className="flex-1 overflow-auto">
-                      <Support />
-                    </main>
-                  </div>
-                </SidebarProvider>
-              </ClerkProtectedRoute>
-            } />
-            <Route path="/ca" element={
-              <ClerkProtectedRoute>
-                <SidebarProvider>
-                  <div className="min-h-screen flex w-full">
-                    <AppSidebar />
-                    <main className="flex-1 overflow-auto">
-                      <CA />
-                    </main>
-                  </div>
-                </SidebarProvider>
-              </ClerkProtectedRoute>
-            } />
-            <Route path="/payout" element={
-              <ClerkProtectedRoute>
-                <SidebarProvider>
-                  <div className="min-h-screen flex w-full">
-                    <AppSidebar />
-                    <main className="flex-1 overflow-auto">
-                      <Payout />
-                    </main>
-                  </div>
-                </SidebarProvider>
-              </ClerkProtectedRoute>
-            } />
-            <Route path="/marketplace" element={
-              <ClerkProtectedRoute>
-                <SidebarProvider>
-                  <div className="min-h-screen flex w-full">
-                    <AppSidebar />
-                    <main className="flex-1 overflow-auto">
-                      <Marketplace />
-                    </main>
-                  </div>
-                </SidebarProvider>
-              </ClerkProtectedRoute>
-            } />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
-    </TooltipProvider>
+    <ThemeProvider defaultTheme="light" storageKey="lovable-ui-theme">
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <Chatbot />
+        <AuthProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<ClerkLogin />} />
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/" element={
+                <ClerkProtectedRoute>
+                  <SidebarProvider>
+                    <div className="min-h-screen flex w-full">
+                      <AppSidebar />
+                      <main className="flex-1 overflow-auto">
+                        <Dashboard />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/invoices" element={
+                <ClerkProtectedRoute>
+                  <SidebarProvider>
+                    <div className="min-h-screen flex w-full">
+                      <AppSidebar />
+                      <main className="flex-1 overflow-auto">
+                        <Invoices />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/create-invoice" element={
+                <ClerkProtectedRoute>
+                  <SidebarProvider>
+                    <div className="min-h-screen flex w-full">
+                      <AppSidebar />
+                      <main className="flex-1 overflow-auto">
+                        <CreateInvoice />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/notifications" element={
+                <ClerkProtectedRoute>
+                  <SidebarProvider>
+                    <div className="min-h-screen flex w-full">
+                      <AppSidebar />
+                      <main className="flex-1 overflow-auto">
+                        <Notifications />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/upi-collections" element={
+                <ClerkProtectedRoute>
+                  <SidebarProvider>
+                    <div className="min-h-screen flex w-full">
+                      <AppSidebar />
+                      <main className="flex-1 overflow-auto">
+                        <UPICollections />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/clients" element={
+                <ClerkProtectedRoute>
+                  <SidebarProvider>
+                    <div className="min-h-screen flex w-full">
+                      <AppSidebar />
+                      <main className="flex-1 overflow-auto">
+                        <Clients />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/reports" element={
+                <ClerkProtectedRoute>
+                  <SidebarProvider>
+                    <div className="min-h-screen flex w-full">
+                      <AppSidebar />
+                      <main className="flex-1 overflow-auto">
+                        <Reports />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/settings" element={
+                <ClerkProtectedRoute>
+                  <SidebarProvider>
+                    <div className="min-h-screen flex w-full">
+                      <AppSidebar />
+                      <main className="flex-1 overflow-auto">
+                        <Settings />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/support" element={
+                <ClerkProtectedRoute>
+                  <SidebarProvider>
+                    <div className="min-h-screen flex w-full">
+                      <AppSidebar />
+                      <main className="flex-1 overflow-auto">
+                        <Support />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/ca" element={
+                <ClerkProtectedRoute>
+                  <SidebarProvider>
+                    <div className="min-h-screen flex w-full">
+                      <AppSidebar />
+                      <main className="flex-1 overflow-auto">
+                        <CA />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/payout" element={
+                <ClerkProtectedRoute>
+                  <SidebarProvider>
+                    <div className="min-h-screen flex w-full">
+                      <AppSidebar />
+                      <main className="flex-1 overflow-auto">
+                        <Payout />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/marketplace" element={
+                <ClerkProtectedRoute>
+                  <SidebarProvider>
+                    <div className="min-h-screen flex w-full">
+                      <AppSidebar />
+                      <main className="flex-1 overflow-auto">
+                        <Marketplace />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </ClerkProtectedRoute>
+              } />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
