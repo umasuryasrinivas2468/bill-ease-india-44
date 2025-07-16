@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -108,19 +109,19 @@ const Dashboard = () => {
         <CardContent>
           <div className="space-y-4">
             {updates.map((update) => (
-              <div key={update.id} className="flex items-start gap-3 p-3 border rounded-lg">
+              <div key={update.id} className="flex items-start gap-3 p-3 border rounded-lg bg-gradient-to-r from-[#5D62F2] to-[#FD7C52] text-white">
                 <div className="mt-1">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <CheckCircle className="h-4 w-4 text-white" />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-medium">{update.title}</h4>
-                    <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+                    <h4 className="font-medium text-white">{update.title}</h4>
+                    <span className="text-xs px-2 py-1 rounded-full bg-white/20 text-white">
                       {update.type}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-1">{update.description}</p>
-                  <p className="text-xs text-muted-foreground">{update.date}</p>
+                  <p className="text-sm text-white/90 mb-1">{update.description}</p>
+                  <p className="text-xs text-white/80">{update.date}</p>
                 </div>
               </div>
             ))}
