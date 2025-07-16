@@ -63,7 +63,7 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
           </DialogDescription>
         </DialogHeader>
         
-        <div ref={printRef} className="bg-white p-8 space-y-6">
+        <div ref={printRef} className="bg-background p-8 space-y-6 border rounded-lg">
           {/* Header */}
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-4">
@@ -75,43 +75,43 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
                 />
               )}
               <div>
-                <h1 className="text-2xl font-bold text-blue-600">Aczen Bilz</h1>
+                <h1 className="text-2xl font-bold text-primary">Aczen Bilz</h1>
                 {businessInfo?.businessName && (
-                  <p className="text-lg font-semibold">{businessInfo.businessName}</p>
+                  <p className="text-lg font-semibold text-foreground">{businessInfo.businessName}</p>
                 )}
               </div>
             </div>
             <div className="text-right">
-              <h2 className="text-xl font-bold">INVOICE</h2>
-              <p className="text-sm text-gray-600">#{invoice.invoice_number}</p>
+              <h2 className="text-xl font-bold text-foreground">INVOICE</h2>
+              <p className="text-sm text-muted-foreground">#{invoice.invoice_number}</p>
             </div>
           </div>
 
           {/* Business & Client Info */}
           <div className="grid grid-cols-2 gap-8">
             <div>
-              <h3 className="font-semibold mb-2">From:</h3>
+              <h3 className="font-semibold mb-2 text-foreground">From:</h3>
               {businessInfo && (
                 <div className="text-sm space-y-1">
-                  <p className="font-medium">{businessInfo.businessName}</p>
-                  <p>{businessInfo.ownerName}</p>
-                  <p>{businessInfo.email}</p>
-                  <p>{businessInfo.phone}</p>
-                  {businessInfo.address && <p>{businessInfo.address}</p>}
+                  <p className="font-medium text-foreground">{businessInfo.businessName}</p>
+                  <p className="text-muted-foreground">{businessInfo.ownerName}</p>
+                  <p className="text-muted-foreground">{businessInfo.email}</p>
+                  <p className="text-muted-foreground">{businessInfo.phone}</p>
+                  {businessInfo.address && <p className="text-muted-foreground">{businessInfo.address}</p>}
                   {businessInfo.city && businessInfo.state && (
-                    <p>{businessInfo.city}, {businessInfo.state} {businessInfo.pincode}</p>
+                    <p className="text-muted-foreground">{businessInfo.city}, {businessInfo.state} {businessInfo.pincode}</p>
                   )}
-                  {businessInfo.gstNumber && <p>GST: {businessInfo.gstNumber}</p>}
+                  {businessInfo.gstNumber && <p className="text-muted-foreground">GST: {businessInfo.gstNumber}</p>}
                 </div>
               )}
             </div>
             <div>
-              <h3 className="font-semibold mb-2">To:</h3>
+              <h3 className="font-semibold mb-2 text-foreground">To:</h3>
               <div className="text-sm space-y-1">
-                <p className="font-medium">{invoice.client_name}</p>
-                {invoice.client_email && <p>{invoice.client_email}</p>}
-                {invoice.client_address && <p>{invoice.client_address}</p>}
-                {invoice.client_gst_number && <p>GST: {invoice.client_gst_number}</p>}
+                <p className="font-medium text-foreground">{invoice.client_name}</p>
+                {invoice.client_email && <p className="text-muted-foreground">{invoice.client_email}</p>}
+                {invoice.client_address && <p className="text-muted-foreground">{invoice.client_address}</p>}
+                {invoice.client_gst_number && <p className="text-muted-foreground">GST: {invoice.client_gst_number}</p>}
               </div>
             </div>
           </div>
@@ -119,15 +119,15 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
           {/* Invoice Details */}
           <div className="grid grid-cols-2 gap-8">
             <div>
-              <p><span className="font-semibold">Invoice Date:</span> {new Date(invoice.invoice_date).toLocaleDateString()}</p>
-              <p><span className="font-semibold">Due Date:</span> {new Date(invoice.due_date).toLocaleDateString()}</p>
+              <p className="text-foreground"><span className="font-semibold">Invoice Date:</span> {new Date(invoice.invoice_date).toLocaleDateString()}</p>
+              <p className="text-foreground"><span className="font-semibold">Due Date:</span> {new Date(invoice.due_date).toLocaleDateString()}</p>
             </div>
             <div>
-              <p><span className="font-semibold">Status:</span> 
+              <p className="text-foreground"><span className="font-semibold">Status:</span> 
                 <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                  invoice.status === 'paid' ? 'bg-green-100 text-green-800' :
-                  invoice.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-red-100 text-red-800'
+                  invoice.status === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                  invoice.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                  'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                 }`}>
                   {invoice.status.toUpperCase()}
                 </span>
@@ -137,24 +137,24 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
 
           {/* Items Table */}
           <div>
-            <table className="w-full border-collapse border border-gray-300">
+            <table className="w-full border-collapse border border-border">
               <thead>
-                <tr className="bg-gray-50">
-                  <th className="border border-gray-300 p-2 text-left">Description</th>
-                  <th className="border border-gray-300 p-2 text-left">HSN/SAC</th>
-                  <th className="border border-gray-300 p-2 text-right">Qty</th>
-                  <th className="border border-gray-300 p-2 text-right">Rate</th>
-                  <th className="border border-gray-300 p-2 text-right">Amount</th>
+                <tr className="bg-muted">
+                  <th className="border border-border p-2 text-left text-foreground">Description</th>
+                  <th className="border border-border p-2 text-left text-foreground">HSN/SAC</th>
+                  <th className="border border-border p-2 text-right text-foreground">Qty</th>
+                  <th className="border border-border p-2 text-right text-foreground">Rate</th>
+                  <th className="border border-border p-2 text-right text-foreground">Amount</th>
                 </tr>
               </thead>
               <tbody>
                 {invoice.items.map((item: any, index: number) => (
                   <tr key={index}>
-                    <td className="border border-gray-300 p-2">{item.description}</td>
-                    <td className="border border-gray-300 p-2">{item.hsn_sac || '-'}</td>
-                    <td className="border border-gray-300 p-2 text-right">{item.quantity}</td>
-                    <td className="border border-gray-300 p-2 text-right">₹{item.rate.toFixed(2)}</td>
-                    <td className="border border-gray-300 p-2 text-right">₹{item.amount.toFixed(2)}</td>
+                    <td className="border border-border p-2 text-foreground">{item.description}</td>
+                    <td className="border border-border p-2 text-foreground">{item.hsn_sac || '-'}</td>
+                    <td className="border border-border p-2 text-right text-foreground">{item.quantity}</td>
+                    <td className="border border-border p-2 text-right text-foreground">₹{item.rate.toFixed(2)}</td>
+                    <td className="border border-border p-2 text-right text-foreground">₹{item.amount.toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -162,41 +162,41 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
           </div>
 
           {/* Amount in Words */}
-          <div className="bg-gray-50 p-4 rounded">
-            <p className="font-semibold">Amount in Words:</p>
-            <p className="text-sm italic">{totalAmountInWords}</p>
+          <div className="bg-muted p-4 rounded">
+            <p className="font-semibold text-foreground">Amount in Words:</p>
+            <p className="text-sm italic text-muted-foreground">{totalAmountInWords}</p>
           </div>
 
           {/* Totals */}
           <div className="flex justify-end">
             <div className="w-64 space-y-2">
-              <div className="flex justify-between">
+              <div className="flex justify-between text-foreground">
                 <span>Subtotal:</span>
                 <span>₹{Number(invoice.amount).toFixed(2)}</span>
               </div>
               {invoice.discount && invoice.discount > 0 && (
-                <div className="flex justify-between text-red-600">
+                <div className="flex justify-between text-red-600 dark:text-red-400">
                   <span>Discount:</span>
                   <span>-₹{Number(invoice.discount).toFixed(2)}</span>
                 </div>
               )}
-              <div className="flex justify-between">
+              <div className="flex justify-between text-foreground">
                 <span>GST ({invoice.gst_rate || 18}%):</span>
                 <span>₹{Number(invoice.gst_amount).toFixed(2)}</span>
               </div>
               {invoice.advance && invoice.advance > 0 && (
-                <div className="flex justify-between text-green-600">
+                <div className="flex justify-between text-green-600 dark:text-green-400">
                   <span>Advance:</span>
                   <span>-₹{Number(invoice.advance).toFixed(2)}</span>
                 </div>
               )}
               {invoice.roundoff && invoice.roundoff !== 0 && (
-                <div className="flex justify-between">
+                <div className="flex justify-between text-foreground">
                   <span>Round Off:</span>
                   <span>{invoice.roundoff >= 0 ? '+' : ''}₹{Number(invoice.roundoff).toFixed(2)}</span>
                 </div>
               )}
-              <div className="flex justify-between font-bold text-lg border-t pt-2">
+              <div className="flex justify-between font-bold text-lg border-t pt-2 text-foreground">
                 <span>Total:</span>
                 <span>₹{Number(invoice.total_amount).toFixed(2)}</span>
               </div>
@@ -205,17 +205,17 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
 
           {/* Bank Details */}
           {bankDetails && (
-            <div className="bg-blue-50 p-4 rounded space-y-2">
-              <h3 className="font-semibold text-blue-800">Bank Details:</h3>
+            <div className="bg-primary/5 p-4 rounded space-y-2">
+              <h3 className="font-semibold text-primary">Bank Details:</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p><span className="font-medium">Account Holder:</span> {bankDetails.accountHolderName}</p>
-                  <p><span className="font-medium">Account Number:</span> {bankDetails.accountNumber}</p>
-                  <p><span className="font-medium">IFSC Code:</span> {bankDetails.ifscCode}</p>
+                  <p className="text-foreground"><span className="font-medium">Account Holder:</span> {bankDetails.accountHolderName}</p>
+                  <p className="text-foreground"><span className="font-medium">Account Number:</span> {bankDetails.accountNumber}</p>
+                  <p className="text-foreground"><span className="font-medium">IFSC Code:</span> {bankDetails.ifscCode}</p>
                 </div>
                 <div>
-                  <p><span className="font-medium">Bank Name:</span> {bankDetails.bankName}</p>
-                  <p><span className="font-medium">Branch:</span> {bankDetails.branchName}</p>
+                  <p className="text-foreground"><span className="font-medium">Bank Name:</span> {bankDetails.bankName}</p>
+                  <p className="text-foreground"><span className="font-medium">Branch:</span> {bankDetails.branchName}</p>
                 </div>
               </div>
             </div>
@@ -224,13 +224,13 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
           {/* Notes */}
           {invoice.notes && (
             <div>
-              <h3 className="font-semibold mb-2">Notes:</h3>
-              <p className="text-sm">{invoice.notes}</p>
+              <h3 className="font-semibold mb-2 text-foreground">Notes:</h3>
+              <p className="text-sm text-muted-foreground">{invoice.notes}</p>
             </div>
           )}
 
           {/* Footer */}
-          <div className="text-center text-sm text-gray-600 pt-4 border-t">
+          <div className="text-center text-sm text-muted-foreground pt-4 border-t">
             <p>Thank you for your business!</p>
           </div>
         </div>
