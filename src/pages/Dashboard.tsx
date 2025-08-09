@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, Users, IndianRupee, TrendingUp, Plus, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { FileText, Users, IndianRupee, TrendingUp, Plus, Clock, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
@@ -92,12 +92,24 @@ const Dashboard = () => {
             <p className="text-muted-foreground">Welcome to your Aczen Bilz dashboard</p>
           </div>
         </div>
-        <Button asChild className="hidden sm:flex" variant="orange">
-          <Link to="/create-invoice">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Invoice
-          </Link>
-        </Button>
+        <div className="hidden sm:flex gap-3">
+          <Button asChild variant="orange">
+            <Link to="/create-invoice">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Invoice
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <a 
+              href="https://supernova.axisbank.com/current-account?cta=ca-productpagebanner-5thdec&_gl=1*1b8l05o*_gcl_au*MTUyODMzNjA2MC4xNzU0NzYwODQx*_ga*MTQ3NzU4NDg4NC4xNzU0NzYwODQx*_ga_CH41PE7401*czE3NTQ3NjA4NDEkbzEkZzAkdDE3NTQ3NjA4NDEkajYwJGwwJGgzOTc5NjY3Nzc."
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Open Current Account
+            </a>
+          </Button>
+        </div>
       </div>
 
       {/* Updates Section */}
@@ -225,8 +237,17 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Mobile Quick Action Button */}
-      <div className="fixed bottom-6 right-6 sm:hidden">
+      {/* Mobile Quick Action Buttons */}
+      <div className="fixed bottom-6 right-6 sm:hidden space-y-3">
+        <Button asChild size="lg" className="rounded-full h-14 w-14 shadow-lg" variant="outline">
+          <a 
+            href="https://supernova.axisbank.com/current-account?cta=ca-productpagebanner-5thdec&_gl=1*1b8l05o*_gcl_au*MTUyODMzNjA2MC4xNzU0NzYwODQx*_ga*MTQ3NzU4NDg4NC4xNzU0NzYwODQx*_ga_CH41PE7401*czE3NTQ3NjA4NDEkbzEkZzAkdDE3NTQ3NjA4NDEkajYwJGwwJGgzOTc5NjY3Nzc."
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <ExternalLink className="h-6 w-6" />
+          </a>
+        </Button>
         <Button asChild size="lg" className="rounded-full h-14 w-14 shadow-lg" variant="orange">
           <Link to="/create-invoice">
             <Plus className="h-6 w-6" />
