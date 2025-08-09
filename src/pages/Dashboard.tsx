@@ -1,205 +1,237 @@
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { 
-  DollarSign, 
-  Users, 
-  FileText, 
-  TrendingUp, 
-  Calendar,
-  Bell,
-  ExternalLink,
-  CreditCard
-} from 'lucide-react';
-import { useBusinessData } from '@/hooks/useBusinessData';
+import { FileText, Users, IndianRupee, TrendingUp, Plus, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
+import { useAuth } from '@/components/ClerkAuthProvider';
+import { useSupabaseUser } from '@/hooks/useSupabaseUser';
 
 const Dashboard = () => {
-  const { getBusinessInfo } = useBusinessData();
-  const businessInfo = getBusinessInfo();
-  const { data: stats, isLoading } = useDashboardStats();
+  const { data: dashboardData, isLoading } = useDashboardStats();
+  const { user: clerkUser } = useAuth();
+  const { supabaseUser, loading: userLoading } = useSupabaseUser();
 
-  const handleOpenCurrentAccount = () => {
-    window.open('https://supernova.axisbank.com/current-account?cta=ca-productpagebanner-5thdec&_gl=1*1b8l05o*_gcl_au*MTUyODMzNjA2MC4xNzU0NzYwODQx*_ga*MTQ3NzU4NDg4NC4xNzU0NzYwODQx*_ga_CH41PE7401*czE3NTQ3NjA4NDEkbzEkZzAkdDE3NTQ3NjA4NDEkajYwJGwwJGgzOTc5NjY3Nzc.', '_blank');
-  };
+  if (isLoading) {
+    return (
+      <div className="p-4 md:p-6 space-y-6">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger className="md:hidden" />
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
+            <p className="text-muted-foreground">Loading your dashboard...</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <div className="animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
-  const recentUpdates = [
+  const stats = [
     {
-      type: 'feature' as const,
-      title: 'New Dashboard Design',
-      description: 'Enhanced user experience with improved navigation and analytics',
-      date: '2024-07-15',
-      gradient: true
+      title: "Total Invoices",
+      value: dashboardData?.totalInvoices.toString() || "0",
+      description: "All time",
+      icon: FileText,
+      color: "text-blue-600",
+    },
+    {
+      title: "Total Clients",
+      value: dashboardData?.totalClients.toString() || "0",
+      description: "Active clients",
+      icon: Users,
+      color: "text-green-600",
+    },
+    {
+      title: "Revenue",
+      value: `₹${dashboardData?.totalRevenue.toLocaleString() || "0"}`,
+      description: "Total earned",
+      icon: IndianRupee,
+      color: "text-purple-600",
+    },
+    {
+      title: "Pending Amount",
+      value: `₹${dashboardData?.pendingAmount.toLocaleString() || "0"}`,
+      description: "Outstanding",
+      icon: TrendingUp,
+      color: "text-orange-600",
+    },
+  ];
+
+  const updates = [
+    {
+      id: 1,
+      title: "New Dashboard Design",
+      description: "Updated dashboard with improved UI and dark mode support",
+      date: "2024-07-15",
+      type: "feature",
+      status: "completed"
     }
   ];
 
-  const getUpdateTypeColor = (type: string) => {
-    switch (type) {
-      case 'feature':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'improvement':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-      case 'announcement':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
-    }
-  };
-
   return (
-    <div className="flex-1 space-y-6 p-6 md:p-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Welcome back{businessInfo?.ownerName ? `, ${businessInfo.ownerName}` : ''}!
-          </h1>
-          <p className="text-muted-foreground">
-            Here's what's happening with your business today.
-          </p>
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger className="md:hidden" />
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
+            <p className="text-muted-foreground">Welcome to your Aczen Bilz dashboard</p>
+          </div>
         </div>
-        
-        <div className="flex gap-3">
-          <Button onClick={handleOpenCurrentAccount} className="bg-orange-500 hover:bg-orange-600">
-            <CreditCard className="w-4 h-4 mr-2" />
-            Open Current Account
-            <ExternalLink className="w-4 h-4 ml-2" />
-          </Button>
-          <Button>
-            <Calendar className="w-4 h-4 mr-2" />
-            Today
-          </Button>
-        </div>
+        <Button asChild className="hidden sm:flex" variant="orange">
+          <Link to="/create-invoice">
+            <Plus className="h-4 w-4 mr-2" />
+            Create Invoice
+          </Link>
+        </Button>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Revenue
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? '...' : `₹${(stats?.totalRevenue || 0).toLocaleString()}`}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              +20.1% from last month
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Active Clients
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? '...' : stats?.totalClients || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              +180.1% from last month
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Invoices</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? '...' : stats?.totalInvoices || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              +19% from last month
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Growth Rate
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">+12.5%</div>
-            <p className="text-xs text-muted-foreground">
-              +4% from last month
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Activity & Updates */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center space-x-4">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Invoice INV-001 paid</p>
-                <p className="text-xs text-muted-foreground">2 hours ago</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">New client added: Acme Corp</p>
-                <p className="text-xs text-muted-foreground">5 hours ago</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Invoice INV-002 sent</p>
-                <p className="text-xs text-muted-foreground">1 day ago</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recent Updates */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="h-4 w-4" />
-              Latest Updates
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {recentUpdates.map((update, index) => (
-              <div key={index} className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Badge className={getUpdateTypeColor(update.type)}>
-                    {update.type}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">{update.date}</span>
+      {/* Updates Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Latest Updates</CardTitle>
+          <CardDescription>Recent changes and announcements</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {updates.map((update) => (
+              <div key={update.id} className="flex items-start gap-3 p-3 border rounded-lg bg-gradient-to-r from-[#5D62F2] to-[#FD7C52] text-white">
+                <div className="mt-1">
+                  <CheckCircle className="h-4 w-4 text-white" />
                 </div>
-                <div className={update.gradient ? 'bg-gradient-to-r from-[#5D62F2] to-[#FD7C52] text-white p-3 rounded-lg' : ''}>
-                  <h4 className="font-medium">{update.title}</h4>
-                  <p className={`text-sm ${update.gradient ? 'text-white/90' : 'text-muted-foreground'}`}>
-                    {update.description}
-                  </p>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-medium text-white">{update.title}</h4>
+                    <span className="text-xs px-2 py-1 rounded-full bg-white/20 text-white">
+                      {update.type}
+                    </span>
+                  </div>
+                  <p className="text-sm text-white/90 mb-1">{update.description}</p>
+                  <p className="text-xs text-white/80">{update.date}</p>
                 </div>
               </div>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map((stat) => (
+          <Card key={stat.title}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+              <stat.icon className={`h-4 w-4 ${stat.color}`} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stat.value}</div>
+              <p className="text-xs text-muted-foreground">{stat.description}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Invoices</CardTitle>
+            <CardDescription>Your latest invoice activity</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {dashboardData?.recentInvoices.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p>No invoices created yet</p>
+                  <Button asChild className="mt-4" variant="orange">
+                    <Link to="/create-invoice">Create Your First Invoice</Link>
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {dashboardData?.recentInvoices.map((invoice) => (
+                    <div key={invoice.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div>
+                        <p className="font-medium">{invoice.invoice_number}</p>
+                        <p className="text-sm text-muted-foreground">{invoice.client_name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">₹{Number(invoice.total_amount).toLocaleString()}</p>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          invoice.status === 'paid' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {invoice.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  <Button variant="outline" className="w-full mt-4" asChild>
+                    <Link to="/invoices">View All Invoices</Link>
+                  </Button>
+                </>
+              )}
+            </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+            <CardDescription>Common tasks to get you started</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button asChild className="w-full justify-start" variant="outline">
+              <Link to="/create-invoice">
+                <Plus className="h-4 w-4 mr-2" />
+                Create New Invoice
+              </Link>
+            </Button>
+            <Button asChild className="w-full justify-start" variant="outline">
+              <Link to="/clients">
+                <Users className="h-4 w-4 mr-2" />
+                Add New Client
+              </Link>
+            </Button>
+            <Button asChild className="w-full justify-start" variant="outline">
+              <Link to="/reports">
+                <TrendingUp className="h-4 w-4 mr-2" />
+                View GST Reports
+              </Link>
+            </Button>
+            <Button asChild className="w-full justify-start" variant="outline">
+              <Link to="/settings">
+                <FileText className="h-4 w-4 mr-2" />
+                Update Business Info
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Mobile Quick Action Button */}
+      <div className="fixed bottom-6 right-6 sm:hidden">
+        <Button asChild size="lg" className="rounded-full h-14 w-14 shadow-lg" variant="orange">
+          <Link to="/create-invoice">
+            <Plus className="h-6 w-6" />
+          </Link>
+        </Button>
       </div>
     </div>
   );

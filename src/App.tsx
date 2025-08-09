@@ -16,6 +16,8 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Support from "./pages/Support";
 import CA from "./pages/CA";
+import Payout from "./pages/Payout";
+import UPICollections from "./pages/UPICollections";
 import Marketplace from "./pages/Marketplace";
 import ClerkLogin from "./pages/ClerkLogin";
 import Onboarding from "./pages/Onboarding";
@@ -86,6 +88,18 @@ const App = () => (
                   </SidebarProvider>
                 </ClerkProtectedRoute>
               } />
+              <Route path="/upi-collections" element={
+                <ClerkProtectedRoute>
+                  <SidebarProvider>
+                    <div className="min-h-screen flex w-full">
+                      <AppSidebar />
+                      <main className="flex-1 overflow-auto">
+                        <UPICollections />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </ClerkProtectedRoute>
+              } />
               <Route path="/clients" element={
                 <ClerkProtectedRoute>
                   <SidebarProvider>
@@ -141,6 +155,18 @@ const App = () => (
                       <AppSidebar />
                       <main className="flex-1 overflow-auto">
                         <CA />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </ClerkProtectedRoute>
+              } />
+              <Route path="/payout" element={
+                <ClerkProtectedRoute>
+                  <SidebarProvider>
+                    <div className="min-h-screen flex w-full">
+                      <AppSidebar />
+                      <main className="flex-1 overflow-auto">
+                        <Payout />
                       </main>
                     </div>
                   </SidebarProvider>
