@@ -30,6 +30,10 @@ export interface BankDetails {
   accountHolderName: string;
 }
 
+const generateSessionId = (): string => {
+  return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
 export const useOnboardingState = () => {
   const { user } = useUser();
   const navigate = useNavigate();
@@ -37,6 +41,7 @@ export const useOnboardingState = () => {
   const [currentStep, setCurrentStep] = useState('business');
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [sessionId] = useState(() => generateSessionId());
 
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({
     businessName: '',
@@ -126,8 +131,11 @@ export const useOnboardingState = () => {
           logoBase64,
           signatureBase64,
           onboardingCompleted: true,
+          onboardingSessionId: sessionId,
         }
       });
+
+      console.log(`Onboarding completed for session: ${sessionId}`);
 
       toast({
         title: "Setup Complete!",
@@ -163,5 +171,6 @@ export const useOnboardingState = () => {
     isCompleting,
     handleComplete,
     toast,
+    sessionId,
   };
 };
