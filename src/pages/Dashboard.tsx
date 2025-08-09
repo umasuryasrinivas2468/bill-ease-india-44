@@ -19,7 +19,7 @@ import { useDashboardStats } from '@/hooks/useDashboardStats';
 const Dashboard = () => {
   const { getBusinessInfo } = useBusinessData();
   const businessInfo = getBusinessInfo();
-  const { stats, isLoading } = useDashboardStats();
+  const { data: stats, isLoading } = useDashboardStats();
 
   const handleOpenCurrentAccount = () => {
     window.open('https://supernova.axisbank.com/current-account?cta=ca-productpagebanner-5thdec&_gl=1*1b8l05o*_gcl_au*MTUyODMzNjA2MC4xNzU0NzYwODQx*_ga*MTQ3NzU4NDg4NC4xNzU0NzYwODQx*_ga_CH41PE7401*czE3NTQ3NjA4NDEkbzEkZzAkdDE3NTQ3NjA4NDEkajYwJGwwJGgzOTc5NjY3Nzc.', '_blank');
@@ -85,7 +85,7 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? '...' : `₹${stats.totalRevenue.toLocaleString()}`}
+              {isLoading ? '...' : `₹${(stats?.totalRevenue || 0).toLocaleString()}`}
             </div>
             <p className="text-xs text-muted-foreground">
               +20.1% from last month
@@ -102,7 +102,7 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? '...' : stats.activeClients}
+              {isLoading ? '...' : stats?.totalClients || 0}
             </div>
             <p className="text-xs text-muted-foreground">
               +180.1% from last month
@@ -117,7 +117,7 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? '...' : stats.totalInvoices}
+              {isLoading ? '...' : stats?.totalInvoices || 0}
             </div>
             <p className="text-xs text-muted-foreground">
               +19% from last month
