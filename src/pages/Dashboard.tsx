@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -99,16 +98,15 @@ const Dashboard = () => {
               Create Invoice
             </Link>
           </Button>
-          <Button asChild variant="outline">
-            <a 
-              href="https://supernova.axisbank.com/current-account?cta=ca-productpagebanner-5thdec&_gl=1*1b8l05o*_gcl_au*MTUyODMzNjA2MC4xNzU0NzYwODQx*_ga*MTQ3NzU4NDg4NC4xNzU0NzYwODQx*_ga_CH41PE7401*czE3NTQ3NjA4NDEkbzEkZzAkdDE3NTQ3NjA4NDEkajYwJGwwJGgzOTc5NjY3Nzc."
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Open Current Account
-            </a>
-          </Button>
+          <a 
+            href="https://supernova.axisbank.com/current-account?cta=ca-productpagebanner-5thdec&_gl=1*1b8l05o*_gcl_au*MTUyODMzNjA2MC4xNzU0NzYwODQx*_ga*MTQ3NzU4NDg4NC4xNzU0NzYwODQx*_ga_CH41PE7401*czE3NTQ3NjA4NDEkbzEkZzAkdDE3NTQ3NjA4NDEkajYwJGwwJGgzOTc5NjY3Nzc."
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-10 px-4 py-2 bg-gradient-to-r from-[#5D62F2] to-[#FD7C52] text-white hover:from-[#4C51E6] hover:to-[#F16A3F] border-0"
+          >
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Open Current Account
+          </a>
         </div>
       </div>
 
@@ -239,15 +237,14 @@ const Dashboard = () => {
 
       {/* Mobile Quick Action Buttons */}
       <div className="fixed bottom-6 right-6 sm:hidden space-y-3">
-        <Button asChild size="lg" className="rounded-full h-14 w-14 shadow-lg" variant="outline">
-          <a 
-            href="https://supernova.axisbank.com/current-account?cta=ca-productpagebanner-5thdec&_gl=1*1b8l05o*_gcl_au*MTUyODMzNjA2MC4xNzU0NzYwODQx*_ga*MTQ3NzU4NDg4NC4xNzU0NzYwODQx*_ga_CH41PE7401*czE3NTQ3NjA4NDEkbzEkZzAkdDE3NTQ3NjA4NDEkajYwJGwwJGgzOTc5NjY3Nzc."
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <ExternalLink className="h-6 w-6" />
-          </a>
-        </Button>
+        <a 
+          href="https://supernova.axisbank.com/current-account?cta=ca-productpagebanner-5thdec&_gl=1*1b8l05o*_gcl_au*MTUyODMzNjA2MC4xNzU0NzYwODQx*_ga*MTQ3NzU4NDg4NC4xNzU0NzYwODQx*_ga_CH41PE7401*czE3NTQ3NjA4NDEkbzEkZzAkdDE3NTQ3NjA4NDEkajYwJGwwJGgzOTc5NjY3Nzc."
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center rounded-full h-14 w-14 shadow-lg bg-gradient-to-r from-[#5D62F2] to-[#FD7C52] text-white hover:from-[#4C51E6] hover:to-[#F16A3F] transition-all duration-200"
+        >
+          <ExternalLink className="h-6 w-6" />
+        </a>
         <Button asChild size="lg" className="rounded-full h-14 w-14 shadow-lg" variant="orange">
           <Link to="/create-invoice">
             <Plus className="h-6 w-6" />
