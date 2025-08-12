@@ -7,7 +7,19 @@ import { Link } from 'react-router-dom';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 
 const Dashboard = () => {
-  const { data: stats = {}, isLoading } = useDashboardStats();
+  const { data: stats, isLoading } = useDashboardStats();
+
+  // Provide default values for all stats properties
+  const statsWithDefaults = {
+    totalRevenue: stats?.totalRevenue || 0,
+    totalInvoices: stats?.totalInvoices || 0,
+    totalClients: stats?.totalClients || 0,
+    pendingAmount: stats?.pendingAmount || 0,
+    thisMonthRevenue: stats?.thisMonthRevenue || 0,
+    outstandingInvoices: stats?.outstandingInvoices || 0,
+    averageInvoiceValue: stats?.averageInvoiceValue || 0,
+    recentInvoices: stats?.recentInvoices || []
+  };
 
   const quickActions = [
     {
@@ -70,7 +82,7 @@ const Dashboard = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{stats.totalRevenue?.toLocaleString() || '0'}</div>
+            <div className="text-2xl font-bold">₹{statsWithDefaults.totalRevenue.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">+20.1% from last month</p>
           </CardContent>
         </Card>
@@ -81,7 +93,7 @@ const Dashboard = () => {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalInvoices || 0}</div>
+            <div className="text-2xl font-bold">{statsWithDefaults.totalInvoices}</div>
             <p className="text-xs text-muted-foreground">+180.1% from last month</p>
           </CardContent>
         </Card>
@@ -92,7 +104,7 @@ const Dashboard = () => {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalClients || 0}</div>
+            <div className="text-2xl font-bold">{statsWithDefaults.totalClients}</div>
             <p className="text-xs text-muted-foreground">+19% from last month</p>
           </CardContent>
         </Card>
@@ -103,7 +115,7 @@ const Dashboard = () => {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{stats.pendingAmount?.toLocaleString() || '0'}</div>
+            <div className="text-2xl font-bold">₹{statsWithDefaults.pendingAmount.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">+201 since last hour</p>
           </CardContent>
         </Card>
@@ -147,15 +159,15 @@ const Dashboard = () => {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-sm">This Month's Revenue:</span>
-                <span className="text-sm font-medium">₹{stats.thisMonthRevenue?.toLocaleString() || '0'}</span>
+                <span className="text-sm font-medium">₹{statsWithDefaults.thisMonthRevenue.toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm">Outstanding Invoices:</span>
-                <span className="text-sm font-medium">{stats.outstandingInvoices || 0}</span>
+                <span className="text-sm font-medium">{statsWithDefaults.outstandingInvoices}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm">Average Invoice Value:</span>
-                <span className="text-sm font-medium">₹{stats.averageInvoiceValue?.toLocaleString() || '0'}</span>
+                <span className="text-sm font-medium">₹{statsWithDefaults.averageInvoiceValue.toLocaleString()}</span>
               </div>
             </div>
           </CardContent>
