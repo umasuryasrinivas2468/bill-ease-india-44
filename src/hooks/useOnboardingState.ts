@@ -30,16 +30,10 @@ export interface BankDetails {
   accountHolderName: string;
 }
 
-// Generate a unique session ID for onboarding
-const generateSessionId = () => {
-  return `onb_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-};
-
 export const useOnboardingState = () => {
   const { user } = useUser();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [sessionId] = useState(() => generateSessionId());
   const [currentStep, setCurrentStep] = useState('business');
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [isCompleting, setIsCompleting] = useState(false);
@@ -72,10 +66,6 @@ export const useOnboardingState = () => {
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
-
-  useEffect(() => {
-    console.log('Onboarding session started with ID:', sessionId);
-  }, [sessionId]);
 
   useEffect(() => {
     if (user) {
@@ -136,11 +126,8 @@ export const useOnboardingState = () => {
           logoBase64,
           signatureBase64,
           onboardingCompleted: true,
-          onboardingSessionId: sessionId,
         }
       });
-
-      console.log('Onboarding completed successfully with session ID:', sessionId);
 
       toast({
         title: "Setup Complete!",
@@ -161,7 +148,6 @@ export const useOnboardingState = () => {
   };
 
   return {
-    sessionId,
     currentStep,
     setCurrentStep,
     completedSteps,
