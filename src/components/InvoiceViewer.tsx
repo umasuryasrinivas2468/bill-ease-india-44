@@ -2,7 +2,7 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, Print, X } from 'lucide-react';
+import { Download, Printer, X } from 'lucide-react';
 import { Invoice } from '@/hooks/useInvoices';
 import { useBusinessData } from '@/hooks/useBusinessData';
 import { createSecurePrintableInvoice, securePrintInvoice } from '@/utils/securePrinting';
@@ -48,7 +48,7 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
             <DialogTitle>Invoice {invoice.invoice_number}</DialogTitle>
             <div className="flex gap-2">
               <Button onClick={handlePrint} size="sm" variant="outline">
-                <Print className="h-4 w-4 mr-2" />
+                <Printer className="h-4 w-4 mr-2" />
                 Print
               </Button>
               <Button onClick={handleDownload} size="sm" variant="outline">
