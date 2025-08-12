@@ -15,9 +15,6 @@ const Dashboard = () => {
     totalInvoices: stats?.totalInvoices || 0,
     totalClients: stats?.totalClients || 0,
     pendingAmount: stats?.pendingAmount || 0,
-    thisMonthRevenue: stats?.thisMonthRevenue || 0,
-    outstandingInvoices: stats?.outstandingInvoices || 0,
-    averageInvoiceValue: stats?.averageInvoiceValue || 0,
     recentInvoices: stats?.recentInvoices || []
   };
 
@@ -158,16 +155,8 @@ const Dashboard = () => {
           <CardContent>
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-sm">This Month's Revenue:</span>
-                <span className="text-sm font-medium">₹{statsWithDefaults.thisMonthRevenue.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm">Outstanding Invoices:</span>
-                <span className="text-sm font-medium">{statsWithDefaults.outstandingInvoices}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm">Average Invoice Value:</span>
-                <span className="text-sm font-medium">₹{statsWithDefaults.averageInvoiceValue.toLocaleString()}</span>
+                <span className="text-sm">Recent Invoices:</span>
+                <span className="text-sm font-medium">{statsWithDefaults.recentInvoices.length}</span>
               </div>
             </div>
           </CardContent>

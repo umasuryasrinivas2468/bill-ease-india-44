@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BusinessInfo } from '@/hooks/useOnboardingState';
 import { validateGSTByCountry, getGSTPlaceholder, getGSTRateOptions, getCurrencySymbol } from '@/utils/countryValidation';
 import { validateIECNumber } from '@/utils/onboardingValidation';
+import { useToast } from '@/hooks/use-toast';
 
 interface BusinessInfoStepProps {
   businessInfo: BusinessInfo;
@@ -20,22 +21,49 @@ export const BusinessInfoStep: React.FC<BusinessInfoStepProps> = ({
   setBusinessInfo,
   onNext,
 }) => {
+  const { toast } = useToast();
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
-    if (!businessInfo.businessName || !businessInfo.ownerName || !businessInfo.gstNumber) {
+    if (!businessInfo.businessName || !businessInfo.ownerName || !businessInfo.email || !businessInfo.phone || !businessInfo.address || !businessInfo.city || !businessInfo.state || !businessInfo.pincode) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!businessInfo.gstNumber) {
+      toast({
+        title: "Validation Error",
+        description: "GST Number is required.",
+        variant: "destructive",
+      });
       return;
     }
 
     if (!validateGSTByCountry(businessInfo.gstNumber, businessInfo.country)) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid GST Number.",
+        variant: "destructive",
+      });
       return;
     }
 
     if (businessInfo.isImportExportApplicable === 'yes' && businessInfo.iecNumber && !validateIECNumber(businessInfo.iecNumber)) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid IEC Number.",
+        variant: "destructive",
+      });
       return;
     }
 
+    console.log('Business info form validated successfully, proceeding to next step');
     onNext();
   };
 

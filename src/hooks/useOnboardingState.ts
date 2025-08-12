@@ -31,11 +31,11 @@ export interface BankDetails {
   accountHolderName: string;
 }
 
-// Generate a proper session ID for onboarding
+// Generate a proper session ID for onboarding URL
 const generateSessionId = () => {
-  const timestamp = new Date().toISOString().replace(/[-:.]/g, '');
-  const random = Math.random().toString(36).substring(2, 15);
-  return `onb_${timestamp}_${random}`;
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).substring(2, 8);
+  return `${timestamp}${random}`;
 };
 
 export const useOnboardingState = () => {
@@ -78,6 +78,7 @@ export const useOnboardingState = () => {
 
   useEffect(() => {
     console.log('Onboarding session started with ID:', sessionId);
+    console.log('Session URL would be: /onboarding/', sessionId);
   }, [sessionId]);
 
   useEffect(() => {
