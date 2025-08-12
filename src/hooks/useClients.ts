@@ -61,6 +61,31 @@ export const useCreateClient = () => {
       console.log('Creating client for user:', normalizedUserId);
       console.log('Client data:', clientData);
       
+      // Check for duplicate client by name and email
+      const { data: existingClients, error: checkError } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('user_id', normalizedUserId)
+        .or(`name.eq.${clientData.name},email.eq.${clientData.email}`);
+      
+      if (checkError) {
+        console.error('Error checking for existing clients:', checkError);
+        throw checkError;
+      }
+      
+      if (existingClients && existingClients.length > 0) {
+        const duplicateByName = existingClients.find(c => c.name === clientData.name);
+        const duplicateByEmail = existingClients.find(c => c.email === clientData.email && clientData.email);
+        
+        if (duplicateByName) {
+          throw new Error(`A client with the name "${clientData.name}" already exists.`);
+        }
+        
+        if (duplicateByEmail) {
+          throw new Error(`A client with the email "${clientData.email}" already exists.`);
+        }
+      }
+      
       const { data, error } = await supabase
         .from('clients')
         .insert([{ ...clientData, user_id: normalizedUserId }])
@@ -94,6 +119,33 @@ export const useUpdateClient = () => {
       
       const normalizedUserId = normalizeUserId(user.id);
       console.log('Updating client:', id, clientData);
+      
+      // Check for duplicate client by name and email (excluding current client)
+      if (clientData.name || clientData.email) {
+        const { data: existingClients, error: checkError } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('user_id', normalizedUserId)
+          .neq('id', id);
+        
+        if (checkError) {
+          console.error('Error checking for existing clients:', checkError);
+          throw checkError;
+        }
+        
+        if (existingClients && existingClients.length > 0) {
+          const duplicateByName = existingClients.find(c => c.name === clientData.name);
+          const duplicateByEmail = existingClients.find(c => c.email === clientData.email && clientData.email);
+          
+          if (duplicateByName) {
+            throw new Error(`A client with the name "${clientData.name}" already exists.`);
+          }
+          
+          if (duplicateByEmail) {
+            throw new Error(`A client with the email "${clientData.email}" already exists.`);
+          }
+        }
+      }
       
       const { data, error } = await supabase
         .from('clients')
