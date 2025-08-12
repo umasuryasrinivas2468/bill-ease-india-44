@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 export interface BusinessInfo {
   businessName: string;
@@ -31,11 +30,9 @@ export interface BankDetails {
   accountHolderName: string;
 }
 
-// Generate a proper session ID for onboarding URL
+// Generate a unique session ID for onboarding
 const generateSessionId = () => {
-  const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).substring(2, 8);
-  return `${timestamp}${random}`;
+  return `onb_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
 
 export const useOnboardingState = () => {
@@ -78,7 +75,6 @@ export const useOnboardingState = () => {
 
   useEffect(() => {
     console.log('Onboarding session started with ID:', sessionId);
-    console.log('Session URL would be: /onboarding/', sessionId);
   }, [sessionId]);
 
   useEffect(() => {
@@ -97,13 +93,13 @@ export const useOnboardingState = () => {
       setBusinessInfo(prev => ({
         ...prev,
         currency: 'SGD',
-        gstRate: prev.gstRate === '18' ? '8' : prev.gstRate,
+        gstRate: prev.gstRate === '18' ? '8' : prev.gstRate, // Set default to 8% for Singapore
       }));
     } else if (businessInfo.country === 'india') {
       setBusinessInfo(prev => ({
         ...prev,
         currency: 'INR',
-        gstRate: prev.gstRate === '8' || prev.gstRate === '7' || prev.gstRate === '9' ? '18' : prev.gstRate,
+        gstRate: prev.gstRate === '8' || prev.gstRate === '7' || prev.gstRate === '9' ? '18' : prev.gstRate, // Set default to 18% for India
       }));
     }
   }, [businessInfo.country]);
@@ -115,82 +111,6 @@ export const useOnboardingState = () => {
       reader.onload = () => resolve(reader.result as string);
       reader.onerror = error => reject(error);
     });
-  };
-
-  const createUserAccount = async () => {
-    try {
-      // Create user profile in Supabase
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('*')
-        .eq('clerk_id', user?.id)
-        .single();
-
-      if (!existingUser) {
-        const { error: userError } = await supabase
-          .from('users')
-          .insert({
-            clerk_id: user?.id,
-            email: user?.primaryEmailAddress?.emailAddress || '',
-            phone_number: user?.primaryPhoneNumber?.phoneNumber || null,
-            full_name: user?.fullName || null,
-          });
-
-        if (userError) {
-          console.error('Error creating user account:', userError);
-          throw userError;
-        }
-      }
-
-      // Create business profile
-      const { error: businessError } = await supabase
-        .from('business_profiles')
-        .insert({
-          user_id: user?.id,
-          business_name: businessInfo.businessName,
-          owner_name: businessInfo.ownerName,
-          email: businessInfo.email,
-          phone: businessInfo.phone,
-          gst_number: businessInfo.gstNumber,
-          address: businessInfo.address,
-          city: businessInfo.city,
-          state: businessInfo.state,
-          pincode: businessInfo.pincode,
-          country: businessInfo.country,
-          currency: businessInfo.currency,
-          gst_rate: businessInfo.gstRate,
-          is_import_export_applicable: businessInfo.isImportExportApplicable,
-          iec_number: businessInfo.iecNumber,
-          lut_number: businessInfo.lutNumber,
-        });
-
-      if (businessError) {
-        console.error('Error creating business profile:', businessError);
-        throw businessError;
-      }
-
-      // Create bank details
-      const { error: bankError } = await supabase
-        .from('bank_details')
-        .insert({
-          user_id: user?.id,
-          account_number: bankDetails.accountNumber,
-          ifsc_code: bankDetails.ifscCode,
-          bank_name: bankDetails.bankName,
-          branch_name: bankDetails.branchName,
-          account_holder_name: bankDetails.accountHolderName,
-        });
-
-      if (bankError) {
-        console.error('Error creating bank details:', bankError);
-        throw bankError;
-      }
-
-      console.log('User account created successfully');
-    } catch (error) {
-      console.error('Error creating user account:', error);
-      throw error;
-    }
   };
 
   const handleComplete = async () => {
@@ -209,32 +129,12 @@ export const useOnboardingState = () => {
       const logoBase64 = await fileToBase64(logoFile);
       const signatureBase64 = await fileToBase64(signatureFile);
 
-      // Store business assets
-      await supabase
-        .from('business_assets')
-        .insert([
-          {
-            user_id: user?.id,
-            asset_type: 'logo',
-            asset_data: logoBase64,
-            file_name: logoFile.name,
-            mime_type: logoFile.type,
-          },
-          {
-            user_id: user?.id,
-            asset_type: 'signature',
-            asset_data: signatureBase64,
-            file_name: signatureFile.name,
-            mime_type: signatureFile.type,
-          }
-        ]);
-
-      // Create user account and related data
-      await createUserAccount();
-
-      // Update Clerk user metadata
       await user?.update({
         unsafeMetadata: {
+          businessInfo,
+          bankDetails,
+          logoBase64,
+          signatureBase64,
           onboardingCompleted: true,
           onboardingSessionId: sessionId,
         }
