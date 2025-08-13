@@ -41,10 +41,16 @@ export const useOnboardingData = (sessionId: string) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const saveBusinessInfo = async (businessInfo: BusinessInfo) => {
-    if (!user?.id) return false;
+    if (!user?.id) {
+      console.error('No user ID found');
+      return false;
+    }
 
     setIsLoading(true);
     try {
+      console.log('Saving business info for user:', user.id);
+      console.log('Business info data:', businessInfo);
+
       const { error } = await supabase
         .from('business_profiles')
         .upsert({
@@ -64,7 +70,6 @@ export const useOnboardingData = (sessionId: string) => {
           is_import_export_applicable: businessInfo.isImportExportApplicable,
           iec_number: businessInfo.iecNumber,
           lut_number: businessInfo.lutNumber,
-          session_id: sessionId,
         }, {
           onConflict: 'user_id'
         });
@@ -79,6 +84,7 @@ export const useOnboardingData = (sessionId: string) => {
         return false;
       }
 
+      console.log('Business info saved successfully');
       toast({
         title: "Success",
         description: "Business information saved successfully!",
@@ -98,10 +104,16 @@ export const useOnboardingData = (sessionId: string) => {
   };
 
   const saveBankDetails = async (bankDetails: BankDetails) => {
-    if (!user?.id) return false;
+    if (!user?.id) {
+      console.error('No user ID found');
+      return false;
+    }
 
     setIsLoading(true);
     try {
+      console.log('Saving bank details for user:', user.id);
+      console.log('Bank details data:', bankDetails);
+
       const { error } = await supabase
         .from('bank_details')
         .upsert({
@@ -111,7 +123,6 @@ export const useOnboardingData = (sessionId: string) => {
           bank_name: bankDetails.bankName,
           branch_name: bankDetails.branchName,
           account_holder_name: bankDetails.accountHolderName,
-          session_id: sessionId,
         }, {
           onConflict: 'user_id'
         });
@@ -126,6 +137,7 @@ export const useOnboardingData = (sessionId: string) => {
         return false;
       }
 
+      console.log('Bank details saved successfully');
       toast({
         title: "Success",
         description: "Bank details saved successfully!",
@@ -145,10 +157,16 @@ export const useOnboardingData = (sessionId: string) => {
   };
 
   const saveBusinessAssets = async (assets: BusinessAssets) => {
-    if (!user?.id) return false;
+    if (!user?.id) {
+      console.error('No user ID found');
+      return false;
+    }
 
     setIsLoading(true);
     try {
+      console.log('Saving business assets for user:', user.id);
+      console.log('Business assets data:', assets);
+
       // Save logo
       const { error: logoError } = await supabase
         .from('business_assets')
@@ -156,7 +174,6 @@ export const useOnboardingData = (sessionId: string) => {
           user_id: user.id,
           asset_type: 'logo',
           asset_data: assets.logoUrl,
-          session_id: sessionId,
         });
 
       if (logoError) {
@@ -171,7 +188,6 @@ export const useOnboardingData = (sessionId: string) => {
           user_id: user.id,
           asset_type: 'signature',
           asset_data: assets.signatureUrl,
-          session_id: sessionId,
         });
 
       if (signatureError) {
@@ -179,6 +195,7 @@ export const useOnboardingData = (sessionId: string) => {
         throw signatureError;
       }
 
+      console.log('Business assets saved successfully');
       toast({
         title: "Success",
         description: "Business assets saved successfully!",

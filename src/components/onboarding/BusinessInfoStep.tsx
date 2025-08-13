@@ -28,6 +28,8 @@ export const BusinessInfoStep: React.FC<BusinessInfoStepProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('Form submitted with data:', businessInfo);
+    
     // Basic validation
     if (!businessInfo.businessName?.trim()) {
       toast({
@@ -128,7 +130,12 @@ export const BusinessInfoStep: React.FC<BusinessInfoStepProps> = ({
       return;
     }
 
-    await onNext();
+    console.log('Validation passed, calling onNext');
+    try {
+      await onNext();
+    } catch (error) {
+      console.error('Error in onNext:', error);
+    }
   };
 
   const handleCountryChange = (value: string) => {
