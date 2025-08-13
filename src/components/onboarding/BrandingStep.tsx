@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -20,6 +20,27 @@ export const BrandingStep: React.FC<BrandingStepProps> = ({
   onComplete,
   isCompleting,
 }) => {
+  const [logoError, setLogoError] = useState(false);
+  const [signatureError, setSignatureError] = useState(false);
+
+  const handleLogoUrlChange = (url: string) => {
+    setBusinessAssets({ ...businessAssets, logoUrl: url });
+    setLogoError(false); // Reset error when URL changes
+  };
+
+  const handleSignatureUrlChange = (url: string) => {
+    setBusinessAssets({ ...businessAssets, signatureUrl: url });
+    setSignatureError(false); // Reset error when URL changes
+  };
+
+  const handleLogoError = () => {
+    setLogoError(true);
+  };
+
+  const handleSignatureError = () => {
+    setSignatureError(true);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -32,16 +53,15 @@ export const BrandingStep: React.FC<BrandingStepProps> = ({
             <Label className="text-base font-medium">Business Logo URL *</Label>
             <div className="flex items-center gap-4 mt-2">
               <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                {businessAssets.logoUrl ? (
+                {businessAssets.logoUrl && !logoError ? (
                   <img 
                     src={businessAssets.logoUrl} 
                     alt="Logo preview" 
                     className="w-full h-full object-contain rounded-lg" 
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.parentElement!.innerHTML = '<div class="text-red-500 text-xs">Invalid URL</div>';
-                    }}
+                    onError={handleLogoError}
                   />
+                ) : businessAssets.logoUrl && logoError ? (
+                  <div className="text-red-500 text-xs text-center p-1">Invalid URL</div>
                 ) : (
                   <FileImage className="h-8 w-8 text-gray-400" />
                 )}
@@ -51,7 +71,7 @@ export const BrandingStep: React.FC<BrandingStepProps> = ({
                   type="url"
                   placeholder="https://example.com/logo.png"
                   value={businessAssets.logoUrl}
-                  onChange={(e) => setBusinessAssets({ ...businessAssets, logoUrl: e.target.value })}
+                  onChange={(e) => handleLogoUrlChange(e.target.value)}
                   className="mb-2"
                 />
                 <p className="text-sm text-muted-foreground">
@@ -66,16 +86,15 @@ export const BrandingStep: React.FC<BrandingStepProps> = ({
             <Label className="text-base font-medium">Digital Signature URL *</Label>
             <div className="flex items-center gap-4 mt-2">
               <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                {businessAssets.signatureUrl ? (
+                {businessAssets.signatureUrl && !signatureError ? (
                   <img 
                     src={businessAssets.signatureUrl} 
                     alt="Signature preview" 
                     className="w-full h-full object-contain rounded-lg" 
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.parentElement!.innerHTML = '<div class="text-red-500 text-xs">Invalid URL</div>';
-                    }}
+                    onError={handleSignatureError}
                   />
+                ) : businessAssets.signatureUrl && signatureError ? (
+                  <div className="text-red-500 text-xs text-center p-1">Invalid URL</div>
                 ) : (
                   <Link className="h-8 w-8 text-gray-400" />
                 )}
@@ -85,7 +104,7 @@ export const BrandingStep: React.FC<BrandingStepProps> = ({
                   type="url"
                   placeholder="https://example.com/signature.png"
                   value={businessAssets.signatureUrl}
-                  onChange={(e) => setBusinessAssets({ ...businessAssets, signatureUrl: e.target.value })}
+                  onChange={(e) => handleSignatureUrlChange(e.target.value)}
                   className="mb-2"
                 />
                 <p className="text-sm text-muted-foreground">
