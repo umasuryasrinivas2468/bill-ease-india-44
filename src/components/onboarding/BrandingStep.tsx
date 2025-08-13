@@ -3,22 +3,23 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { FileImage, Upload } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { FileImage, Link } from 'lucide-react';
 
 interface BrandingStepProps {
-  logoFile: File | null;
-  signatureFile: File | null;
-  onLogoUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onSignatureUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  logoUrl: string;
+  signatureUrl: string;
+  onLogoUrlChange: (url: string) => void;
+  onSignatureUrlChange: (url: string) => void;
   onComplete: () => void;
   isCompleting: boolean;
 }
 
 export const BrandingStep: React.FC<BrandingStepProps> = ({
-  logoFile,
-  signatureFile,
-  onLogoUpload,
-  onSignatureUpload,
+  logoUrl,
+  signatureUrl,
+  onLogoUrlChange,
+  onSignatureUrlChange,
   onComplete,
   isCompleting,
 }) => {
@@ -26,81 +27,73 @@ export const BrandingStep: React.FC<BrandingStepProps> = ({
     <Card>
       <CardHeader>
         <CardTitle>Business Branding</CardTitle>
-        <CardDescription>Upload your logo and signature for invoices (Both are mandatory)</CardDescription>
+        <CardDescription>Provide links to your logo and signature images (Both are mandatory)</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">
           <div>
-            <Label className="text-base font-medium">Business Logo *</Label>
+            <Label className="text-base font-medium">Business Logo URL *</Label>
             <div className="flex items-center gap-4 mt-2">
               <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                {logoFile ? (
+                {logoUrl ? (
                   <img 
-                    src={URL.createObjectURL(logoFile)} 
+                    src={logoUrl} 
                     alt="Logo preview" 
                     className="w-full h-full object-contain rounded-lg" 
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.parentElement!.innerHTML = '<div class="text-red-500 text-xs">Invalid URL</div>';
+                    }}
                   />
                 ) : (
                   <FileImage className="h-8 w-8 text-gray-400" />
                 )}
               </div>
               <div className="flex-1">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={onLogoUpload}
-                  className="hidden"
-                  id="logo-upload"
-                  required
+                <Input
+                  type="url"
+                  placeholder="https://example.com/logo.png"
+                  value={logoUrl}
+                  onChange={(e) => onLogoUrlChange(e.target.value)}
+                  className="mb-2"
                 />
-                <Label htmlFor="logo-upload" className="cursor-pointer">
-                  <Button variant="outline" asChild>
-                    <span>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload Logo
-                    </span>
-                  </Button>
-                </Label>
-                <p className="text-sm text-muted-foreground mt-2">
-                  PNG, JPG up to 10MB. Recommended: 200x200px (Required)
+                <p className="text-sm text-muted-foreground">
+                  <Link className="h-3 w-3 mr-1 inline" />
+                  Provide a direct link to your logo image (Required)
                 </p>
               </div>
             </div>
           </div>
 
           <div>
-            <Label className="text-base font-medium">Digital Signature *</Label>
+            <Label className="text-base font-medium">Digital Signature URL *</Label>
             <div className="flex items-center gap-4 mt-2">
               <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                {signatureFile ? (
+                {signatureUrl ? (
                   <img 
-                    src={URL.createObjectURL(signatureFile)} 
+                    src={signatureUrl} 
                     alt="Signature preview" 
                     className="w-full h-full object-contain rounded-lg" 
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.parentElement!.innerHTML = '<div class="text-red-500 text-xs">Invalid URL</div>';
+                    }}
                   />
                 ) : (
-                  <Upload className="h-8 w-8 text-gray-400" />
+                  <Link className="h-8 w-8 text-gray-400" />
                 )}
               </div>
               <div className="flex-1">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={onSignatureUpload}
-                  className="hidden"
-                  id="signature-upload"
-                  required
+                <Input
+                  type="url"
+                  placeholder="https://example.com/signature.png"
+                  value={signatureUrl}
+                  onChange={(e) => onSignatureUrlChange(e.target.value)}
+                  className="mb-2"
                 />
-                <Label htmlFor="signature-upload" className="cursor-pointer">
-                  <Button variant="outline" asChild>
-                    <span>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload Signature
-                    </span>
-                  </Button>
-                </Label>
-                <p className="text-sm text-muted-foreground mt-2">
-                  PNG, JPG up to 5MB. Transparent background recommended (Required)
+                <p className="text-sm text-muted-foreground">
+                  <Link className="h-3 w-3 mr-1 inline" />
+                  Provide a direct link to your signature image (Required)
                 </p>
               </div>
             </div>

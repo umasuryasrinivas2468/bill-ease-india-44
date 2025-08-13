@@ -58,6 +58,33 @@ export const useCreateClient = () => {
       }
       
       const normalizedUserId = normalizeUserId(user.id);
+      
+      // Check for duplicate name
+      const { data: existingByName } = await supabase
+        .from('clients')
+        .select('id, name')
+        .eq('user_id', normalizedUserId)
+        .ilike('name', clientData.name)
+        .limit(1);
+      
+      if (existingByName && existingByName.length > 0) {
+        throw new Error(`A client with the name "${clientData.name}" already exists.`);
+      }
+      
+      // Check for duplicate GST number (if provided)
+      if (clientData.gst_number && clientData.gst_number.trim()) {
+        const { data: existingByGST } = await supabase
+          .from('clients')
+          .select('id, name, gst_number')
+          .eq('user_id', normalizedUserId)
+          .eq('gst_number', clientData.gst_number.trim())
+          .limit(1);
+        
+        if (existingByGST && existingByGST.length > 0) {
+          throw new Error(`A client with GST number "${clientData.gst_number}" already exists.`);
+        }
+      }
+      
       console.log('Creating client for user:', normalizedUserId);
       console.log('Client data:', clientData);
       
@@ -93,6 +120,37 @@ export const useUpdateClient = () => {
       }
       
       const normalizedUserId = normalizeUserId(user.id);
+      
+      // Check for duplicate name (excluding current client)
+      if (clientData.name) {
+        const { data: existingByName } = await supabase
+          .from('clients')
+          .select('id, name')
+          .eq('user_id', normalizedUserId)
+          .ilike('name', clientData.name)
+          .neq('id', id)
+          .limit(1);
+        
+        if (existingByName && existingByName.length > 0) {
+          throw new Error(`A client with the name "${clientData.name}" already exists.`);
+        }
+      }
+      
+      // Check for duplicate GST number (if provided and excluding current client)
+      if (clientData.gst_number && clientData.gst_number.trim()) {
+        const { data: existingByGST } = await supabase
+          .from('clients')
+          .select('id, name, gst_number')
+          .eq('user_id', normalizedUserId)
+          .eq('gst_number', clientData.gst_number.trim())
+          .neq('id', id)
+          .limit(1);
+        
+        if (existingByGST && existingByGST.length > 0) {
+          throw new Error(`A client with GST number "${clientData.gst_number}" already exists.`);
+        }
+      }
+      
       console.log('Updating client:', id, clientData);
       
       const { data, error } = await supabase

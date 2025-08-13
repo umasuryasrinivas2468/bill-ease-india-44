@@ -30,6 +30,13 @@ export interface BankDetails {
   accountHolderName: string;
 }
 
+const generateSessionId = (): string => {
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0].replace(/-/g, '');
+  const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '');
+  return `${dateStr}-${timeStr}`;
+};
+
 export const useOnboardingState = () => {
   const { user } = useUser();
   const navigate = useNavigate();
@@ -37,6 +44,7 @@ export const useOnboardingState = () => {
   const [currentStep, setCurrentStep] = useState('business');
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [sessionId] = useState(() => generateSessionId());
 
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({
     businessName: '',
@@ -64,8 +72,8 @@ export const useOnboardingState = () => {
     accountHolderName: '',
   });
 
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string>('');
+  const [signatureUrl, setSignatureUrl] = useState<string>('');
 
   useEffect(() => {
     if (user) {
@@ -83,31 +91,30 @@ export const useOnboardingState = () => {
       setBusinessInfo(prev => ({
         ...prev,
         currency: 'SGD',
-        gstRate: prev.gstRate === '18' ? '8' : prev.gstRate, // Set default to 8% for Singapore
+        gstRate: prev.gstRate === '18' ? '8' : prev.gstRate,
       }));
     } else if (businessInfo.country === 'india') {
       setBusinessInfo(prev => ({
         ...prev,
         currency: 'INR',
-        gstRate: prev.gstRate === '8' || prev.gstRate === '7' || prev.gstRate === '9' ? '18' : prev.gstRate, // Set default to 18% for India
+        gstRate: prev.gstRate === '8' || prev.gstRate === '7' || prev.gstRate === '9' ? '18' : prev.gstRate,
       }));
     }
   }, [businessInfo.country]);
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
-    });
-  };
+  // Update URL with session ID
+  useEffect(() => {
+    const currentUrl = window.location.pathname;
+    if (currentUrl === '/onboarding' && sessionId) {
+      window.history.replaceState(null, '', `/onboarding/${sessionId}`);
+    }
+  }, [sessionId]);
 
   const handleComplete = async () => {
-    if (!logoFile || !signatureFile) {
+    if (!logoUrl || !signatureUrl) {
       toast({
-        title: "Missing Files",
-        description: "Both business logo and digital signature are mandatory.",
+        title: "Missing Links",
+        description: "Both business logo and digital signature links are mandatory.",
         variant: "destructive",
       });
       return;
@@ -116,16 +123,14 @@ export const useOnboardingState = () => {
     setIsCompleting(true);
     
     try {
-      const logoBase64 = await fileToBase64(logoFile);
-      const signatureBase64 = await fileToBase64(signatureFile);
-
       await user?.update({
         unsafeMetadata: {
           businessInfo,
           bankDetails,
-          logoBase64,
-          signatureBase64,
+          logoUrl,
+          signatureUrl,
           onboardingCompleted: true,
+          sessionId,
         }
       });
 
@@ -156,12 +161,13 @@ export const useOnboardingState = () => {
     setBusinessInfo,
     bankDetails,
     setBankDetails,
-    logoFile,
-    setLogoFile,
-    signatureFile,
-    setSignatureFile,
+    logoUrl,
+    setLogoUrl,
+    signatureUrl,
+    setSignatureUrl,
     isCompleting,
     handleComplete,
+    sessionId,
     toast,
   };
 };

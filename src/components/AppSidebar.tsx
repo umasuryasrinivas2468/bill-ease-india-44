@@ -1,4 +1,3 @@
-
 import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -9,7 +8,6 @@ import {
   Settings,
   HelpCircle,
   Calculator,
-  CreditCard,
   Smartphone,
   Bell,
   Store,
@@ -37,7 +35,6 @@ const menuItems = [
   { title: "Clients", url: "/clients", icon: Users },
   { title: "UPI Collections", url: "/upi-collections", icon: Smartphone },
   { title: "Reports", url: "/reports", icon: BarChart3 },
-  { title: "Payout", url: "/payout", icon: CreditCard },
   { title: "CA", url: "/ca", icon: Calculator },
   { title: "Marketplace", url: "/marketplace", icon: Store },
   { title: "Notifications", url: "/notifications", icon: Bell },

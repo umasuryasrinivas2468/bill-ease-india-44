@@ -17,12 +17,13 @@ const Onboarding = () => {
     setBusinessInfo,
     bankDetails,
     setBankDetails,
-    logoFile,
-    setLogoFile,
-    signatureFile,
-    setSignatureFile,
+    logoUrl,
+    setLogoUrl,
+    signatureUrl,
+    setSignatureUrl,
     isCompleting,
     handleComplete,
+    sessionId,
   } = useOnboardingState();
 
   const handleBusinessNext = () => {
@@ -35,20 +36,6 @@ const Onboarding = () => {
     setCurrentStep('branding');
   };
 
-  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setLogoFile(file);
-    }
-  };
-
-  const handleSignatureUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setSignatureFile(file);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-2xl mx-auto pt-8">
@@ -56,7 +43,7 @@ const Onboarding = () => {
           <h1 className="text-3xl font-bold">Welcome to Aczen Bilz!</h1>
           <p className="text-muted-foreground mt-2">Let's set up your business profile</p>
           <div className="mt-4 text-sm text-muted-foreground bg-white/50 rounded-lg p-2 inline-block">
-            🔐 Secured By Aczen Auth 3.0
+            🔐 Secured By Aczen Auth 3.0 | Session: {sessionId}
           </div>
         </div>
 
@@ -100,10 +87,10 @@ const Onboarding = () => {
 
           <TabsContent value="branding">
             <BrandingStep
-              logoFile={logoFile}
-              signatureFile={signatureFile}
-              onLogoUpload={handleLogoUpload}
-              onSignatureUpload={handleSignatureUpload}
+              logoUrl={logoUrl}
+              signatureUrl={signatureUrl}
+              onLogoUrlChange={setLogoUrl}
+              onSignatureUrlChange={setSignatureUrl}
               onComplete={handleComplete}
               isCompleting={isCompleting}
             />

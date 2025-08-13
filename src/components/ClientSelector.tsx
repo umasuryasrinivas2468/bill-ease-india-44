@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus } from 'lucide-react';
 import { useClients, useCreateClient, Client } from '@/hooks/useClients';
 import { useToast } from '@/hooks/use-toast';
+import { validateGSTNumber, getGSTPlaceholder, formatGSTNumber } from '@/utils/gstValidation';
 
 interface ClientSelectorProps {
   onClientSelect: (client: Client | null) => void;
@@ -39,11 +40,26 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({ onClientSelect, selecte
     onClientSelect(client || null);
   };
 
+  const handleGSTChange = (value: string) => {
+    const formatted = formatGSTNumber(value);
+    setNewClient({ ...newClient, gst_number: formatted });
+  };
+
   const handleAddClient = async () => {
     if (!newClient.name.trim()) {
       toast({
         title: "Validation Error",
         description: "Client name is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate GST number if provided
+    if (newClient.gst_number && !validateGSTNumber(newClient.gst_number)) {
+      toast({
+        title: "Invalid GST Number",
+        description: "Please enter a valid GST number in the format: 22AAAAA0000A1Z5",
         variant: "destructive",
       });
       return;
@@ -65,7 +81,7 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({ onClientSelect, selecte
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to add client. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to add client. Please try again.",
         variant: "destructive",
       });
     }
@@ -144,9 +160,13 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({ onClientSelect, selecte
               <Input
                 id="gstNumber"
                 value={newClient.gst_number}
-                onChange={(e) => setNewClient({...newClient, gst_number: e.target.value})}
-                placeholder="22AAAAA0000A1Z5"
+                onChange={(e) => handleGSTChange(e.target.value)}
+                placeholder={getGSTPlaceholder()}
+                maxLength={15}
               />
+              {newClient.gst_number && !validateGSTNumber(newClient.gst_number) && (
+                <p className="text-xs text-red-500">Invalid GST format</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="address">Address</Label>
