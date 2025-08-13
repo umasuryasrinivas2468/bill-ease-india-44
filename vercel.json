@@ -1,8 +1,5 @@
 {
   "rewrites": [
-    {
-      "source": "/login",
-      "destination": "/"
-    }
+    { "source": "/(.*)", "destination": "/" }
   ]
 }
