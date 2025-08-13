@@ -3,32 +3,7 @@ import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-
-export interface BusinessInfo {
-  businessName: string;
-  ownerName: string;
-  email: string;
-  phone: string;
-  gstNumber: string;
-  address: string;
-  city: string;
-  state: string;
-  pincode: string;
-  country: string;
-  currency: string;
-  gstRate: string;
-  isImportExportApplicable: string;
-  iecNumber: string;
-  lutNumber: string;
-}
-
-export interface BankDetails {
-  accountNumber: string;
-  ifscCode: string;
-  bankName: string;
-  branchName: string;
-  accountHolderName: string;
-}
+import { useOnboardingData, BusinessInfo, BankDetails, BusinessAssets } from './useOnboardingData';
 
 const generateSessionId = (): string => {
   const now = new Date();
@@ -45,6 +20,8 @@ export const useOnboardingState = () => {
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [isCompleting, setIsCompleting] = useState(false);
   const [sessionId] = useState(() => generateSessionId());
+
+  const { saveBusinessInfo, saveBankDetails, saveBusinessAssets, isLoading } = useOnboardingData(sessionId);
 
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({
     businessName: '',
@@ -72,8 +49,10 @@ export const useOnboardingState = () => {
     accountHolderName: '',
   });
 
-  const [logoUrl, setLogoUrl] = useState<string>('');
-  const [signatureUrl, setSignatureUrl] = useState<string>('');
+  const [businessAssets, setBusinessAssets] = useState<BusinessAssets>({
+    logoUrl: '',
+    signatureUrl: '',
+  });
 
   useEffect(() => {
     if (user) {
@@ -110,8 +89,24 @@ export const useOnboardingState = () => {
     }
   }, [sessionId]);
 
+  const handleBusinessNext = async () => {
+    const success = await saveBusinessInfo(businessInfo);
+    if (success) {
+      setCompletedSteps(prev => [...prev, 'business']);
+      setCurrentStep('banking');
+    }
+  };
+
+  const handleBankingNext = async () => {
+    const success = await saveBankDetails(bankDetails);
+    if (success) {
+      setCompletedSteps(prev => [...prev, 'banking']);
+      setCurrentStep('branding');
+    }
+  };
+
   const handleComplete = async () => {
-    if (!logoUrl || !signatureUrl) {
+    if (!businessAssets.logoUrl || !businessAssets.signatureUrl) {
       toast({
         title: "Missing Links",
         description: "Both business logo and digital signature links are mandatory.",
@@ -123,23 +118,27 @@ export const useOnboardingState = () => {
     setIsCompleting(true);
     
     try {
-      await user?.update({
-        unsafeMetadata: {
-          businessInfo,
-          bankDetails,
-          logoUrl,
-          signatureUrl,
-          onboardingCompleted: true,
-          sessionId,
-        }
-      });
+      const assetsSuccess = await saveBusinessAssets(businessAssets);
+      
+      if (assetsSuccess) {
+        await user?.update({
+          unsafeMetadata: {
+            businessInfo,
+            bankDetails,
+            logoUrl: businessAssets.logoUrl,
+            signatureUrl: businessAssets.signatureUrl,
+            onboardingCompleted: true,
+            sessionId,
+          }
+        });
 
-      toast({
-        title: "Setup Complete!",
-        description: "Welcome to Aczen Bilz. You're ready to start creating invoices.",
-      });
+        toast({
+          title: "Setup Complete!",
+          description: "Welcome to Aczen Bilz. You're ready to start creating invoices.",
+        });
 
-      navigate('/', { replace: true });
+        navigate('/', { replace: true });
+      }
     } catch (error) {
       console.error('Error completing onboarding:', error);
       toast({
@@ -161,13 +160,16 @@ export const useOnboardingState = () => {
     setBusinessInfo,
     bankDetails,
     setBankDetails,
-    logoUrl,
-    setLogoUrl,
-    signatureUrl,
-    setSignatureUrl,
-    isCompleting,
+    businessAssets,
+    setBusinessAssets,
+    isCompleting: isCompleting || isLoading,
+    handleBusinessNext,
+    handleBankingNext,
     handleComplete,
     sessionId,
     toast,
   };
 };
+
+// Export types for backward compatibility
+export type { BusinessInfo, BankDetails };

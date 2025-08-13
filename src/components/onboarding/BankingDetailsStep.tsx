@@ -4,37 +4,84 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { BankDetails } from '@/hooks/useOnboardingState';
+import { BankDetails } from '@/hooks/useOnboardingData';
 import { validateAccountNumber, validateIFSCCode } from '@/utils/onboardingValidation';
+import { useToast } from '@/hooks/use-toast';
 
 interface BankingDetailsStepProps {
   bankDetails: BankDetails;
   setBankDetails: (details: BankDetails) => void;
-  onNext: () => void;
+  onNext: () => Promise<void>;
+  isLoading?: boolean;
 }
 
 export const BankingDetailsStep: React.FC<BankingDetailsStepProps> = ({
   bankDetails,
   setBankDetails,
   onNext,
+  isLoading = false,
 }) => {
-  const handleSubmit = (e: React.FormEvent) => {
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
-    if (!bankDetails.accountNumber || !bankDetails.ifscCode || !bankDetails.bankName || !bankDetails.accountHolderName) {
+    if (!bankDetails.accountHolderName?.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Account holder name is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!bankDetails.accountNumber?.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Account number is required.",
+        variant: "destructive",
+      });
       return;
     }
 
     if (!validateAccountNumber(bankDetails.accountNumber)) {
+      toast({
+        title: "Validation Error",
+        description: "Account number should be 9-18 digits.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!bankDetails.ifscCode?.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "IFSC code is required.",
+        variant: "destructive",
+      });
       return;
     }
 
     if (!validateIFSCCode(bankDetails.ifscCode)) {
+      toast({
+        title: "Validation Error",
+        description: "Invalid IFSC code format.",
+        variant: "destructive",
+      });
       return;
     }
 
-    onNext();
+    if (!bankDetails.bankName?.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Bank name is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    await onNext();
   };
 
   return (
@@ -97,8 +144,15 @@ export const BankingDetailsStep: React.FC<BankingDetailsStepProps> = ({
             </div>
           </div>
 
-          <Button type="submit" className="w-full">
-            Continue to Branding
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Saving...
+              </>
+            ) : (
+              "Continue to Branding"
+            )}
           </Button>
         </form>
       </CardContent>

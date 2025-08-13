@@ -5,38 +5,130 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BusinessInfo } from '@/hooks/useOnboardingState';
+import { BusinessInfo } from '@/hooks/useOnboardingData';
 import { validateGSTByCountry, getGSTPlaceholder, getGSTRateOptions, getCurrencySymbol } from '@/utils/countryValidation';
 import { validateIECNumber } from '@/utils/onboardingValidation';
+import { useToast } from '@/hooks/use-toast';
 
 interface BusinessInfoStepProps {
   businessInfo: BusinessInfo;
   setBusinessInfo: (info: BusinessInfo) => void;
-  onNext: () => void;
+  onNext: () => Promise<void>;
+  isLoading?: boolean;
 }
 
 export const BusinessInfoStep: React.FC<BusinessInfoStepProps> = ({
   businessInfo,
   setBusinessInfo,
   onNext,
+  isLoading = false,
 }) => {
-  const handleSubmit = (e: React.FormEvent) => {
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
-    if (!businessInfo.businessName || !businessInfo.ownerName || !businessInfo.gstNumber) {
+    if (!businessInfo.businessName?.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Business name is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!businessInfo.ownerName?.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Owner name is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!businessInfo.email?.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Email is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!businessInfo.phone?.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Phone number is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!businessInfo.gstNumber?.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "GST number is required.",
+        variant: "destructive",
+      });
       return;
     }
 
     if (!validateGSTByCountry(businessInfo.gstNumber, businessInfo.country)) {
+      toast({
+        title: "Validation Error",
+        description: `Invalid GST number format for ${businessInfo.country}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!businessInfo.address?.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Business address is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!businessInfo.city?.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "City is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!businessInfo.state?.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "State is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!businessInfo.pincode?.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Pincode is required.",
+        variant: "destructive",
+      });
       return;
     }
 
     if (businessInfo.isImportExportApplicable === 'yes' && businessInfo.iecNumber && !validateIECNumber(businessInfo.iecNumber)) {
+      toast({
+        title: "Validation Error",
+        description: "Invalid IEC number format. Should be 10 digits.",
+        variant: "destructive",
+      });
       return;
     }
 
-    onNext();
+    await onNext();
   };
 
   const handleCountryChange = (value: string) => {
@@ -246,8 +338,15 @@ export const BusinessInfoStep: React.FC<BusinessInfoStepProps> = ({
             </>
           )}
 
-          <Button type="submit" className="w-full">
-            Continue to Banking Details
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Saving...
+              </>
+            ) : (
+              "Continue to Banking Details"
+            )}
           </Button>
         </form>
       </CardContent>

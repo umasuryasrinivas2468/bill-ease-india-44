@@ -5,21 +5,18 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { FileImage, Link } from 'lucide-react';
+import { BusinessAssets } from '@/hooks/useOnboardingData';
 
 interface BrandingStepProps {
-  logoUrl: string;
-  signatureUrl: string;
-  onLogoUrlChange: (url: string) => void;
-  onSignatureUrlChange: (url: string) => void;
-  onComplete: () => void;
+  businessAssets: BusinessAssets;
+  setBusinessAssets: (assets: BusinessAssets) => void;
+  onComplete: () => Promise<void>;
   isCompleting: boolean;
 }
 
 export const BrandingStep: React.FC<BrandingStepProps> = ({
-  logoUrl,
-  signatureUrl,
-  onLogoUrlChange,
-  onSignatureUrlChange,
+  businessAssets,
+  setBusinessAssets,
   onComplete,
   isCompleting,
 }) => {
@@ -35,9 +32,9 @@ export const BrandingStep: React.FC<BrandingStepProps> = ({
             <Label className="text-base font-medium">Business Logo URL *</Label>
             <div className="flex items-center gap-4 mt-2">
               <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                {logoUrl ? (
+                {businessAssets.logoUrl ? (
                   <img 
-                    src={logoUrl} 
+                    src={businessAssets.logoUrl} 
                     alt="Logo preview" 
                     className="w-full h-full object-contain rounded-lg" 
                     onError={(e) => {
@@ -53,8 +50,8 @@ export const BrandingStep: React.FC<BrandingStepProps> = ({
                 <Input
                   type="url"
                   placeholder="https://example.com/logo.png"
-                  value={logoUrl}
-                  onChange={(e) => onLogoUrlChange(e.target.value)}
+                  value={businessAssets.logoUrl}
+                  onChange={(e) => setBusinessAssets({ ...businessAssets, logoUrl: e.target.value })}
                   className="mb-2"
                 />
                 <p className="text-sm text-muted-foreground">
@@ -69,9 +66,9 @@ export const BrandingStep: React.FC<BrandingStepProps> = ({
             <Label className="text-base font-medium">Digital Signature URL *</Label>
             <div className="flex items-center gap-4 mt-2">
               <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                {signatureUrl ? (
+                {businessAssets.signatureUrl ? (
                   <img 
-                    src={signatureUrl} 
+                    src={businessAssets.signatureUrl} 
                     alt="Signature preview" 
                     className="w-full h-full object-contain rounded-lg" 
                     onError={(e) => {
@@ -87,8 +84,8 @@ export const BrandingStep: React.FC<BrandingStepProps> = ({
                 <Input
                   type="url"
                   placeholder="https://example.com/signature.png"
-                  value={signatureUrl}
-                  onChange={(e) => onSignatureUrlChange(e.target.value)}
+                  value={businessAssets.signatureUrl}
+                  onChange={(e) => setBusinessAssets({ ...businessAssets, signatureUrl: e.target.value })}
                   className="mb-2"
                 />
                 <p className="text-sm text-muted-foreground">

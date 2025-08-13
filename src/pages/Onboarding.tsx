@@ -12,29 +12,18 @@ const Onboarding = () => {
     currentStep,
     setCurrentStep,
     completedSteps,
-    setCompletedSteps,
     businessInfo,
     setBusinessInfo,
     bankDetails,
     setBankDetails,
-    logoUrl,
-    setLogoUrl,
-    signatureUrl,
-    setSignatureUrl,
+    businessAssets,
+    setBusinessAssets,
     isCompleting,
+    handleBusinessNext,
+    handleBankingNext,
     handleComplete,
     sessionId,
   } = useOnboardingState();
-
-  const handleBusinessNext = () => {
-    setCompletedSteps([...completedSteps, 'business']);
-    setCurrentStep('banking');
-  };
-
-  const handleBankingNext = () => {
-    setCompletedSteps([...completedSteps, 'banking']);
-    setCurrentStep('branding');
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -74,6 +63,7 @@ const Onboarding = () => {
               businessInfo={businessInfo}
               setBusinessInfo={setBusinessInfo}
               onNext={handleBusinessNext}
+              isLoading={isCompleting}
             />
           </TabsContent>
 
@@ -82,15 +72,14 @@ const Onboarding = () => {
               bankDetails={bankDetails}
               setBankDetails={setBankDetails}
               onNext={handleBankingNext}
+              isLoading={isCompleting}
             />
           </TabsContent>
 
           <TabsContent value="branding">
             <BrandingStep
-              logoUrl={logoUrl}
-              signatureUrl={signatureUrl}
-              onLogoUrlChange={setLogoUrl}
-              onSignatureUrlChange={setSignatureUrl}
+              businessAssets={businessAssets}
+              setBusinessAssets={setBusinessAssets}
               onComplete={handleComplete}
               isCompleting={isCompleting}
             />
