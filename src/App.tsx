@@ -2,6 +2,7 @@
 
 import './App.css';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -28,154 +29,166 @@ import Support from "./pages/Support";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
 function App() {
   return (
-    <AuthProvider>
-      <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-        <BrowserRouter>
-          <SidebarProvider>
-            <div className="min-h-screen flex w-full">
-              <AppSidebar />
-              <SidebarInset>
-                <Toaster />
-                <Routes>
-                  <Route path="/login" element={<ClerkLogin />} />
-                  <Route 
-                    path="/" 
-                    element={
-                      <ProtectedRoute>
-                        <Index />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/invoices" 
-                    element={
-                      <ProtectedRoute>
-                        <Invoices />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/quotations" 
-                    element={
-                      <ProtectedRoute>
-                        <Quotations />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/inventory" 
-                    element={
-                      <ProtectedRoute>
-                        <Inventory />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/banking" 
-                    element={
-                      <ProtectedRoute>
-                        <Banking />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/time-tracking" 
-                    element={
-                      <ProtectedRoute>
-                        <TimeTracking />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/create-invoice" 
-                    element={
-                      <ProtectedRoute>
-                        <CreateInvoice />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/clients" 
-                    element={
-                      <ProtectedRoute>
-                        <Clients />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/reports" 
-                    element={
-                      <ProtectedRoute>
-                        <Reports />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/ca" 
-                    element={
-                      <ProtectedRoute>
-                        <CA />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/marketplace" 
-                    element={
-                      <ProtectedRoute>
-                        <Marketplace />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/upi-collections" 
-                    element={
-                      <ProtectedRoute>
-                        <UPICollections />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/notifications" 
-                    element={
-                      <ProtectedRoute>
-                        <Notifications />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/settings" 
-                    element={
-                      <ProtectedRoute>
-                        <Settings />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/support" 
-                    element={
-                      <ProtectedRoute>
-                        <Support />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/onboarding" 
-                    element={
-                      <ProtectedRoute>
-                        <Onboarding />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </SidebarInset>
-            </div>
-          </SidebarProvider>
-        </BrowserRouter>
-      </ThemeProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+          <BrowserRouter>
+            <SidebarProvider>
+              <div className="min-h-screen flex w-full">
+                <AppSidebar />
+                <SidebarInset>
+                  <Toaster />
+                  <Routes>
+                    <Route path="/login" element={<ClerkLogin />} />
+                    <Route 
+                      path="/" 
+                      element={
+                        <ProtectedRoute>
+                          <Index />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/invoices" 
+                      element={
+                        <ProtectedRoute>
+                          <Invoices />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/quotations" 
+                      element={
+                        <ProtectedRoute>
+                          <Quotations />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/inventory" 
+                      element={
+                        <ProtectedRoute>
+                          <Inventory />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/banking" 
+                      element={
+                        <ProtectedRoute>
+                          <Banking />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/time-tracking" 
+                      element={
+                        <ProtectedRoute>
+                          <TimeTracking />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/create-invoice" 
+                      element={
+                        <ProtectedRoute>
+                          <CreateInvoice />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/clients" 
+                      element={
+                        <ProtectedRoute>
+                          <Clients />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/reports" 
+                      element={
+                        <ProtectedRoute>
+                          <Reports />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/ca" 
+                      element={
+                        <ProtectedRoute>
+                          <CA />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/marketplace" 
+                      element={
+                        <ProtectedRoute>
+                          <Marketplace />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/upi-collections" 
+                      element={
+                        <ProtectedRoute>
+                          <UPICollections />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/notifications" 
+                      element={
+                        <ProtectedRoute>
+                          <Notifications />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/settings" 
+                      element={
+                        <ProtectedRoute>
+                          <Settings />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/support" 
+                      element={
+                        <ProtectedRoute>
+                          <Support />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/onboarding" 
+                      element={
+                        <ProtectedRoute>
+                          <Onboarding />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </SidebarInset>
+              </div>
+            </SidebarProvider>
+          </BrowserRouter>
+        </ThemeProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
