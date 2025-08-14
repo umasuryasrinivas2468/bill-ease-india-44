@@ -1,10 +1,11 @@
+
 import './App.css';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import AuthProvider from "@/components/ClerkAuthProvider";
+import { AuthProvider } from "@/components/ClerkAuthProvider";
 import ProtectedRoute from "@/components/ClerkProtectedRoute";
 
 import Index from "./pages/Index";
