@@ -1,3 +1,4 @@
+
 import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -12,6 +13,9 @@ import {
   Bell,
   Store,
   LogOut,
+  Package,
+  CreditCard,
+  Quote,
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import {
@@ -32,7 +36,10 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Invoices", url: "/invoices", icon: FileText },
+  { title: "Quotations", url: "/quotations", icon: Quote },
   { title: "Clients", url: "/clients", icon: Users },
+  { title: "Inventory", url: "/inventory", icon: Package },
+  { title: "Banking", url: "/banking", icon: CreditCard },
   { title: "UPI Collections", url: "/upi-collections", icon: Smartphone },
   { title: "Reports", url: "/reports", icon: BarChart3 },
   { title: "CA", url: "/ca", icon: Calculator },
