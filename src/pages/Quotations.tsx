@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -83,11 +82,11 @@ const Quotations = () => {
 
       if (error) throw error;
       
-      // Transform the data to match our interface
+      // Transform the data to match our interface with proper type casting
       const transformedData: Quotation[] = (data || []).map(item => ({
         ...item,
-        items: Array.isArray(item.items) ? item.items as QuotationItem[] : [],
-        status: item.status as 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired'
+        items: Array.isArray(item.items) ? (item.items as unknown as QuotationItem[]) : [],
+        status: (item.status as 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired') || 'draft'
       }));
       
       setQuotations(transformedData);
@@ -176,7 +175,7 @@ const Quotations = () => {
       client_address: formData.client_address || null,
       quotation_date: formData.quotation_date,
       validity_period: formData.validity_period,
-      items: JSON.stringify(updatedItems),
+      items: updatedItems,
       discount: formData.discount,
       subtotal,
       tax_amount: taxAmount,
