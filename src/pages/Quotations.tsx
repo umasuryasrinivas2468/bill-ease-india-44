@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useInventory } from '@/hooks/useInventory';
 import QuotationViewer from '@/components/QuotationViewer';
+import InventoryItemSelector from '@/components/InventoryItemSelector';
 import type { Tables } from '@/integrations/supabase/types';
 
 interface QuotationItem {
@@ -41,6 +42,7 @@ interface Quotation {
   terms_conditions?: string;
   status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
   created_at: string;
+  vendor_logo?: string;
 }
 
 const Quotations = () => {
@@ -64,6 +66,7 @@ const Quotations = () => {
     validity_period: 30,
     discount: 0,
     terms_conditions: '',
+    vendor_logo: '',
   });
 
   const [items, setItems] = useState<QuotationItem[]>([
@@ -146,6 +149,7 @@ const Quotations = () => {
       validity_period: 30,
       discount: 0,
       terms_conditions: '',
+      vendor_logo: '',
     });
     setItems([{ name: '', quantity: 1, unit_price: 0, tax_percentage: 18, amount: 0 }]);
     setEditingQuotation(null);
@@ -186,6 +190,7 @@ const Quotations = () => {
       tax_amount: taxAmount,
       total_amount: total,
       terms_conditions: formData.terms_conditions || null,
+      vendor_logo: formData.vendor_logo || null,
     };
 
     setIsLoading(true);
@@ -405,6 +410,16 @@ const Quotations = () => {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="vendor_logo">Vendor Logo URL</Label>
+              <Input
+                id="vendor_logo"
+                value={formData.vendor_logo}
+                onChange={(e) => setFormData({...formData, vendor_logo: e.target.value})}
+                placeholder="https://example.com/logo.png"
+              />
+            </div>
+
             {/* Items Section */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -434,27 +449,16 @@ const Quotations = () => {
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                     <div>
                       <Label>Item Name *</Label>
-                      <Select
+                      <InventoryItemSelector
                         value={item.name}
-                        onValueChange={(value) => {
-                          const selectedItem = inventoryItems.find(inv => inv.product_name === value);
-                          if (selectedItem) {
-                            updateItem(index, 'name', value);
-                            updateItem(index, 'unit_price', selectedItem.selling_price);
+                        onChange={(value, price) => {
+                          updateItem(index, 'name', value);
+                          if (price) {
+                            updateItem(index, 'unit_price', price);
                           }
                         }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select from inventory" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {inventoryItems.map(invItem => (
-                            <SelectItem key={invItem.id} value={invItem.product_name}>
-                              {invItem.product_name} - ₹{invItem.selling_price}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder="Select from inventory"
+                      />
                     </div>
                     
                     <div>

@@ -28,6 +28,7 @@ interface Quotation {
   total_amount: number;
   terms_conditions?: string;
   status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
+  vendor_logo?: string;
 }
 
 interface QuotationViewerProps {
@@ -50,6 +51,7 @@ const QuotationViewer: React.FC<QuotationViewerProps> = ({ quotation, isOpen, on
             <style>
               body { font-family: Arial, sans-serif; margin: 20px; }
               .header { text-align: center; margin-bottom: 30px; }
+              .vendor-logo { max-width: 150px; max-height: 100px; margin-bottom: 20px; }
               .details { margin-bottom: 20px; }
               .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
               .items-table th, .items-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
@@ -60,6 +62,7 @@ const QuotationViewer: React.FC<QuotationViewerProps> = ({ quotation, isOpen, on
           </head>
           <body>
             <div class="header">
+              ${quotation.vendor_logo ? `<img src="${quotation.vendor_logo}" alt="Vendor Logo" class="vendor-logo" />` : ''}
               <h1>QUOTATION</h1>
               <h2>${quotation.quotation_number}</h2>
             </div>
@@ -136,6 +139,16 @@ const QuotationViewer: React.FC<QuotationViewerProps> = ({ quotation, isOpen, on
         </DialogHeader>
         
         <div className="space-y-6">
+          {quotation.vendor_logo && (
+            <div className="text-center">
+              <img 
+                src={quotation.vendor_logo} 
+                alt="Vendor Logo" 
+                className="max-w-[150px] max-h-[100px] mx-auto object-contain"
+              />
+            </div>
+          )}
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
               <h3 className="font-semibold mb-2">Client Details</h3>
