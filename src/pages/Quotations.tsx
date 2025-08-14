@@ -5,13 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Plus, Edit, Trash2, Send, FileText } from 'lucide-react';
+import { Plus, Edit, Trash2, Send, FileText, Eye, Download, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@clerk/clerk-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { useInventory } from '@/hooks/useInventory';
+import QuotationViewer from '@/components/QuotationViewer';
 import type { Tables } from '@/integrations/supabase/types';
 
 interface QuotationItem {
@@ -44,9 +46,12 @@ interface Quotation {
 const Quotations = () => {
   const { user } = useUser();
   const { toast } = useToast();
+  const { data: inventoryItems = [] } = useInventory();
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
 
   const [formData, setFormData] = useState({
@@ -242,6 +247,32 @@ const Quotations = () => {
     }
   };
 
+  const handleViewQuotation = (quotation: Quotation) => {
+    setSelectedQuotation(quotation);
+    setIsViewerOpen(true);
+  };
+
+  const handleDownloadQuotation = (quotation: Quotation) => {
+    setSelectedQuotation(quotation);
+    setIsViewerOpen(true);
+  };
+
+  const handleSendEmail = async (quotation: Quotation) => {
+    if (!quotation.client_email) {
+      toast({
+        title: "No Email Address",
+        description: "This quotation doesn't have a client email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Email Functionality",
+      description: "Email sending feature will be implemented with a backend service.",
+    });
+  };
+
   const addItem = () => {
     setItems([...items, { name: '', quantity: 1, unit_price: 0, tax_percentage: 18, amount: 0 }]);
   };
@@ -277,9 +308,9 @@ const Quotations = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <SidebarTrigger className="md:hidden" />
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Quotations</h1>
-            <p className="text-muted-foreground">Create and manage quotations for your clients</p>
+          <div className="text-left">
+            <h1 className="text-2xl md:text-3xl font-bold text-left">Quotations</h1>
+            <p className="text-muted-foreground text-left">Create and manage quotations for your clients</p>
           </div>
         </div>
         
@@ -403,11 +434,27 @@ const Quotations = () => {
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                     <div>
                       <Label>Item Name *</Label>
-                      <Input
+                      <Select
                         value={item.name}
-                        onChange={(e) => updateItem(index, 'name', e.target.value)}
-                        placeholder="Product/Service name"
-                      />
+                        onValueChange={(value) => {
+                          const selectedItem = inventoryItems.find(inv => inv.product_name === value);
+                          if (selectedItem) {
+                            updateItem(index, 'name', value);
+                            updateItem(index, 'unit_price', selectedItem.selling_price);
+                          }
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select from inventory" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {inventoryItems.map(invItem => (
+                            <SelectItem key={invItem.id} value={invItem.product_name}>
+                              {invItem.product_name} - ₹{invItem.selling_price}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     
                     <div>
@@ -546,17 +593,35 @@ const Quotations = () => {
             <Card key={quotation.id}>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{quotation.quotation_number}</CardTitle>
-                    <CardDescription>{quotation.client_name}</CardDescription>
+                  <div className="text-left">
+                    <CardTitle className="text-lg text-left">{quotation.quotation_number}</CardTitle>
+                    <CardDescription className="text-left">{quotation.client_name}</CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge className={getStatusColor(quotation.status)}>
                       {quotation.status.charAt(0).toUpperCase() + quotation.status.slice(1)}
                     </Badge>
                     <div className="flex gap-1">
-                      <Button variant="outline" size="sm">
-                        <Send className="h-4 w-4" />
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleViewQuotation(quotation)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDownloadQuotation(quotation)}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleSendEmail(quotation)}
+                      >
+                        <Mail className="h-4 w-4" />
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => handleDelete(quotation.id)}>
                         <Trash2 className="h-4 w-4" />
@@ -585,6 +650,15 @@ const Quotations = () => {
           ))}
         </div>
       )}
+
+      <QuotationViewer
+        quotation={selectedQuotation}
+        isOpen={isViewerOpen}
+        onClose={() => {
+          setIsViewerOpen(false);
+          setSelectedQuotation(null);
+        }}
+      />
     </div>
   );
 };
