@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -57,33 +57,45 @@ export type Database = {
         Row: {
           account_holder_name: string | null
           account_number: string
+          account_type: string | null
+          bank_address: string | null
           bank_name: string
           branch_name: string | null
           created_at: string | null
           id: string
           ifsc_code: string
+          is_primary: boolean | null
+          swift_code: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           account_holder_name?: string | null
           account_number: string
+          account_type?: string | null
+          bank_address?: string | null
           bank_name: string
           branch_name?: string | null
           created_at?: string | null
           id?: string
           ifsc_code: string
+          is_primary?: boolean | null
+          swift_code?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           account_holder_name?: string | null
           account_number?: string
+          account_type?: string | null
+          bank_address?: string | null
           bank_name?: string
           branch_name?: string | null
           created_at?: string | null
           id?: string
           ifsc_code?: string
+          is_primary?: boolean | null
+          swift_code?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -219,6 +231,60 @@ export type Database = {
           id?: string
           name?: string
           phone?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      inventory: {
+        Row: {
+          category: string
+          created_at: string | null
+          id: string
+          product_name: string
+          purchase_price: number | null
+          reorder_level: number | null
+          selling_price: number
+          sku: string
+          stock_quantity: number | null
+          supplier_contact: string | null
+          supplier_email: string | null
+          supplier_name: string | null
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          id?: string
+          product_name: string
+          purchase_price?: number | null
+          reorder_level?: number | null
+          selling_price: number
+          sku: string
+          stock_quantity?: number | null
+          supplier_contact?: string | null
+          supplier_email?: string | null
+          supplier_name?: string | null
+          type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          id?: string
+          product_name?: string
+          purchase_price?: number | null
+          reorder_level?: number | null
+          selling_price?: number
+          sku?: string
+          stock_quantity?: number | null
+          supplier_contact?: string | null
+          supplier_email?: string | null
+          supplier_name?: string | null
+          type?: string
           updated_at?: string | null
           user_id?: string
         }
@@ -396,6 +462,69 @@ export type Database = {
         }
         Relationships: []
       }
+      quotations: {
+        Row: {
+          client_address: string | null
+          client_email: string | null
+          client_name: string
+          client_phone: string | null
+          created_at: string | null
+          discount: number | null
+          id: string
+          items: Json
+          quotation_date: string
+          quotation_number: string
+          status: string | null
+          subtotal: number
+          tax_amount: number
+          terms_conditions: string | null
+          total_amount: number
+          updated_at: string | null
+          user_id: string
+          validity_period: number
+        }
+        Insert: {
+          client_address?: string | null
+          client_email?: string | null
+          client_name: string
+          client_phone?: string | null
+          created_at?: string | null
+          discount?: number | null
+          id?: string
+          items?: Json
+          quotation_date: string
+          quotation_number: string
+          status?: string | null
+          subtotal: number
+          tax_amount: number
+          terms_conditions?: string | null
+          total_amount: number
+          updated_at?: string | null
+          user_id: string
+          validity_period?: number
+        }
+        Update: {
+          client_address?: string | null
+          client_email?: string | null
+          client_name?: string
+          client_phone?: string | null
+          created_at?: string | null
+          discount?: number | null
+          id?: string
+          items?: Json
+          quotation_date?: string
+          quotation_number?: string
+          status?: string | null
+          subtotal?: number
+          tax_amount?: number
+          terms_conditions?: string | null
+          total_amount?: number
+          updated_at?: string | null
+          user_id?: string
+          validity_period?: number
+        }
+        Relationships: []
+      }
       reminder_responses: {
         Row: {
           id: string
@@ -476,6 +605,54 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           year?: number
+        }
+        Relationships: []
+      }
+      time_tracking: {
+        Row: {
+          client_name: string | null
+          created_at: string | null
+          duration_minutes: number | null
+          end_time: string | null
+          hourly_rate: number | null
+          id: string
+          project_name: string
+          start_time: string
+          status: string | null
+          task_description: string | null
+          total_amount: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          client_name?: string | null
+          created_at?: string | null
+          duration_minutes?: number | null
+          end_time?: string | null
+          hourly_rate?: number | null
+          id?: string
+          project_name: string
+          start_time: string
+          status?: string | null
+          task_description?: string | null
+          total_amount?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          client_name?: string | null
+          created_at?: string | null
+          duration_minutes?: number | null
+          end_time?: string | null
+          hourly_rate?: number | null
+          id?: string
+          project_name?: string
+          start_time?: string
+          status?: string | null
+          task_description?: string | null
+          total_amount?: number | null
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }

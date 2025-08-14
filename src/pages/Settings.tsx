@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Upload, Save, User, Building, CreditCard, FileImage } from 'lucide-react';
+import { Save, Building, CreditCard, FileImage, Link } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -34,10 +35,10 @@ const Settings = () => {
     accountHolderName: '',
   });
 
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [signatureFile, setSignatureFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string>('');
-  const [signaturePreview, setSignaturePreview] = useState<string>('');
+  const [businessAssets, setBusinessAssets] = useState({
+    logoUrl: '',
+    signatureUrl: '',
+  });
 
   // Load data from user metadata on component mount
   useEffect(() => {
@@ -52,12 +53,12 @@ const Settings = () => {
         setBankDetails(metadata.bankDetails);
       }
       
-      if (metadata.logoBase64) {
-        setLogoPreview(metadata.logoBase64);
+      if (metadata.logoUrl) {
+        setBusinessAssets(prev => ({ ...prev, logoUrl: metadata.logoUrl }));
       }
       
-      if (metadata.signatureBase64) {
-        setSignaturePreview(metadata.signatureBase64);
+      if (metadata.signatureUrl) {
+        setBusinessAssets(prev => ({ ...prev, signatureUrl: metadata.signatureUrl }));
       }
     }
   }, [user]);
@@ -68,15 +69,6 @@ const Settings = () => {
 
   const validateIFSCCode = (ifsc: string) => {
     return /^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc);
-  };
-
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
-    });
   };
 
   const handleSaveBusinessInfo = async () => {
@@ -141,61 +133,26 @@ const Settings = () => {
     }
   };
 
-  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setLogoFile(file);
-      const base64 = await fileToBase64(file);
-      setLogoPreview(base64);
+  const handleSaveBusinessAssets = async () => {
+    try {
+      await user?.update({
+        unsafeMetadata: {
+          ...user.unsafeMetadata,
+          logoUrl: businessAssets.logoUrl,
+          signatureUrl: businessAssets.signatureUrl,
+        }
+      });
       
-      try {
-        await user?.update({
-          unsafeMetadata: {
-            ...user.unsafeMetadata,
-            logoBase64: base64,
-          }
-        });
-        
-        toast({
-          title: "Logo Uploaded",
-          description: "Your business logo has been uploaded successfully.",
-        });
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to save logo.",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
-  const handleSignatureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setSignatureFile(file);
-      const base64 = await fileToBase64(file);
-      setSignaturePreview(base64);
-      
-      try {
-        await user?.update({
-          unsafeMetadata: {
-            ...user.unsafeMetadata,
-            signatureBase64: base64,
-          }
-        });
-        
-        toast({
-          title: "Signature Uploaded",
-          description: "Your signature has been uploaded successfully.",
-        });
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to save signature.",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Business Assets Updated",
+        description: "Your logo and signature URLs have been saved successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save business assets.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -213,11 +170,10 @@ const Settings = () => {
       </div>
 
       <Tabs defaultValue="business" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="business">Business</TabsTrigger>
-          <TabsTrigger value="bank">Banking</TabsTrigger>
+          <TabsTrigger value="banking">Banking</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
-          <TabsTrigger value="account">Account</TabsTrigger>
         </TabsList>
 
         <TabsContent value="business">
@@ -330,7 +286,7 @@ const Settings = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="bank">
+        <TabsContent value="banking">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -409,137 +365,87 @@ const Settings = () => {
         </TabsContent>
 
         <TabsContent value="branding">
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileImage className="h-5 w-5" />
-                  Business Logo
-                </CardTitle>
-                <CardDescription>
-                  Upload your business logo to appear on invoices
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                    {logoPreview ? (
-                      <img 
-                        src={logoPreview} 
-                        alt="Logo preview" 
-                        className="w-full h-full object-contain rounded-lg" 
-                      />
-                    ) : (
-                      <FileImage className="h-8 w-8 text-gray-400" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleLogoUpload}
-                      className="hidden"
-                      id="logo-upload"
-                    />
-                    <Label htmlFor="logo-upload" className="cursor-pointer">
-                      <Button variant="outline" asChild>
-                        <span>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload Logo
-                        </span>
-                      </Button>
-                    </Label>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      PNG, JPG up to 2MB. Recommended: 200x200px
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Digital Signature
-                </CardTitle>
-                <CardDescription>
-                  Upload your signature to appear on invoices
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                    {signaturePreview ? (
-                      <img 
-                        src={signaturePreview} 
-                        alt="Signature preview" 
-                        className="w-full h-full object-contain rounded-lg" 
-                      />
-                    ) : (
-                      <User className="h-8 w-8 text-gray-400" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleSignatureUpload}
-                      className="hidden"
-                      id="signature-upload"
-                    />
-                    <Label htmlFor="signature-upload" className="cursor-pointer">
-                      <Button variant="outline" asChild>
-                        <span>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload Signature
-                        </span>
-                      </Button>
-                    </Label>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      PNG, JPG up to 1MB. Recommended: transparent background
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="account">
           <Card>
             <CardHeader>
-              <CardTitle>Account Settings</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <FileImage className="h-5 w-5" />
+                Business Branding
+              </CardTitle>
               <CardDescription>
-                Manage your account preferences and security
+                Manage your business logo and signature URLs for invoices
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium">Change Password</h4>
-                  <p className="text-sm text-muted-foreground">Update your account password</p>
-                  <Button variant="outline" className="mt-2">
-                    Change Password
-                  </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="logoUrl">Business Logo URL</Label>
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+                      {businessAssets.logoUrl ? (
+                        <img 
+                          src={businessAssets.logoUrl} 
+                          alt="Logo preview" 
+                          className="w-full h-full object-contain rounded-lg" 
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <FileImage className="h-6 w-6 text-gray-400" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <Input
+                        id="logoUrl"
+                        type="url"
+                        value={businessAssets.logoUrl}
+                        onChange={(e) => setBusinessAssets({...businessAssets, logoUrl: e.target.value})}
+                        placeholder="https://example.com/logo.png"
+                      />
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Enter the URL of your business logo
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                
-                <div>
-                  <h4 className="font-medium">Export Data</h4>
-                  <p className="text-sm text-muted-foreground">Download all your data in JSON format</p>
-                  <Button variant="outline" className="mt-2">
-                    Export Data
-                  </Button>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium text-red-600">Delete Account</h4>
-                  <p className="text-sm text-muted-foreground">Permanently delete your account and all data</p>
-                  <Button variant="destructive" className="mt-2">
-                    Delete Account
-                  </Button>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signatureUrl">Digital Signature URL</Label>
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+                      {businessAssets.signatureUrl ? (
+                        <img 
+                          src={businessAssets.signatureUrl} 
+                          alt="Signature preview" 
+                          className="w-full h-full object-contain rounded-lg" 
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <Link className="h-6 w-6 text-gray-400" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <Input
+                        id="signatureUrl"
+                        type="url"
+                        value={businessAssets.signatureUrl}
+                        onChange={(e) => setBusinessAssets({...businessAssets, signatureUrl: e.target.value})}
+                        placeholder="https://example.com/signature.png"
+                      />
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Enter the URL of your digital signature
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
+              
+              <Button onClick={handleSaveBusinessAssets} className="w-full sm:w-auto">
+                <Save className="h-4 w-4 mr-2" />
+                Save Branding Assets
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
