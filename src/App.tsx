@@ -1,3 +1,4 @@
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
@@ -6,8 +7,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { ClerkAuthProvider } from "@/components/ClerkAuthProvider";
-import { ClerkProtectedRoute } from "@/components/ClerkProtectedRoute";
+import { AuthProvider } from "@/components/ClerkAuthProvider";
+import ClerkProtectedRoute from "@/components/ClerkProtectedRoute";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import CreateInvoice from "./pages/CreateInvoice";
@@ -38,7 +39,7 @@ function App() {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <ClerkAuthProvider>
+            <AuthProvider>
               <Routes>
                 <Route path="/login" element={<ClerkLogin />} />
                 <Route path="/onboarding/:sessionId?" element={<Onboarding />} />
@@ -236,7 +237,7 @@ function App() {
                 } />
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </ClerkAuthProvider>
+            </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>
       </ThemeProvider>

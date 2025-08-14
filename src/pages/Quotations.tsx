@@ -6,20 +6,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Plus, Send, Eye, Edit, Trash2, FileText } from 'lucide-react';
+import { Plus, Edit, Trash2, Send, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@clerk/clerk-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import type { Tables } from '@/integrations/supabase/types';
 
 interface QuotationItem {
   name: string;
   quantity: number;
-  unitPrice: number;
-  taxPercent: number;
-  total: number;
+  unit_price: number;
+  tax_percentage: number;
+  amount: number;
 }
 
 interface Quotation {
@@ -62,7 +63,7 @@ const Quotations = () => {
   });
 
   const [items, setItems] = useState<QuotationItem[]>([
-    { name: '', quantity: 1, unitPrice: 0, taxPercent: 18, total: 0 }
+    { name: '', quantity: 1, unit_price: 0, tax_percentage: 18, amount: 0 }
   ]);
 
   useEffect(() => {
@@ -81,7 +82,15 @@ const Quotations = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setQuotations(data || []);
+      
+      // Transform the data to match our interface
+      const transformedData: Quotation[] = (data || []).map(item => ({
+        ...item,
+        items: Array.isArray(item.items) ? item.items as QuotationItem[] : [],
+        status: item.status as 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired'
+      }));
+      
+      setQuotations(transformedData);
     } catch (error) {
       console.error('Error fetching quotations:', error);
       toast({
@@ -94,49 +103,37 @@ const Quotations = () => {
     }
   };
 
+  const calculateItemAmount = (item: QuotationItem) => {
+    const baseAmount = item.quantity * item.unit_price;
+    const taxAmount = (baseAmount * item.tax_percentage) / 100;
+    return baseAmount + taxAmount;
+  };
+
+  const calculateTotals = () => {
+    const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+    const taxAmount = items.reduce((sum, item) => {
+      const baseAmount = item.quantity * item.unit_price;
+      return sum + ((baseAmount * item.tax_percentage) / 100);
+    }, 0);
+    const totalBeforeDiscount = subtotal + taxAmount;
+    const discountAmount = (totalBeforeDiscount * formData.discount) / 100;
+    const total = totalBeforeDiscount - discountAmount;
+
+    return { subtotal, taxAmount, total };
+  };
+
   const generateQuotationNumber = () => {
     const date = new Date();
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
     const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    return `QUO-${year}${month}-${random}`;
-  };
-
-  const calculateItemTotal = (item: QuotationItem) => {
-    const subtotal = item.quantity * item.unitPrice;
-    const taxAmount = (subtotal * item.taxPercent) / 100;
-    return subtotal + taxAmount;
-  };
-
-  const calculateTotals = () => {
-    const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-    const taxAmount = items.reduce((sum, item) => sum + ((item.quantity * item.unitPrice * item.taxPercent) / 100), 0);
-    const discountAmount = (subtotal * formData.discount) / 100;
-    const total = subtotal + taxAmount - discountAmount;
-    
-    return { subtotal, taxAmount, total: Math.max(0, total) };
-  };
-
-  const handleItemChange = (index: number, field: keyof QuotationItem, value: string | number) => {
-    const updatedItems = [...items];
-    updatedItems[index] = { ...updatedItems[index], [field]: value };
-    updatedItems[index].total = calculateItemTotal(updatedItems[index]);
-    setItems(updatedItems);
-  };
-
-  const addItem = () => {
-    setItems([...items, { name: '', quantity: 1, unitPrice: 0, taxPercent: 18, total: 0 }]);
-  };
-
-  const removeItem = (index: number) => {
-    if (items.length > 1) {
-      setItems(items.filter((_, i) => i !== index));
-    }
+    return `QUO-${year}${month}${day}-${random}`;
   };
 
   const resetForm = () => {
     setFormData({
-      quotation_number: '',
+      quotation_number: generateQuotationNumber(),
       client_name: '',
       client_email: '',
       client_phone: '',
@@ -146,41 +143,45 @@ const Quotations = () => {
       discount: 0,
       terms_conditions: '',
     });
-    setItems([{ name: '', quantity: 1, unitPrice: 0, taxPercent: 18, total: 0 }]);
+    setItems([{ name: '', quantity: 1, unit_price: 0, tax_percentage: 18, amount: 0 }]);
     setEditingQuotation(null);
   };
 
   const handleSubmit = async () => {
     if (!user?.id) return;
 
-    if (!formData.client_name || !formData.quotation_number) {
+    if (!formData.client_name || !formData.quotation_number || items.some(item => !item.name)) {
       toast({
         title: "Validation Error",
-        description: "Client name and quotation number are required.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const validItems = items.filter(item => item.name && item.quantity > 0 && item.unitPrice > 0);
-    if (validItems.length === 0) {
-      toast({
-        title: "Validation Error",
-        description: "At least one valid item is required.",
+        description: "Please fill in all required fields.",
         variant: "destructive",
       });
       return;
     }
 
     const { subtotal, taxAmount, total } = calculateTotals();
+    
+    // Update items with calculated amounts
+    const updatedItems = items.map(item => ({
+      ...item,
+      amount: calculateItemAmount(item)
+    }));
 
     const quotationData = {
-      ...formData,
       user_id: user.id,
-      items: validItems,
+      quotation_number: formData.quotation_number,
+      client_name: formData.client_name,
+      client_email: formData.client_email || null,
+      client_phone: formData.client_phone || null,
+      client_address: formData.client_address || null,
+      quotation_date: formData.quotation_date,
+      validity_period: formData.validity_period,
+      items: JSON.stringify(updatedItems),
+      discount: formData.discount,
       subtotal,
       tax_amount: taxAmount,
       total_amount: total,
+      terms_conditions: formData.terms_conditions || null,
     };
 
     setIsLoading(true);
@@ -201,7 +202,7 @@ const Quotations = () => {
         if (error) throw error;
         toast({ title: "Success", description: "Quotation created successfully!" });
       }
-
+      
       setIsDialogOpen(false);
       resetForm();
       fetchQuotations();
@@ -215,23 +216,6 @@ const Quotations = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleEdit = (quotation: Quotation) => {
-    setEditingQuotation(quotation);
-    setFormData({
-      quotation_number: quotation.quotation_number,
-      client_name: quotation.client_name,
-      client_email: quotation.client_email || '',
-      client_phone: quotation.client_phone || '',
-      client_address: quotation.client_address || '',
-      quotation_date: quotation.quotation_date,
-      validity_period: quotation.validity_period,
-      discount: quotation.discount,
-      terms_conditions: quotation.terms_conditions || '',
-    });
-    setItems(quotation.items);
-    setIsDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -259,6 +243,23 @@ const Quotations = () => {
     }
   };
 
+  const addItem = () => {
+    setItems([...items, { name: '', quantity: 1, unit_price: 0, tax_percentage: 18, amount: 0 }]);
+  };
+
+  const removeItem = (index: number) => {
+    if (items.length > 1) {
+      setItems(items.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateItem = (index: number, field: keyof QuotationItem, value: string | number) => {
+    const updatedItems = [...items];
+    updatedItems[index] = { ...updatedItems[index], [field]: value };
+    updatedItems[index].amount = calculateItemAmount(updatedItems[index]);
+    setItems(updatedItems);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'draft': return 'bg-gray-100 text-gray-800';
@@ -269,6 +270,8 @@ const Quotations = () => {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  const { subtotal, taxAmount, total } = calculateTotals();
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -288,280 +291,301 @@ const Quotations = () => {
               setFormData(prev => ({ ...prev, quotation_number: generateQuotationNumber() }));
             }}>
               <Plus className="h-4 w-4 mr-2" />
-              New Quotation
+              Create Quotation
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingQuotation ? 'Edit Quotation' : 'Create New Quotation'}</DialogTitle>
+              <DialogTitle>{editingQuotation ? 'Edit' : 'Create'} Quotation</DialogTitle>
               <DialogDescription>Fill in the details to create a new quotation</DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-6">
-              {/* Client Details */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="quotation_number">Quotation Number *</Label>
-                  <Input
-                    id="quotation_number"
-                    value={formData.quotation_number}
-                    onChange={(e) => setFormData({...formData, quotation_number: e.target.value})}
-                    placeholder="QUO-2024-001"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="quotation_date">Quotation Date *</Label>
-                  <Input
-                    id="quotation_date"
-                    type="date"
-                    value={formData.quotation_date}
-                    onChange={(e) => setFormData({...formData, quotation_date: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="client_name">Client Name *</Label>
-                  <Input
-                    id="client_name"
-                    value={formData.client_name}
-                    onChange={(e) => setFormData({...formData, client_name: e.target.value})}
-                    placeholder="Client company name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="validity_period">Validity Period (days)</Label>
-                  <Input
-                    id="validity_period"
-                    type="number"
-                    value={formData.validity_period}
-                    onChange={(e) => setFormData({...formData, validity_period: parseInt(e.target.value) || 30})}
-                    placeholder="30"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="client_email">Client Email</Label>
-                  <Input
-                    id="client_email"
-                    type="email"
-                    value={formData.client_email}
-                    onChange={(e) => setFormData({...formData, client_email: e.target.value})}
-                    placeholder="client@company.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="client_phone">Client Phone</Label>
-                  <Input
-                    id="client_phone"
-                    value={formData.client_phone}
-                    onChange={(e) => setFormData({...formData, client_phone: e.target.value})}
-                    placeholder="+91 98765 43210"
-                  />
-                </div>
-              </div>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="client_address">Client Address</Label>
-                <Textarea
-                  id="client_address"
-                  value={formData.client_address}
-                  onChange={(e) => setFormData({...formData, client_address: e.target.value})}
-                  placeholder="Client address"
-                  rows={2}
+                <Label htmlFor="quotation_number">Quotation Number *</Label>
+                <Input
+                  id="quotation_number"
+                  value={formData.quotation_number}
+                  onChange={(e) => setFormData({...formData, quotation_number: e.target.value})}
+                  placeholder="QUO-2024-001"
                 />
               </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="quotation_date">Quotation Date *</Label>
+                <Input
+                  id="quotation_date"
+                  type="date"
+                  value={formData.quotation_date}
+                  onChange={(e) => setFormData({...formData, quotation_date: e.target.value})}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="client_name">Client Name *</Label>
+                <Input
+                  id="client_name"
+                  value={formData.client_name}
+                  onChange={(e) => setFormData({...formData, client_name: e.target.value})}
+                  placeholder="Client or company name"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="validity_period">Validity Period (Days)</Label>
+                <Input
+                  id="validity_period"
+                  type="number"
+                  value={formData.validity_period}
+                  onChange={(e) => setFormData({...formData, validity_period: parseInt(e.target.value) || 30})}
+                  placeholder="30"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="client_email">Client Email</Label>
+                <Input
+                  id="client_email"
+                  type="email"
+                  value={formData.client_email}
+                  onChange={(e) => setFormData({...formData, client_email: e.target.value})}
+                  placeholder="client@example.com"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="client_phone">Client Phone</Label>
+                <Input
+                  id="client_phone"
+                  value={formData.client_phone}
+                  onChange={(e) => setFormData({...formData, client_phone: e.target.value})}
+                  placeholder="+91 9876543210"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="client_address">Client Address</Label>
+              <Textarea
+                id="client_address"
+                value={formData.client_address}
+                onChange={(e) => setFormData({...formData, client_address: e.target.value})}
+                placeholder="Complete address"
+                rows={2}
+              />
+            </div>
 
-              {/* Items */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-base font-medium">Items</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addItem}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Item
-                  </Button>
-                </div>
-                
-                {items.map((item, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-6 gap-2 p-4 border rounded-lg">
-                    <div className="md:col-span-2">
-                      <Label>Item Name</Label>
-                      <Input
-                        value={item.name}
-                        onChange={(e) => handleItemChange(index, 'name', e.target.value)}
-                        placeholder="Product/Service name"
-                      />
-                    </div>
-                    <div>
-                      <Label>Quantity</Label>
-                      <Input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 0)}
-                        min="1"
-                      />
-                    </div>
-                    <div>
-                      <Label>Unit Price</Label>
-                      <Input
-                        type="number"
-                        value={item.unitPrice}
-                        onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)}
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-                    <div>
-                      <Label>Tax %</Label>
-                      <Input
-                        type="number"
-                        value={item.taxPercent}
-                        onChange={(e) => handleItemChange(index, 'taxPercent', parseFloat(e.target.value) || 0)}
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-                    <div className="flex items-end gap-2">
-                      <div className="flex-1">
-                        <Label>Total</Label>
-                        <div className="text-sm font-medium p-2 bg-gray-50 rounded">
-                          ₹{calculateItemTotal(item).toFixed(2)}
-                        </div>
-                      </div>
+            {/* Items Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label>Items *</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addItem}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Item
+                </Button>
+              </div>
+              
+              {items.map((item, index) => (
+                <div key={index} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">Item {index + 1}</h4>
+                    {items.length > 1 && (
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={() => removeItem(index)}
-                        disabled={items.length === 1}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                    <div>
+                      <Label>Item Name *</Label>
+                      <Input
+                        value={item.name}
+                        onChange={(e) => updateItem(index, 'name', e.target.value)}
+                        placeholder="Product/Service name"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label>Quantity</Label>
+                      <Input
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
+                        placeholder="1"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label>Unit Price (₹)</Label>
+                      <Input
+                        type="number"
+                        value={item.unit_price}
+                        onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                        placeholder="0.00"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label>Tax (%)</Label>
+                      <Input
+                        type="number"
+                        value={item.tax_percentage}
+                        onChange={(e) => updateItem(index, 'tax_percentage', parseFloat(e.target.value) || 0)}
+                        placeholder="18"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label>Amount</Label>
+                      <Input
+                        type="number"
+                        value={item.amount.toFixed(2)}
+                        readOnly
+                        className="bg-gray-50"
+                      />
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
+            </div>
 
-              {/* Totals and Terms */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Totals */}
+            <div className="border-t pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="discount">Discount %</Label>
+                  <Label htmlFor="discount">Discount (%)</Label>
                   <Input
                     id="discount"
                     type="number"
                     value={formData.discount}
                     onChange={(e) => setFormData({...formData, discount: parseFloat(e.target.value) || 0})}
+                    placeholder="0"
                     min="0"
                     max="100"
                     step="0.01"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Summary</Label>
-                  <div className="p-3 bg-gray-50 rounded-lg space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span>Subtotal:</span>
-                      <span>₹{calculateTotals().subtotal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Tax:</span>
-                      <span>₹{calculateTotals().taxAmount.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Discount:</span>
-                      <span>-₹{((calculateTotals().subtotal * formData.discount) / 100).toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between font-medium border-t pt-1">
-                      <span>Total:</span>
-                      <span>₹{calculateTotals().total.toFixed(2)}</span>
-                    </div>
+                
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <span>Subtotal:</span>
+                    <span>₹{subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tax:</span>
+                    <span>₹{taxAmount.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Discount:</span>
+                    <span>-₹{((subtotal + taxAmount) * formData.discount / 100).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold border-t pt-1">
+                    <span>Total:</span>
+                    <span>₹{total.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="terms_conditions">Terms & Conditions</Label>
+              <Textarea
+                id="terms_conditions"
+                value={formData.terms_conditions}
+                onChange={(e) => setFormData({...formData, terms_conditions: e.target.value})}
+                placeholder="Payment terms, delivery conditions, etc."
+                rows={3}
+              />
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="terms_conditions">Terms & Conditions</Label>
-                <Textarea
-                  id="terms_conditions"
-                  value={formData.terms_conditions}
-                  onChange={(e) => setFormData({...formData, terms_conditions: e.target.value})}
-                  placeholder="Enter terms and conditions"
-                  rows={3}
-                />
-              </div>
-
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSubmit} disabled={isLoading}>
-                  {isLoading ? "Saving..." : editingQuotation ? "Update Quotation" : "Create Quotation"}
-                </Button>
-              </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSubmit} disabled={isLoading}>
+                {isLoading ? "Saving..." : editingQuotation ? "Update" : "Create"} Quotation
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
       {/* Quotations List */}
-      <div className="grid gap-4">
-        {isLoading ? (
-          <div className="text-center py-8">Loading quotations...</div>
-        ) : quotations.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-8">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">No quotations yet</h3>
-              <p className="text-muted-foreground mb-4">Create your first quotation to get started</p>
-              <Button onClick={() => {
-                resetForm();
-                setFormData(prev => ({ ...prev, quotation_number: generateQuotationNumber() }));
-                setIsDialogOpen(true);
-              }}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Quotation
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          quotations.map((quotation) => (
+      {isLoading ? (
+        <div className="text-center py-8">Loading quotations...</div>
+      ) : quotations.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-8">
+            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium mb-2">No quotations yet</h3>
+            <p className="text-muted-foreground mb-4">Create your first quotation to get started</p>
+            <Button onClick={() => {
+              resetForm();
+              setFormData(prev => ({ ...prev, quotation_number: generateQuotationNumber() }));
+              setIsDialogOpen(true);
+            }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create First Quotation
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
+          {quotations.map((quotation) => (
             <Card key={quotation.id}>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-lg">{quotation.quotation_number}</CardTitle>
-                    <CardDescription>
-                      {quotation.client_name} • {new Date(quotation.quotation_date).toLocaleDateString()}
-                    </CardDescription>
+                    <CardDescription>{quotation.client_name}</CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge className={getStatusColor(quotation.status)}>
                       {quotation.status.charAt(0).toUpperCase() + quotation.status.slice(1)}
                     </Badge>
-                    <div className="text-lg font-semibold">
-                      ₹{quotation.total_amount.toFixed(2)}
+                    <div className="flex gap-1">
+                      <Button variant="outline" size="sm">
+                        <Send className="h-4 w-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleDelete(quotation.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    Valid until: {new Date(new Date(quotation.quotation_date).getTime() + quotation.validity_period * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium">Date:</span> {new Date(quotation.quotation_date).toLocaleDateString()}
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(quotation)}>
-                      <Edit className="h-4 w-4 mr-1" />
-                      Edit
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDelete(quotation.id)}>
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete
-                    </Button>
+                  <div>
+                    <span className="font-medium">Valid Until:</span> {new Date(new Date(quotation.quotation_date).getTime() + quotation.validity_period * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                  </div>
+                  <div>
+                    <span className="font-medium">Items:</span> {quotation.items.length}
+                  </div>
+                  <div>
+                    <span className="font-medium">Total:</span> ₹{quotation.total_amount.toFixed(2)}
                   </div>
                 </div>
               </CardContent>
             </Card>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

@@ -62,10 +62,17 @@ const TimeTracking = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTimeEntries(data || []);
+      
+      // Transform the data to match our interface
+      const transformedData: TimeEntry[] = (data || []).map(entry => ({
+        ...entry,
+        status: entry.status as 'active' | 'paused' | 'completed'
+      }));
+      
+      setTimeEntries(transformedData);
       
       // Find active entry
-      const active = data?.find(entry => entry.status === 'active');
+      const active = transformedData.find(entry => entry.status === 'active');
       setActiveEntry(active || null);
     } catch (error) {
       console.error('Error fetching time entries:', error);
@@ -138,7 +145,12 @@ const TimeTracking = () => {
 
       if (error) throw error;
       
-      setActiveEntry(data);
+      const transformedEntry: TimeEntry = {
+        ...data,
+        status: data.status as 'active' | 'paused' | 'completed'
+      };
+      
+      setActiveEntry(transformedEntry);
       setIsDialogOpen(false);
       resetForm();
       fetchTimeEntries();
