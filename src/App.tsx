@@ -1,4 +1,5 @@
 
+
 import './App.css';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from "@/components/ui/sonner";
@@ -31,12 +32,12 @@ function App() {
   return (
     <AuthProvider>
       <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-        <SidebarProvider>
-          <div className="min-h-screen flex w-full">
-            <AppSidebar />
-            <SidebarInset>
-              <Toaster />
-              <BrowserRouter>
+        <BrowserRouter>
+          <SidebarProvider>
+            <div className="min-h-screen flex w-full">
+              <AppSidebar />
+              <SidebarInset>
+                <Toaster />
                 <Routes>
                   <Route path="/login" element={<ClerkLogin />} />
                   <Route 
@@ -169,13 +170,14 @@ function App() {
                   />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </BrowserRouter>
-            </SidebarInset>
-          </div>
-        </SidebarProvider>
+              </SidebarInset>
+            </div>
+          </SidebarProvider>
+        </BrowserRouter>
       </ThemeProvider>
     </AuthProvider>
   );
 }
 
 export default App;
+
