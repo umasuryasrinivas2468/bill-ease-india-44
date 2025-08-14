@@ -99,6 +99,21 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Page headings alignment */
+  .page-heading {
+    @apply text-left;
+  }
+
+  /* Ensure all h1, h2, h3 elements are left-aligned by default */
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-left;
+  }
+
+  /* Override any center alignment for page titles */
+  .page-title {
+    @apply text-left;
+  }
 }
 
 /* Enhanced Relevance AI branding hiding with better coverage */
