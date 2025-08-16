@@ -315,19 +315,19 @@ const Reports = () => {
         </CardContent>
       </Card>
 
-      {/* New: Day Book */}
+      {/* Day Book */}
       <DayBook />
 
-      {/* New: GSTR-3B Filing Support */}
+      {/* GSTR-3B Filing Support */}
       <GSTR3BSummary />
 
-      {/* New: Credit / Debit Notes Section */}
+      {/* Credit / Debit Notes Section */}
       <CreditDebitNotesSection />
 
-      {/* New: Aging Reports */}
+      {/* Aging Reports */}
       <AgingReports />
 
-      {/* New: AR / AP Reports */}
+      {/* AR / AP Reports */}
       <ReceivablesReport />
       <PayablesReport />
     </div>

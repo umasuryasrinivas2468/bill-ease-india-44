@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@clerk/clerk-react';
@@ -81,8 +82,10 @@ export const useCreateInvoice = () => {
       
       const normalizedUserId = normalizeUserId(user.id);
       const payload = { ...invoiceData, user_id: normalizedUserId };
-      console.log('[CreateInvoice] Preparing to insert into table: /invoices');
-      console.log('[CreateInvoice] Payload:', payload);
+      
+      console.log('[CreateInvoice] Creating invoice with payload:', payload);
+      console.log('[CreateInvoice] Target table: invoices');
+      console.log('[CreateInvoice] Supabase URL:', supabase.supabaseUrl);
       
       const { data, error } = await supabase
         .from('invoices')
@@ -91,15 +94,21 @@ export const useCreateInvoice = () => {
         .single();
       
       if (error) {
-        // Enhanced 404 diagnostics (if some layer attempts HTTP route)
-        if ((error as any)?.code === '404' || String(error.message || '').includes('404')) {
-          console.error('[CreateInvoice] 404 while creating invoice');
-          console.error('[CreateInvoice] Expected endpoint: Supabase table "invoices" via RPC');
-          console.error('[CreateInvoice] Last known payload:', payload);
+        console.error('[CreateInvoice] Supabase error:', error);
+        console.error('[CreateInvoice] Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        
+        if (error.code === 'PGRST116') {
+          throw new Error('Database table not found. Please check your database setup.');
+        } else if (error.code === 'PGRST301') {
+          throw new Error('Permission denied. Please check your authentication.');
         } else {
-          console.error('[CreateInvoice] Supabase error creating invoice:', error);
+          throw new Error(`Failed to create invoice: ${error.message}`);
         }
-        throw new Error(`Failed to save invoice: ${error.message}`);
       }
       
       console.log('[CreateInvoice] Successfully created invoice:', data);
@@ -111,7 +120,7 @@ export const useCreateInvoice = () => {
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     },
     onError: (error) => {
-      console.error('Mutation error:', error);
+      console.error('Invoice creation failed:', error);
     },
   });
 };

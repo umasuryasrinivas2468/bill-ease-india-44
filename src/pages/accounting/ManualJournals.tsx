@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, AlertTriangle } from 'lucide-react';
 
 interface Account {
   id: string;
@@ -37,7 +37,6 @@ interface Journal {
   total_debit: number;
   total_credit: number;
   status: string;
-  journal_lines: JournalLine[];
 }
 
 const ManualJournals = () => {
@@ -87,13 +86,7 @@ const ManualJournals = () => {
       
       const { data, error } = await supabase
         .from('journals')
-        .select(`
-          *,
-          journal_lines (
-            *,
-            accounts (account_name)
-          )
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .order('journal_date', { ascending: false });
       
@@ -116,6 +109,8 @@ const ManualJournals = () => {
           journal_number: generateJournalNumber(),
           journal_date: journalData.journal_date,
           narration: journalData.narration,
+          total_debit: journalData.total_debit,
+          total_credit: journalData.total_credit,
           status: 'posted'
         })
         .select()
@@ -189,11 +184,12 @@ const ManualJournals = () => {
   const calculateTotals = () => {
     const totalDebit = journalLines.reduce((sum, line) => sum + (Number(line.debit) || 0), 0);
     const totalCredit = journalLines.reduce((sum, line) => sum + (Number(line.credit) || 0), 0);
-    return { totalDebit, totalCredit };
+    const difference = totalDebit - totalCredit;
+    return { totalDebit, totalCredit, difference };
   };
 
   const validateAndSubmit = () => {
-    const { totalDebit, totalCredit } = calculateTotals();
+    const { totalDebit, totalCredit, difference } = calculateTotals();
     
     // Validation
     if (!narration.trim()) {
@@ -201,8 +197,8 @@ const ManualJournals = () => {
       return;
     }
     
-    if (Math.abs(totalDebit - totalCredit) > 0.01) {
-      toast.error('Total debits must equal total credits');
+    if (Math.abs(difference) > 0.01) {
+      toast.error(`Journal is not balanced. Difference: ₹${Math.abs(difference).toFixed(2)}`);
       return;
     }
     
@@ -232,6 +228,8 @@ const ManualJournals = () => {
     createJournalMutation.mutate({
       journal_date: journalDate,
       narration,
+      total_debit: totalDebit,
+      total_credit: totalCredit,
       journal_lines: validLines
     });
   };
@@ -245,8 +243,8 @@ const ManualJournals = () => {
     ]);
   };
 
-  const { totalDebit, totalCredit } = calculateTotals();
-  const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01 && totalDebit > 0;
+  const { totalDebit, totalCredit, difference } = calculateTotals();
+  const isBalanced = Math.abs(difference) < 0.01 && totalDebit > 0;
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -366,13 +364,21 @@ const ManualJournals = () => {
               </Table>
             </div>
 
-            {/* Totals */}
-            <div className="flex justify-end space-x-4 p-4 bg-muted rounded">
+            {/* Totals with Balance Check */}
+            <div className={`flex justify-end space-x-4 p-4 rounded ${
+              Math.abs(difference) > 0.01 ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'
+            }`}>
               <div>Total Debit: ₹{totalDebit.toFixed(2)}</div>
               <div>Total Credit: ₹{totalCredit.toFixed(2)}</div>
-              <div className={`font-semibold ${isBalanced ? 'text-green-600' : 'text-red-600'}`}>
-                {isBalanced ? 'Balanced ✓' : 'Not Balanced ✗'}
-              </div>
+              {Math.abs(difference) > 0.01 && (
+                <div className="flex items-center text-red-600 font-semibold">
+                  <AlertTriangle className="h-4 w-4 mr-1" />
+                  Difference: ₹{Math.abs(difference).toFixed(2)} {difference > 0 ? '(Debit excess)' : '(Credit excess)'}
+                </div>
+              )}
+              {isBalanced && (
+                <div className="text-green-600 font-semibold">Balanced ✓</div>
+              )}
             </div>
 
             <div className="flex justify-end space-x-2">
@@ -380,6 +386,7 @@ const ManualJournals = () => {
               <Button 
                 onClick={validateAndSubmit}
                 disabled={!isBalanced || createJournalMutation.isPending}
+                className={!isBalanced ? 'opacity-50 cursor-not-allowed' : ''}
               >
                 {createJournalMutation.isPending ? 'Creating...' : 'Create Journal Entry'}
               </Button>
