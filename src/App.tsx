@@ -1,13 +1,13 @@
 
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ClerkProvider } from '@clerk/clerk-react';
-import ClerkAuthProvider from './components/ClerkAuthProvider';
+import { AuthProvider } from './components/ClerkAuthProvider';
 import ProtectedRoute from './components/ProtectedRoute';
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
@@ -50,7 +50,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
-        <ClerkAuthProvider>
+        <AuthProvider>
           <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
             <TooltipProvider>
               <SidebarProvider>
@@ -96,7 +96,7 @@ function App() {
               </SidebarProvider>
             </TooltipProvider>
           </ThemeProvider>
-        </ClerkAuthProvider>
+        </AuthProvider>
       </ClerkProvider>
     </QueryClientProvider>
   );

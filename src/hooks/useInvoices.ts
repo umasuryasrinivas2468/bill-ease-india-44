@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@clerk/clerk-react';
@@ -85,7 +84,9 @@ export const useCreateInvoice = () => {
       
       console.log('[CreateInvoice] Creating invoice with payload:', payload);
       console.log('[CreateInvoice] Target table: invoices');
-      console.log('[CreateInvoice] Supabase URL:', supabase.supabaseUrl);
+      console.log('[CreateInvoice] Supabase URL:', 'https://vhntnkvtzmerpdhousfr.supabase.co');
+      console.log('[CreateInvoice] Request URL:', `https://vhntnkvtzmerpdhousfr.supabase.co/rest/v1/invoices`);
+      console.log('[CreateInvoice] User ID normalized:', normalizedUserId);
       
       const { data, error } = await supabase
         .from('invoices')
@@ -106,6 +107,8 @@ export const useCreateInvoice = () => {
           throw new Error('Database table not found. Please check your database setup.');
         } else if (error.code === 'PGRST301') {
           throw new Error('Permission denied. Please check your authentication.');
+        } else if (error.code === '42P01') {
+          throw new Error('Table "invoices" does not exist. Please ensure the database schema is properly set up.');
         } else {
           throw new Error(`Failed to create invoice: ${error.message}`);
         }

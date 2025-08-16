@@ -1,13 +1,9 @@
 
 import React from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from './AuthProvider';
+import { Navigate, Outlet } from 'react-router-dom';
+import { useAuth } from './ClerkAuthProvider';
 
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-}
-
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+const ProtectedRoute: React.FC = () => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -22,7 +18,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
-  return <>{children}</>;
+  return <Outlet />;
 };
 
 export default ProtectedRoute;
