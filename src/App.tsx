@@ -40,7 +40,7 @@ import ManualJournals from "./pages/accounting/ManualJournals";
 
 const queryClient = new QueryClient();
 
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const PUBLISHABLE_KEY = "pk_test_cG9zaXRpdmUtc2N1bHBpbi00LmNsZXJrLmFjY291bnRzLmRldiQ";
 
 if (!PUBLISHABLE_KEY) {
   throw new Error("Missing Publishable Key");
