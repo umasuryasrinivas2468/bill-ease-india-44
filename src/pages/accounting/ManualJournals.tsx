@@ -127,8 +127,8 @@ const ManualJournals = () => {
       const journalLinesData = journalData.journal_lines.map((line: JournalLine) => ({
         journal_id: journal.id,
         account_id: line.account_id,
-        debit: line.debit,
-        credit: line.credit,
+        debit: Number(line.debit) || 0,
+        credit: Number(line.credit) || 0,
         line_narration: line.line_narration
       }));
       
@@ -173,9 +173,22 @@ const ManualJournals = () => {
     ));
   };
 
+  const handleAmountChange = (id: string, field: 'debit' | 'credit', value: string) => {
+    const numericValue = parseFloat(value) || 0;
+    const otherField = field === 'debit' ? 'credit' : 'debit';
+    
+    setJournalLines(journalLines.map(line => 
+      line.id === id ? { 
+        ...line, 
+        [field]: numericValue,
+        [otherField]: numericValue > 0 ? 0 : line[otherField]
+      } : line
+    ));
+  };
+
   const calculateTotals = () => {
-    const totalDebit = journalLines.reduce((sum, line) => sum + (line.debit || 0), 0);
-    const totalCredit = journalLines.reduce((sum, line) => sum + (line.credit || 0), 0);
+    const totalDebit = journalLines.reduce((sum, line) => sum + (Number(line.debit) || 0), 0);
+    const totalCredit = journalLines.reduce((sum, line) => sum + (Number(line.credit) || 0), 0);
     return { totalDebit, totalCredit };
   };
 
@@ -188,7 +201,7 @@ const ManualJournals = () => {
       return;
     }
     
-    if (totalDebit !== totalCredit) {
+    if (Math.abs(totalDebit - totalCredit) > 0.01) {
       toast.error('Total debits must equal total credits');
       return;
     }
@@ -199,11 +212,19 @@ const ManualJournals = () => {
     }
     
     const validLines = journalLines.filter(line => 
-      line.account_id && (line.debit > 0 || line.credit > 0)
+      line.account_id && (Number(line.debit) > 0 || Number(line.credit) > 0)
     );
     
     if (validLines.length < 2) {
       toast.error('Journal entry must have at least 2 lines with accounts and amounts');
+      return;
+    }
+
+    const hasDebit = validLines.some(line => Number(line.debit) > 0);
+    const hasCredit = validLines.some(line => Number(line.credit) > 0);
+    
+    if (!hasDebit || !hasCredit) {
+      toast.error('Journal entry must have at least one debit and one credit');
       return;
     }
     
@@ -225,7 +246,7 @@ const ManualJournals = () => {
   };
 
   const { totalDebit, totalCredit } = calculateTotals();
-  const isBalanced = totalDebit === totalCredit && totalDebit > 0;
+  const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01 && totalDebit > 0;
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -313,12 +334,9 @@ const ManualJournals = () => {
                           type="number"
                           step="0.01"
                           min="0"
-                          value={line.debit || ''}
-                          onChange={(e) => {
-                            const value = parseFloat(e.target.value) || 0;
-                            updateJournalLine(line.id, 'debit', value);
-                            if (value > 0) updateJournalLine(line.id, 'credit', 0);
-                          }}
+                          placeholder="0.00"
+                          value={line.debit > 0 ? line.debit.toString() : ''}
+                          onChange={(e) => handleAmountChange(line.id, 'debit', e.target.value)}
                         />
                       </TableCell>
                       <TableCell>
@@ -326,12 +344,9 @@ const ManualJournals = () => {
                           type="number"
                           step="0.01"
                           min="0"
-                          value={line.credit || ''}
-                          onChange={(e) => {
-                            const value = parseFloat(e.target.value) || 0;
-                            updateJournalLine(line.id, 'credit', value);
-                            if (value > 0) updateJournalLine(line.id, 'debit', 0);
-                          }}
+                          placeholder="0.00"
+                          value={line.credit > 0 ? line.credit.toString() : ''}
+                          onChange={(e) => handleAmountChange(line.id, 'credit', e.target.value)}
                         />
                       </TableCell>
                       <TableCell>

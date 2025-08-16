@@ -17,7 +17,8 @@ import {
   BookOpen,
   BookOpenText,
   Scale,
-  ListTree
+  ListTree,
+  TrendingUp
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import {
@@ -54,6 +55,10 @@ const accountingMenuItems = [
   { title: "Ledgers", url: "/accounting/ledgers", icon: BookOpenText },
   { title: "Trial Balance", url: "/accounting/trial-balance", icon: Scale },
   { title: "Chart of Accounts", url: "/accounting/chart-of-accounts", icon: ListTree },
+];
+
+const reportsMenuItems = [
+  { title: "Profit & Loss", url: "/accounting/profit-loss", icon: TrendingUp },
 ];
 
 export function AppSidebar() {
@@ -131,6 +136,30 @@ export function AppSidebar() {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
+
+          <SidebarGroup>
+            <SidebarGroupLabel className={isCollapsed ? "sr-only" : ""}>
+              Reports
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {reportsMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        className={getNavCls(item.url)}
+                        title={item.title}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {!isCollapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
         </div>
 
         <div className="p-2 border-t space-y-2">
@@ -151,4 +180,3 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
-
