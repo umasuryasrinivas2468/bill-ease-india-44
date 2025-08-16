@@ -272,6 +272,142 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_notes: {
+        Row: {
+          amount: number
+          client_address: string | null
+          client_email: string | null
+          client_gst_number: string | null
+          client_name: string
+          created_at: string | null
+          credit_note_date: string
+          credit_note_number: string
+          gst_amount: number
+          id: string
+          items: Json
+          original_invoice_id: string | null
+          reason: string | null
+          status: string | null
+          total_amount: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          client_address?: string | null
+          client_email?: string | null
+          client_gst_number?: string | null
+          client_name: string
+          created_at?: string | null
+          credit_note_date: string
+          credit_note_number: string
+          gst_amount: number
+          id?: string
+          items?: Json
+          original_invoice_id?: string | null
+          reason?: string | null
+          status?: string | null
+          total_amount: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          client_address?: string | null
+          client_email?: string | null
+          client_gst_number?: string | null
+          client_name?: string
+          created_at?: string | null
+          credit_note_date?: string
+          credit_note_number?: string
+          gst_amount?: number
+          id?: string
+          items?: Json
+          original_invoice_id?: string | null
+          reason?: string | null
+          status?: string | null
+          total_amount?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_notes_original_invoice_id_fkey"
+            columns: ["original_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      debit_notes: {
+        Row: {
+          amount: number
+          created_at: string | null
+          debit_note_date: string
+          debit_note_number: string
+          gst_amount: number
+          id: string
+          items: Json
+          original_invoice_id: string | null
+          reason: string | null
+          status: string | null
+          total_amount: number
+          updated_at: string | null
+          user_id: string
+          vendor_address: string | null
+          vendor_email: string | null
+          vendor_gst_number: string | null
+          vendor_name: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          debit_note_date: string
+          debit_note_number: string
+          gst_amount: number
+          id?: string
+          items?: Json
+          original_invoice_id?: string | null
+          reason?: string | null
+          status?: string | null
+          total_amount: number
+          updated_at?: string | null
+          user_id: string
+          vendor_address?: string | null
+          vendor_email?: string | null
+          vendor_gst_number?: string | null
+          vendor_name: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          debit_note_date?: string
+          debit_note_number?: string
+          gst_amount?: number
+          id?: string
+          items?: Json
+          original_invoice_id?: string | null
+          reason?: string | null
+          status?: string | null
+          total_amount?: number
+          updated_at?: string | null
+          user_id?: string
+          vendor_address?: string | null
+          vendor_email?: string | null
+          vendor_gst_number?: string | null
+          vendor_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debit_notes_original_invoice_id_fkey"
+            columns: ["original_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory: {
         Row: {
           category: string
@@ -582,6 +718,80 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_bills: {
+        Row: {
+          amount: number
+          bill_date: string
+          bill_number: string
+          created_at: string | null
+          due_date: string
+          gst_amount: number
+          id: string
+          items: Json
+          notes: string | null
+          paid_amount: number | null
+          status: string | null
+          total_amount: number
+          updated_at: string | null
+          user_id: string
+          vendor_address: string | null
+          vendor_email: string | null
+          vendor_gst_number: string | null
+          vendor_id: string | null
+          vendor_name: string
+        }
+        Insert: {
+          amount: number
+          bill_date: string
+          bill_number: string
+          created_at?: string | null
+          due_date: string
+          gst_amount: number
+          id?: string
+          items?: Json
+          notes?: string | null
+          paid_amount?: number | null
+          status?: string | null
+          total_amount: number
+          updated_at?: string | null
+          user_id: string
+          vendor_address?: string | null
+          vendor_email?: string | null
+          vendor_gst_number?: string | null
+          vendor_id?: string | null
+          vendor_name: string
+        }
+        Update: {
+          amount?: number
+          bill_date?: string
+          bill_number?: string
+          created_at?: string | null
+          due_date?: string
+          gst_amount?: number
+          id?: string
+          items?: Json
+          notes?: string | null
+          paid_amount?: number | null
+          status?: string | null
+          total_amount?: number
+          updated_at?: string | null
+          user_id?: string
+          vendor_address?: string | null
+          vendor_email?: string | null
+          vendor_gst_number?: string | null
+          vendor_id?: string | null
+          vendor_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_bills_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotations: {
         Row: {
           client_address: string | null
@@ -838,6 +1048,45 @@ export type Database = {
           is_pro?: boolean | null
           phone_number?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      vendors: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          email: string | null
+          gst_number: string | null
+          id: string
+          name: string
+          payment_terms: number | null
+          phone: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          gst_number?: string | null
+          id?: string
+          name: string
+          payment_terms?: number | null
+          phone?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          gst_number?: string | null
+          id?: string
+          name?: string
+          payment_terms?: number | null
+          phone?: string | null
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }

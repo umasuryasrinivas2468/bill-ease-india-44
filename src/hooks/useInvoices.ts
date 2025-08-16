@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@clerk/clerk-react';
@@ -56,7 +55,7 @@ export const useInvoices = () => {
       
       // Check for overdue invoices and update status
       const today = new Date().toISOString().split('T')[0];
-      const invoicesWithStatus = data.map(invoice => {
+      const invoicesWithStatus = (data || []).map(invoice => {
         if (invoice.status === 'pending' && invoice.due_date < today) {
           return { ...invoice, status: 'overdue' };
         }
@@ -81,28 +80,29 @@ export const useCreateInvoice = () => {
       }
       
       const normalizedUserId = normalizeUserId(user.id);
-      console.log('Creating invoice for user:', normalizedUserId);
-      console.log('Invoice data to insert:', { ...invoiceData, user_id: normalizedUserId });
+      const payload = { ...invoiceData, user_id: normalizedUserId };
+      console.log('[CreateInvoice] Preparing to insert into table: /invoices');
+      console.log('[CreateInvoice] Payload:', payload);
       
-      // Insert the invoice
       const { data, error } = await supabase
         .from('invoices')
-        .insert([{ ...invoiceData, user_id: normalizedUserId }])
+        .insert([payload])
         .select()
         .single();
       
       if (error) {
-        console.error('Supabase error creating invoice:', error);
-        console.error('Error details:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        });
+        // Enhanced 404 diagnostics (if some layer attempts HTTP route)
+        if ((error as any)?.code === '404' || String(error.message || '').includes('404')) {
+          console.error('[CreateInvoice] 404 while creating invoice');
+          console.error('[CreateInvoice] Expected endpoint: Supabase table "invoices" via RPC');
+          console.error('[CreateInvoice] Last known payload:', payload);
+        } else {
+          console.error('[CreateInvoice] Supabase error creating invoice:', error);
+        }
         throw new Error(`Failed to save invoice: ${error.message}`);
       }
       
-      console.log('Successfully created invoice:', data);
+      console.log('[CreateInvoice] Successfully created invoice:', data);
       return data;
     },
     onSuccess: (data) => {

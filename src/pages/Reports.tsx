@@ -8,6 +8,12 @@ import { Download, FileSpreadsheet, Calendar, TrendingUp, IndianRupee } from 'lu
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useInvoices } from '@/hooks/useInvoices';
 import { useToast } from '@/hooks/use-toast';
+import DayBook from '@/components/reports/DayBook';
+import GSTR3BSummary from '@/components/reports/GSTR3BSummary';
+import AgingReports from '@/components/reports/AgingReports';
+import ReceivablesReport from '@/components/reports/ReceivablesReport';
+import PayablesReport from '@/components/reports/PayablesReport';
+import CreditDebitNotesSection from '@/components/reports/CreditDebitNotesSection';
 
 const Reports = () => {
   const [selectedMonth, setSelectedMonth] = useState('2024-01');
@@ -26,22 +32,18 @@ const Reports = () => {
 
   // Generate monthly data from invoices
   const monthlyData = React.useMemo(() => {
-    const monthlyStats = {};
-    
+    const monthlyStats: Record<string, { month: string; invoices: number; amount: number }> = {};
     invoices.forEach(invoice => {
       const date = new Date(invoice.invoice_date);
       const monthKey = date.toLocaleDateString('en', { month: 'short' });
-      
       if (!monthlyStats[monthKey]) {
         monthlyStats[monthKey] = { month: monthKey, invoices: 0, amount: 0 };
       }
-      
       monthlyStats[monthKey].invoices += 1;
       if (invoice.status === 'paid') {
         monthlyStats[monthKey].amount += Number(invoice.total_amount);
       }
     });
-    
     return Object.values(monthlyStats);
   }, [invoices]);
 
@@ -97,7 +99,6 @@ const Reports = () => {
         invoice.status
       ].join(','))
     ].join('\n');
-    
     return csvData;
   };
 
@@ -173,8 +174,8 @@ const Reports = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis />
-                  <Tooltip formatter={(value, name) => [
-                    name === 'amount' ? `₹${value.toLocaleString()}` : value,
+                  <Tooltip formatter={(value: any, name: any) => [
+                    name === 'amount' ? `₹${Number(value).toLocaleString()}` : value,
                     name === 'amount' ? 'Revenue' : 'Invoices'
                   ]} />
                   <Bar dataKey="amount" fill="#8884d8" />
@@ -202,7 +203,7 @@ const Reports = () => {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, value }) => `${name}: ₹${value.toLocaleString()}`}
+                    label={({ name, value }: any) => `${name}: ₹${Number(value).toLocaleString()}`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
@@ -211,7 +212,7 @@ const Reports = () => {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => `₹${value.toLocaleString()}`} />
+                  <Tooltip formatter={(value: any) => `₹${Number(value).toLocaleString()}`} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -313,6 +314,22 @@ const Reports = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* New: Day Book */}
+      <DayBook />
+
+      {/* New: GSTR-3B Filing Support */}
+      <GSTR3BSummary />
+
+      {/* New: Credit / Debit Notes Section */}
+      <CreditDebitNotesSection />
+
+      {/* New: Aging Reports */}
+      <AgingReports />
+
+      {/* New: AR / AP Reports */}
+      <ReceivablesReport />
+      <PayablesReport />
     </div>
   );
 };
