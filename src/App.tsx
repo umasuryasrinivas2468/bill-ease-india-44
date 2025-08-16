@@ -15,14 +15,12 @@ import ClerkLogin from "./pages/ClerkLogin";
 import Invoices from "./pages/Invoices";
 import Quotations from "./pages/Quotations";
 import Inventory from "./pages/Inventory";
-import Banking from "./pages/Banking";
 import TimeTracking from "./pages/TimeTracking";
 import CreateInvoice from "./pages/CreateInvoice";
 import Clients from "./pages/Clients";
 import Reports from "./pages/Reports";
 import CA from "./pages/CA";
 import Marketplace from "./pages/Marketplace";
-import UPICollections from "./pages/UPICollections";
 import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
 import Support from "./pages/Support";
@@ -85,14 +83,6 @@ function App() {
                       } 
                     />
                     <Route 
-                      path="/banking" 
-                      element={
-                        <ProtectedRoute>
-                          <Banking />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
                       path="/time-tracking" 
                       element={
                         <ProtectedRoute>
@@ -137,14 +127,6 @@ function App() {
                       element={
                         <ProtectedRoute>
                           <Marketplace />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/upi-collections" 
-                      element={
-                        <ProtectedRoute>
-                          <UPICollections />
                         </ProtectedRoute>
                       } 
                     />
