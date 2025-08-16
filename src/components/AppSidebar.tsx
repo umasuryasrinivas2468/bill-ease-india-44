@@ -14,6 +14,10 @@ import {
   LogOut,
   Package,
   Quote,
+  BookOpen,
+  BookOpenText,
+  Scale,
+  ListTree
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import {
@@ -31,7 +35,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-const menuItems = [
+const mainMenuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Invoices", url: "/invoices", icon: FileText },
   { title: "Quotations", url: "/quotations", icon: Quote },
@@ -43,6 +47,13 @@ const menuItems = [
   { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Settings", url: "/settings", icon: Settings },
   { title: "Support", url: "/support", icon: HelpCircle },
+];
+
+const accountingMenuItems = [
+  { title: "Manual Journals", url: "/accounting/manual-journals", icon: BookOpen },
+  { title: "Ledgers", url: "/accounting/ledgers", icon: BookOpenText },
+  { title: "Trial Balance", url: "/accounting/trial-balance", icon: Scale },
+  { title: "Chart of Accounts", url: "/accounting/chart-of-accounts", icon: ListTree },
 ];
 
 export function AppSidebar() {
@@ -79,7 +90,31 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {menuItems.map((item) => (
+                {mainMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        className={getNavCls(item.url)}
+                        title={item.title}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {!isCollapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          <SidebarGroup>
+            <SidebarGroupLabel className={isCollapsed ? "sr-only" : ""}>
+              Accounting
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {accountingMenuItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
                       <NavLink
@@ -116,3 +151,4 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+

@@ -1,5 +1,3 @@
-
-
 import './App.css';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -25,7 +23,12 @@ import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
 import Support from "./pages/Support";
 import Onboarding from "./pages/Onboarding";
-import NotFound from "./pages/NotFound";
+
+// New Accounting pages
+import ManualJournals from "./pages/accounting/ManualJournals";
+import Ledgers from "./pages/accounting/Ledgers";
+import TrialBalance from "./pages/accounting/TrialBalance";
+import ChartOfAccounts from "./pages/accounting/ChartOfAccounts";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -162,6 +165,41 @@ function App() {
                         </ProtectedRoute>
                       } 
                     />
+
+                    {/* Accounting routes */}
+                    <Route 
+                      path="/accounting/manual-journals" 
+                      element={
+                        <ProtectedRoute>
+                          <ManualJournals />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/accounting/ledgers" 
+                      element={
+                        <ProtectedRoute>
+                          <Ledgers />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/accounting/trial-balance" 
+                      element={
+                        <ProtectedRoute>
+                          <TrialBalance />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/accounting/chart-of-accounts" 
+                      element={
+                        <ProtectedRoute>
+                          <ChartOfAccounts />
+                        </ProtectedRoute>
+                      } 
+                    />
+
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </SidebarInset>
@@ -175,4 +213,3 @@ function App() {
 }
 
 export default App;
-

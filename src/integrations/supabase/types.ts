@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      accounts: {
+        Row: {
+          account_code: string
+          account_name: string
+          account_type: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          opening_balance: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_code: string
+          account_name: string
+          account_type: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          opening_balance?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_code?: string
+          account_name?: string
+          account_type?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          opening_balance?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       apps: {
         Row: {
           category: string
@@ -375,6 +411,90 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      journal_lines: {
+        Row: {
+          account_id: string | null
+          created_at: string | null
+          credit: number | null
+          debit: number | null
+          id: string
+          journal_id: string | null
+          line_narration: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          created_at?: string | null
+          credit?: number | null
+          debit?: number | null
+          id?: string
+          journal_id?: string | null
+          line_narration?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          created_at?: string | null
+          credit?: number | null
+          debit?: number | null
+          id?: string
+          journal_id?: string | null
+          line_narration?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_lines_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      journals: {
+        Row: {
+          created_at: string | null
+          id: string
+          journal_date: string
+          journal_number: string
+          narration: string
+          status: string | null
+          total_credit: number | null
+          total_debit: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          journal_date: string
+          journal_number: string
+          narration: string
+          status?: string | null
+          total_credit?: number | null
+          total_debit?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          journal_date?: string
+          journal_number?: string
+          narration?: string
+          status?: string | null
+          total_credit?: number | null
+          total_debit?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       payment_reminders: {
         Row: {
