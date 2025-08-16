@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { ClerkProvider, SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
@@ -50,11 +51,11 @@ function App() {
   return (
     <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
       <QueryClientProvider client={queryClient}>
-        <SidebarProvider>
-          <div className="min-h-screen flex w-full">
-            <AppSidebar />
-            <main className="flex-1">
-              <Router>
+        <Router>
+          <SidebarProvider>
+            <div className="min-h-screen flex w-full">
+              <AppSidebar />
+              <main className="flex-1">
                 <Routes>
                   <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
@@ -74,10 +75,10 @@ function App() {
                   <Route path="/accounting/profit-loss" element={<ProtectedRoute><ProfitLoss /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </Router>
-            </main>
-          </div>
-        </SidebarProvider>
+              </main>
+            </div>
+          </SidebarProvider>
+        </Router>
       </QueryClientProvider>
     </ClerkProvider>
   );
