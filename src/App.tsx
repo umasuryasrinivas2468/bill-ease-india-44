@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { ClerkProvider, SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
@@ -21,8 +22,9 @@ import Ledgers from '@/pages/accounting/Ledgers';
 import TrialBalance from '@/pages/accounting/TrialBalance';
 import ChartOfAccounts from '@/pages/accounting/ChartOfAccounts';
 import ProfitLoss from '@/pages/accounting/ProfitLoss';
+import NotFound from '@/pages/NotFound';
 
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const PUBLISHABLE_KEY = "pk_test_cG9zaXRpdmUtc2N1bHBpbi00LmNsZXJrLmFjY291bnRzLmRldiQ";
 
 if (!PUBLISHABLE_KEY) {
   throw new Error("Missing Publishable Key");
@@ -70,6 +72,7 @@ function App() {
                   <Route path="/accounting/trial-balance" element={<ProtectedRoute><TrialBalance /></ProtectedRoute>} />
                   <Route path="/accounting/chart-of-accounts" element={<ProtectedRoute><ChartOfAccounts /></ProtectedRoute>} />
                   <Route path="/accounting/profit-loss" element={<ProtectedRoute><ProfitLoss /></ProtectedRoute>} />
+                  <Route path="*" element={<NotFound />} />
                 </Routes>
               </Router>
             </main>
