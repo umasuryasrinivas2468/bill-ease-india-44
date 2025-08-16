@@ -1,3 +1,4 @@
+
 import './App.css';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -23,6 +24,7 @@ import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
 import Support from "./pages/Support";
 import Onboarding from "./pages/Onboarding";
+import NotFound from "./pages/NotFound";
 
 // New Accounting pages
 import ManualJournals from "./pages/accounting/ManualJournals";

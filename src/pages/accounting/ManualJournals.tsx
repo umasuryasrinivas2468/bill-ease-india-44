@@ -1,298 +1,420 @@
-import React, { useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/components/ClerkAuthProvider";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Trash2 } from "lucide-react";
 
-type Account = {
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useUser } from '@clerk/clerk-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { toast } from 'sonner';
+import { Plus, Trash2 } from 'lucide-react';
+
+interface Account {
   id: string;
   account_code: string;
   account_name: string;
-  account_type: "Asset" | "Liability" | "Equity" | "Income" | "Expense";
-};
+  account_type: string;
+}
 
-type Journal = {
+interface JournalLine {
+  id: string;
+  account_id: string;
+  account_name?: string;
+  debit: number;
+  credit: number;
+  line_narration: string;
+}
+
+interface Journal {
   id: string;
   journal_number: string;
   journal_date: string;
   narration: string;
-  total_debit: number | null;
-  total_credit: number | null;
-};
-
-type LineInput = {
-  account_id: string;
-  debit: string;
-  credit: string;
-};
-
-function generateJournalNumber(date: string) {
-  const d = date ? date.replaceAll("-", "") : "NA";
-  const random = Math.floor(Math.random() * 9000 + 1000);
-  return `JRN-${d}-${random}`;
+  total_debit: number;
+  total_credit: number;
+  status: string;
+  journal_lines: JournalLine[];
 }
 
-export default function ManualJournals() {
-  const { user } = useAuth();
-  const userId = user?.id as string | undefined;
+const ManualJournals = () => {
+  const { user } = useUser();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [narration, setNarration] = useState("");
-  const [lines, setLines] = useState<LineInput[]>([
-    { account_id: "", debit: "", credit: "" },
-    { account_id: "", debit: "", credit: "" },
+  
+  const [journalDate, setJournalDate] = useState(new Date().toISOString().split('T')[0]);
+  const [narration, setNarration] = useState('');
+  const [journalLines, setJournalLines] = useState<JournalLine[]>([
+    { id: '1', account_id: '', debit: 0, credit: 0, line_narration: '' },
+    { id: '2', account_id: '', debit: 0, credit: 0, line_narration: '' }
   ]);
 
-  const { data: accounts } = useQuery({
-    queryKey: ["accounts", userId],
+  // Generate journal number
+  const generateJournalNumber = () => {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const timestamp = Date.now();
+    return `JV-${year}${month}-${timestamp.toString().slice(-6)}`;
+  };
+
+  // Fetch accounts for dropdown
+  const { data: accounts = [] } = useQuery({
+    queryKey: ['accounts', user?.id],
     queryFn: async () => {
+      if (!user?.id) return [];
+      
       const { data, error } = await supabase
-        .from("accounts")
-        .select("id, account_code, account_name, account_type")
-        .eq("user_id", userId as string)
-        .order("account_code", { ascending: true });
+        .from('accounts')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .order('account_code');
+      
       if (error) throw error;
       return data as Account[];
     },
-    enabled: !!userId,
-    staleTime: 60_000,
+    enabled: !!user?.id,
   });
 
-  const { data: recentJournals } = useQuery({
-    queryKey: ["journals", userId],
+  // Fetch journals
+  const { data: journals = [] } = useQuery({
+    queryKey: ['journals', user?.id],
     queryFn: async () => {
+      if (!user?.id) return [];
+      
       const { data, error } = await supabase
-        .from("journals")
-        .select("id, journal_number, journal_date, narration, total_debit, total_credit")
-        .eq("user_id", userId as string)
-        .order("journal_date", { ascending: false })
-        .limit(50);
+        .from('journals')
+        .select(`
+          *,
+          journal_lines (
+            *,
+            accounts (account_name)
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('journal_date', { ascending: false });
+      
       if (error) throw error;
       return data as Journal[];
     },
-    enabled: !!userId,
-    staleTime: 30_000,
+    enabled: !!user?.id,
   });
 
-  const totals = useMemo(() => {
-    const debit = lines.reduce((sum, l) => sum + Number(l.debit || 0), 0);
-    const credit = lines.reduce((sum, l) => sum + Number(l.credit || 0), 0);
-    return { debit, credit, balanced: Math.abs(debit - credit) < 0.005 };
-  }, [lines]);
-
-  const addLine = () => setLines((ls) => [...ls, { account_id: "", debit: "", credit: "" }]);
-  const removeLine = (idx: number) => setLines((ls) => ls.filter((_, i) => i !== idx));
-  const setLine = (idx: number, patch: Partial<LineInput>) =>
-    setLines((ls) => ls.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
-
-  const createJournal = useMutation({
-    mutationFn: async () => {
-      // Validate
-      const nonZeroLines = lines.filter((l) => Number(l.debit || 0) > 0 || Number(l.credit || 0) > 0);
-      if (!date || !narration.trim() || nonZeroLines.length < 2) {
-        throw new Error("Please provide Date, Narration and at least 2 lines.");
-      }
-      const anyBoth = nonZeroLines.some((l) => Number(l.debit || 0) > 0 && Number(l.credit || 0) > 0);
-      if (anyBoth) throw new Error("Each line must have either Debit or Credit, not both.");
-      const { debit, credit, balanced } = totals;
-      if (!balanced || debit === 0) throw new Error("Debits and Credits must balance and be greater than 0.");
-
-      const journal_number = generateJournalNumber(date);
-      const insertJournal = await supabase
-        .from("journals")
-        .insert([
-          {
-            user_id: userId,
-            journal_number,
-            journal_date: date,
-            narration: narration.trim(),
-            status: "posted",
-          },
-        ])
-        .select("id")
+  // Create journal mutation
+  const createJournalMutation = useMutation({
+    mutationFn: async (journalData: any) => {
+      if (!user?.id) throw new Error('User not authenticated');
+      
+      // Create journal entry
+      const { data: journal, error: journalError } = await supabase
+        .from('journals')
+        .insert({
+          user_id: user.id,
+          journal_number: generateJournalNumber(),
+          journal_date: journalData.journal_date,
+          narration: journalData.narration,
+          status: 'posted'
+        })
+        .select()
         .single();
-      if (insertJournal.error) throw insertJournal.error;
-
-      const journalId = insertJournal.data.id as string;
-      const payload = nonZeroLines.map((l) => ({
-        journal_id: journalId,
-        account_id: l.account_id,
-        debit: Number(l.debit || 0),
-        credit: Number(l.credit || 0),
-        line_narration: "",
+      
+      if (journalError) throw journalError;
+      
+      // Create journal lines
+      const journalLinesData = journalData.journal_lines.map((line: JournalLine) => ({
+        journal_id: journal.id,
+        account_id: line.account_id,
+        debit: line.debit,
+        credit: line.credit,
+        line_narration: line.line_narration
       }));
-
-      const insertLines = await supabase.from("journal_lines").insert(payload);
-      if (insertLines.error) throw insertLines.error;
-
-      return journal_number;
+      
+      const { error: linesError } = await supabase
+        .from('journal_lines')
+        .insert(journalLinesData);
+      
+      if (linesError) throw linesError;
+      
+      return journal;
     },
-    onSuccess: (jn) => {
-      toast({ title: "Journal posted", description: `Journal ${jn} created successfully.` });
-      setNarration("");
-      setLines([
-        { account_id: "", debit: "", credit: "" },
-        { account_id: "", debit: "", credit: "" },
-      ]);
-      // Keep date; invalidate lists
-      queryClient.invalidateQueries({ queryKey: ["journals", userId] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['journals'] });
+      toast.success('Journal entry created successfully');
+      resetForm();
     },
-    meta: {
-      onError: (err: any) => {
-        console.error("Create journal error", err);
-      },
+    onError: (error) => {
+      toast.error('Failed to create journal entry: ' + error.message);
     },
   });
+
+  const addJournalLine = () => {
+    const newId = String(journalLines.length + 1);
+    setJournalLines([...journalLines, {
+      id: newId,
+      account_id: '',
+      debit: 0,
+      credit: 0,
+      line_narration: ''
+    }]);
+  };
+
+  const removeJournalLine = (id: string) => {
+    if (journalLines.length > 2) {
+      setJournalLines(journalLines.filter(line => line.id !== id));
+    }
+  };
+
+  const updateJournalLine = (id: string, field: keyof JournalLine, value: any) => {
+    setJournalLines(journalLines.map(line => 
+      line.id === id ? { ...line, [field]: value } : line
+    ));
+  };
+
+  const calculateTotals = () => {
+    const totalDebit = journalLines.reduce((sum, line) => sum + (line.debit || 0), 0);
+    const totalCredit = journalLines.reduce((sum, line) => sum + (line.credit || 0), 0);
+    return { totalDebit, totalCredit };
+  };
+
+  const validateAndSubmit = () => {
+    const { totalDebit, totalCredit } = calculateTotals();
+    
+    // Validation
+    if (!narration.trim()) {
+      toast.error('Please enter a narration');
+      return;
+    }
+    
+    if (totalDebit !== totalCredit) {
+      toast.error('Total debits must equal total credits');
+      return;
+    }
+    
+    if (totalDebit === 0) {
+      toast.error('Journal entry must have at least one debit and one credit');
+      return;
+    }
+    
+    const validLines = journalLines.filter(line => 
+      line.account_id && (line.debit > 0 || line.credit > 0)
+    );
+    
+    if (validLines.length < 2) {
+      toast.error('Journal entry must have at least 2 lines with accounts and amounts');
+      return;
+    }
+    
+    // Submit
+    createJournalMutation.mutate({
+      journal_date: journalDate,
+      narration,
+      journal_lines: validLines
+    });
+  };
+
+  const resetForm = () => {
+    setJournalDate(new Date().toISOString().split('T')[0]);
+    setNarration('');
+    setJournalLines([
+      { id: '1', account_id: '', debit: 0, credit: 0, line_narration: '' },
+      { id: '2', account_id: '', debit: 0, credit: 0, line_narration: '' }
+    ]);
+  };
+
+  const { totalDebit, totalCredit } = calculateTotals();
+  const isBalanced = totalDebit === totalCredit && totalDebit > 0;
 
   return (
-    <div className="p-4 space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Manual Journals</h1>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Manual Journals</h1>
+      </div>
 
-      <Card className="p-4 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label className="text-sm font-medium">Date</label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+      {/* Journal Entry Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Create Journal Entry</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="journal-date">Date</Label>
+              <Input
+                id="journal-date"
+                type="date"
+                value={journalDate}
+                onChange={(e) => setJournalDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="narration">Narration</Label>
+              <Textarea
+                id="narration"
+                placeholder="Enter journal narration..."
+                value={narration}
+                onChange={(e) => setNarration(e.target.value)}
+              />
+            </div>
           </div>
-          <div className="md:col-span-2">
-            <label className="text-sm font-medium">Narration</label>
-            <Input
-              placeholder="Describe the journal"
-              value={narration}
-              onChange={(e) => setNarration(e.target.value)}
-            />
+
+          {/* Journal Lines */}
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Journal Lines</h3>
+              <Button onClick={addJournalLine} size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Line
+              </Button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Account</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Debit</TableHead>
+                    <TableHead>Credit</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {journalLines.map((line) => (
+                    <TableRow key={line.id}>
+                      <TableCell>
+                        <Select
+                          value={line.account_id}
+                          onValueChange={(value) => updateJournalLine(line.id, 'account_id', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select account" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {accounts.map((account) => (
+                              <SelectItem key={account.id} value={account.id}>
+                                {account.account_code} - {account.account_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          placeholder="Line description"
+                          value={line.line_narration}
+                          onChange={(e) => updateJournalLine(line.id, 'line_narration', e.target.value)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={line.debit || ''}
+                          onChange={(e) => {
+                            const value = parseFloat(e.target.value) || 0;
+                            updateJournalLine(line.id, 'debit', value);
+                            if (value > 0) updateJournalLine(line.id, 'credit', 0);
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={line.credit || ''}
+                          onChange={(e) => {
+                            const value = parseFloat(e.target.value) || 0;
+                            updateJournalLine(line.id, 'credit', value);
+                            if (value > 0) updateJournalLine(line.id, 'debit', 0);
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {journalLines.length > 2 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeJournalLine(line.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Totals */}
+            <div className="flex justify-end space-x-4 p-4 bg-muted rounded">
+              <div>Total Debit: ₹{totalDebit.toFixed(2)}</div>
+              <div>Total Credit: ₹{totalCredit.toFixed(2)}</div>
+              <div className={`font-semibold ${isBalanced ? 'text-green-600' : 'text-red-600'}`}>
+                {isBalanced ? 'Balanced ✓' : 'Not Balanced ✗'}
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={resetForm}>Reset</Button>
+              <Button 
+                onClick={validateAndSubmit}
+                disabled={!isBalanced || createJournalMutation.isPending}
+              >
+                {createJournalMutation.isPending ? 'Creating...' : 'Create Journal Entry'}
+              </Button>
+            </div>
           </div>
-        </div>
-
-        <div className="overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Account</TableHead>
-                <TableHead className="text-right">Debit</TableHead>
-                <TableHead className="text-right">Credit</TableHead>
-                <TableHead className="w-10"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {lines.map((l, idx) => (
-                <TableRow key={idx}>
-                  <TableCell className="min-w-[220px]">
-                    <Select
-                      value={l.account_id}
-                      onValueChange={(v) => setLine(idx, { account_id: v })}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Select account" /></SelectTrigger>
-                      <SelectContent>
-                        {(accounts || []).map((a) => (
-                          <SelectItem key={a.id} value={a.id}>
-                            {a.account_code} - {a.account_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Input
-                      className="text-right"
-                      type="number"
-                      step="0.01"
-                      value={l.debit}
-                      onChange={(e) =>
-                        setLine(idx, { debit: e.target.value, credit: e.target.value ? "" : l.credit })
-                      }
-                    />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Input
-                      className="text-right"
-                      type="number"
-                      step="0.01"
-                      value={l.credit}
-                      onChange={(e) =>
-                        setLine(idx, { credit: e.target.value, debit: e.target.value ? "" : l.debit })
-                      }
-                    />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeLine(idx)}
-                      disabled={lines.length <= 2}
-                      title="Remove line"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              <TableRow>
-                <TableCell>
-                  <Button variant="secondary" onClick={addLine}>
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Add line
-                  </Button>
-                </TableCell>
-                <TableCell className="text-right font-medium">{totals.debit.toFixed(2)}</TableCell>
-                <TableCell className="text-right font-medium">{totals.credit.toFixed(2)}</TableCell>
-                <TableCell className="text-right font-medium">
-                  {totals.balanced ? (
-                    <span className="text-green-600 dark:text-green-500">Balanced</span>
-                  ) : (
-                    <span className="text-red-600 dark:text-red-500">Not balanced</span>
-                  )}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-
-        <div className="flex justify-end">
-          <Button onClick={() => createJournal.mutate()} disabled={createJournal.isPending}>
-            Post Journal
-          </Button>
-        </div>
+        </CardContent>
       </Card>
 
-      <Card className="p-4">
-        <h2 className="text-lg font-medium mb-3">Recent Journals</h2>
-        <div className="overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Journal No.</TableHead>
-                <TableHead>Narration</TableHead>
-                <TableHead className="text-right">Debit</TableHead>
-                <TableHead className="text-right">Credit</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(recentJournals || []).map((j) => (
-                <TableRow key={j.id}>
-                  <TableCell className="whitespace-nowrap">{j.journal_date}</TableCell>
-                  <TableCell className="whitespace-nowrap">{j.journal_number}</TableCell>
-                  <TableCell className="min-w-[200px]">{j.narration}</TableCell>
-                  <TableCell className="text-right">{Number(j.total_debit || 0).toFixed(2)}</TableCell>
-                  <TableCell className="text-right">{Number(j.total_credit || 0).toFixed(2)}</TableCell>
+      {/* Journal Entries List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Journal Entries</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Journal #</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Narration</TableHead>
+                  <TableHead>Total Amount</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
-              ))}
-              {(recentJournals || []).length === 0 && (
-                <TableRow><TableCell colSpan={5}>No journals yet.</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {journals.map((journal) => (
+                  <TableRow key={journal.id}>
+                    <TableCell className="font-medium">{journal.journal_number}</TableCell>
+                    <TableCell>{new Date(journal.journal_date).toLocaleDateString()}</TableCell>
+                    <TableCell>{journal.narration}</TableCell>
+                    <TableCell>₹{journal.total_debit.toFixed(2)}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded text-sm ${
+                        journal.status === 'posted' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {journal.status}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
       </Card>
     </div>
   );
-}
+};
+
+export default ManualJournals;
