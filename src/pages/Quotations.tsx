@@ -42,7 +42,6 @@ interface Quotation {
   terms_conditions?: string;
   status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
   created_at: string;
-  vendor_logo?: string;
 }
 
 const Quotations = () => {
@@ -66,7 +65,6 @@ const Quotations = () => {
     validity_period: 30,
     discount: 0,
     terms_conditions: '',
-    vendor_logo: '',
   });
 
   const [items, setItems] = useState<QuotationItem[]>([
@@ -159,7 +157,6 @@ const Quotations = () => {
       validity_period: 30,
       discount: 0,
       terms_conditions: '',
-      vendor_logo: '',
     });
     setItems([{ name: '', quantity: 1, unit_price: 0, tax_percentage: 18, amount: 0 }]);
     setEditingQuotation(null);
@@ -175,7 +172,7 @@ const Quotations = () => {
       return;
     }
 
-    // Enhanced validation - only check required fields
+    // Validation
     if (!formData.client_name.trim()) {
       toast({
         title: "Validation Error",
@@ -194,7 +191,6 @@ const Quotations = () => {
       return;
     }
 
-    // Check if at least one item has a name
     if (items.some(item => !item.name.trim())) {
       toast({
         title: "Validation Error",
@@ -206,7 +202,6 @@ const Quotations = () => {
 
     const { subtotal, taxAmount, total } = calculateTotals();
     
-    // Update items with calculated amounts
     const updatedItems = items.map(item => ({
       ...item,
       amount: calculateItemAmount(item)
@@ -227,7 +222,6 @@ const Quotations = () => {
       tax_amount: taxAmount,
       total_amount: total,
       terms_conditions: formData.terms_conditions.trim() || null,
-      vendor_logo: formData.vendor_logo.trim() || null, // Make vendor_logo optional
     };
 
     setIsLoading(true);
@@ -471,17 +465,6 @@ const Quotations = () => {
                 placeholder="Complete address"
                 rows={2}
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="vendor_logo">Company Logo URL (Optional)</Label>
-              <Input
-                id="vendor_logo"
-                value={formData.vendor_logo}
-                onChange={(e) => setFormData({...formData, vendor_logo: e.target.value})}
-                placeholder="https://example.com/logo.png (Optional)"
-              />
-              <p className="text-xs text-muted-foreground">Leave blank if you don't have a logo URL</p>
             </div>
 
             {/* Items Section */}
