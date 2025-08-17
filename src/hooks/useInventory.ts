@@ -1,6 +1,6 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { useUser } from '@clerk/clerk-react';
 
 export interface InventoryItem {
@@ -28,8 +28,11 @@ export const useInventory = () => {
     queryKey: ['inventory', user?.id],
     queryFn: async () => {
       if (!user?.id) {
+        console.log('No user ID available for inventory fetch');
         throw new Error('User not authenticated');
       }
+      
+      console.log('Fetching inventory for user:', user.id);
       
       const { data, error } = await supabase
         .from('inventory')
@@ -42,8 +45,11 @@ export const useInventory = () => {
         throw error;
       }
       
+      console.log('Fetched inventory data:', data);
       return data as InventoryItem[];
     },
     enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 3,
   });
 };
