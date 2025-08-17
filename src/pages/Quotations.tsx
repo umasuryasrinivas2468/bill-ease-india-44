@@ -175,10 +175,30 @@ const Quotations = () => {
       return;
     }
 
-    if (!formData.client_name || !formData.quotation_number || items.some(item => !item.name)) {
+    // Enhanced validation - only check required fields
+    if (!formData.client_name.trim()) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields.",
+        description: "Client name is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.quotation_number.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Quotation number is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if at least one item has a name
+    if (items.some(item => !item.name.trim())) {
+      toast({
+        title: "Validation Error",
+        description: "Please provide names for all items.",
         variant: "destructive",
       });
       return;
@@ -194,11 +214,11 @@ const Quotations = () => {
 
     const quotationData = {
       user_id: user.id,
-      quotation_number: formData.quotation_number,
-      client_name: formData.client_name,
-      client_email: formData.client_email || null,
-      client_phone: formData.client_phone || null,
-      client_address: formData.client_address || null,
+      quotation_number: formData.quotation_number.trim(),
+      client_name: formData.client_name.trim(),
+      client_email: formData.client_email.trim() || null,
+      client_phone: formData.client_phone.trim() || null,
+      client_address: formData.client_address.trim() || null,
       quotation_date: formData.quotation_date,
       validity_period: formData.validity_period,
       items: updatedItems,
@@ -206,8 +226,8 @@ const Quotations = () => {
       subtotal,
       tax_amount: taxAmount,
       total_amount: total,
-      terms_conditions: formData.terms_conditions || null,
-      vendor_logo: formData.vendor_logo || null,
+      terms_conditions: formData.terms_conditions.trim() || null,
+      vendor_logo: formData.vendor_logo.trim() || null, // Make vendor_logo optional
     };
 
     setIsLoading(true);
@@ -382,6 +402,7 @@ const Quotations = () => {
                   value={formData.quotation_number}
                   onChange={(e) => setFormData({...formData, quotation_number: e.target.value})}
                   placeholder="QUO-2024-001"
+                  required
                 />
               </div>
               
@@ -392,6 +413,7 @@ const Quotations = () => {
                   type="date"
                   value={formData.quotation_date}
                   onChange={(e) => setFormData({...formData, quotation_date: e.target.value})}
+                  required
                 />
               </div>
               
@@ -402,6 +424,7 @@ const Quotations = () => {
                   value={formData.client_name}
                   onChange={(e) => setFormData({...formData, client_name: e.target.value})}
                   placeholder="Client or company name"
+                  required
                 />
               </div>
               
@@ -413,6 +436,7 @@ const Quotations = () => {
                   value={formData.validity_period}
                   onChange={(e) => setFormData({...formData, validity_period: parseInt(e.target.value) || 30})}
                   placeholder="30"
+                  min="1"
                 />
               </div>
               
@@ -450,13 +474,14 @@ const Quotations = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="vendor_logo">Vendor Logo URL</Label>
+              <Label htmlFor="vendor_logo">Company Logo URL (Optional)</Label>
               <Input
                 id="vendor_logo"
                 value={formData.vendor_logo}
                 onChange={(e) => setFormData({...formData, vendor_logo: e.target.value})}
-                placeholder="https://example.com/logo.png"
+                placeholder="https://example.com/logo.png (Optional)"
               />
+              <p className="text-xs text-muted-foreground">Leave blank if you don't have a logo URL</p>
             </div>
 
             {/* Items Section */}
@@ -505,9 +530,9 @@ const Quotations = () => {
                       <Input
                         type="number"
                         value={item.quantity}
-                        onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
+                        onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 1)}
                         placeholder="1"
-                        min="0"
+                        min="0.01"
                         step="0.01"
                       />
                     </div>
