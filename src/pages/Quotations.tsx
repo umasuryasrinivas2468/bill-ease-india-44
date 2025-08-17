@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Plus, Edit, Trash2, Send, FileText, Eye, Download, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { useUser } from '@clerk/clerk-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -74,22 +74,32 @@ const Quotations = () => {
   ]);
 
   useEffect(() => {
-    fetchQuotations();
+    if (user?.id) {
+      fetchQuotations();
+    }
   }, [user]);
 
   const fetchQuotations = async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.log('No user ID available for fetching quotations');
+      return;
+    }
 
     setIsLoading(true);
     try {
+      console.log('Fetching quotations for user:', user.id);
       const { data, error } = await supabase
         .from('quotations')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching quotations:', error);
+        throw error;
+      }
       
+      console.log('Fetched quotations:', data);
       // Transform the data to match our interface with proper type casting
       const transformedData: Quotation[] = (data || []).map(item => ({
         ...item,
@@ -102,7 +112,7 @@ const Quotations = () => {
       console.error('Error fetching quotations:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch quotations.",
+        description: "Failed to fetch quotations. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -156,7 +166,14 @@ const Quotations = () => {
   };
 
   const handleSubmit = async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      toast({
+        title: "Authentication Error",
+        description: "Please sign in to create quotations.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (!formData.client_name || !formData.quotation_number || items.some(item => !item.name)) {
       toast({
@@ -195,31 +212,39 @@ const Quotations = () => {
 
     setIsLoading(true);
     try {
+      console.log('Submitting quotation data:', quotationData);
+      
       if (editingQuotation) {
         const { error } = await supabase
           .from('quotations')
           .update(quotationData)
           .eq('id', editingQuotation.id);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error updating quotation:', error);
+          throw error;
+        }
         toast({ title: "Success", description: "Quotation updated successfully!" });
       } else {
         const { error } = await supabase
           .from('quotations')
           .insert([quotationData]);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error creating quotation:', error);
+          throw error;
+        }
         toast({ title: "Success", description: "Quotation created successfully!" });
       }
       
       setIsDialogOpen(false);
       resetForm();
       fetchQuotations();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving quotation:', error);
       toast({
         title: "Error",
-        description: "Failed to save quotation.",
+        description: error.message || "Failed to save quotation. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -307,6 +332,20 @@ const Quotations = () => {
   };
 
   const { subtotal, taxAmount, total } = calculateTotals();
+
+  if (!user) {
+    return (
+      <div className="p-4 md:p-6 space-y-6">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger className="md:hidden" />
+          <div className="text-left">
+            <h1 className="text-2xl md:text-3xl font-bold text-left">Quotations</h1>
+            <p className="text-muted-foreground text-left">Please sign in to manage quotations</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 space-y-6">

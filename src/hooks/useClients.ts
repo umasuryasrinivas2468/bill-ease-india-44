@@ -2,7 +2,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@clerk/clerk-react';
-import { normalizeUserId, isValidUserId } from '@/lib/userUtils';
 
 export interface Client {
   id: string;
@@ -20,18 +19,17 @@ export const useClients = () => {
   return useQuery({
     queryKey: ['clients', user?.id],
     queryFn: async () => {
-      if (!user || !isValidUserId(user.id)) {
-        console.error('User not authenticated or invalid user ID:', user?.id);
-        throw new Error('User not authenticated or invalid user ID');
+      if (!user?.id) {
+        console.error('User not authenticated:', user?.id);
+        throw new Error('User not authenticated');
       }
       
-      const normalizedUserId = normalizeUserId(user.id);
-      console.log('Fetching clients for user:', normalizedUserId);
+      console.log('Fetching clients for user:', user.id);
       
       const { data, error } = await supabase
         .from('clients')
         .select('*')
-        .eq('user_id', normalizedUserId)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       
       if (error) {
@@ -42,7 +40,7 @@ export const useClients = () => {
       console.log('Fetched clients:', data);
       return data as Client[];
     },
-    enabled: !!user && isValidUserId(user?.id),
+    enabled: !!user?.id,
   });
 };
 
@@ -52,18 +50,16 @@ export const useCreateClient = () => {
   
   return useMutation({
     mutationFn: async (clientData: Omit<Client, 'id' | 'created_at'>) => {
-      if (!user || !isValidUserId(user.id)) {
-        console.error('User not authenticated or invalid user ID:', user?.id);
-        throw new Error('User not authenticated or invalid user ID');
+      if (!user?.id) {
+        console.error('User not authenticated:', user?.id);
+        throw new Error('User not authenticated');
       }
-      
-      const normalizedUserId = normalizeUserId(user.id);
       
       // Check for duplicate name
       const { data: existingByName } = await supabase
         .from('clients')
         .select('id, name')
-        .eq('user_id', normalizedUserId)
+        .eq('user_id', user.id)
         .ilike('name', clientData.name)
         .limit(1);
       
@@ -76,7 +72,7 @@ export const useCreateClient = () => {
         const { data: existingByGST } = await supabase
           .from('clients')
           .select('id, name, gst_number')
-          .eq('user_id', normalizedUserId)
+          .eq('user_id', user.id)
           .eq('gst_number', clientData.gst_number.trim())
           .limit(1);
         
@@ -85,12 +81,12 @@ export const useCreateClient = () => {
         }
       }
       
-      console.log('Creating client for user:', normalizedUserId);
+      console.log('Creating client for user:', user.id);
       console.log('Client data:', clientData);
       
       const { data, error } = await supabase
         .from('clients')
-        .insert([{ ...clientData, user_id: normalizedUserId }])
+        .insert([{ ...clientData, user_id: user.id }])
         .select()
         .single();
       
@@ -115,18 +111,16 @@ export const useUpdateClient = () => {
   
   return useMutation({
     mutationFn: async ({ id, ...clientData }: Partial<Client> & { id: string }) => {
-      if (!user || !isValidUserId(user.id)) {
-        throw new Error('User not authenticated or invalid user ID');
+      if (!user?.id) {
+        throw new Error('User not authenticated');
       }
-      
-      const normalizedUserId = normalizeUserId(user.id);
       
       // Check for duplicate name (excluding current client)
       if (clientData.name) {
         const { data: existingByName } = await supabase
           .from('clients')
           .select('id, name')
-          .eq('user_id', normalizedUserId)
+          .eq('user_id', user.id)
           .ilike('name', clientData.name)
           .neq('id', id)
           .limit(1);
@@ -141,7 +135,7 @@ export const useUpdateClient = () => {
         const { data: existingByGST } = await supabase
           .from('clients')
           .select('id, name, gst_number')
-          .eq('user_id', normalizedUserId)
+          .eq('user_id', user.id)
           .eq('gst_number', clientData.gst_number.trim())
           .neq('id', id)
           .limit(1);
@@ -157,7 +151,7 @@ export const useUpdateClient = () => {
         .from('clients')
         .update(clientData)
         .eq('id', id)
-        .eq('user_id', normalizedUserId)
+        .eq('user_id', user.id)
         .select()
         .single();
       
@@ -181,18 +175,17 @@ export const useDeleteClient = () => {
   
   return useMutation({
     mutationFn: async (clientId: string) => {
-      if (!user || !isValidUserId(user.id)) {
-        throw new Error('User not authenticated or invalid user ID');
+      if (!user?.id) {
+        throw new Error('User not authenticated');
       }
       
-      const normalizedUserId = normalizeUserId(user.id);
       console.log('Deleting client:', clientId);
       
       const { error } = await supabase
         .from('clients')
         .delete()
         .eq('id', clientId)
-        .eq('user_id', normalizedUserId);
+        .eq('user_id', user.id);
       
       if (error) {
         console.error('Error deleting client:', error);
