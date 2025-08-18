@@ -3,14 +3,14 @@ import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useInventory } from '@/hooks/useInventory';
 
-interface InventoryItemSelectorProps {
+interface QuotationItemSelectorProps {
   value: string;
   onChange: (value: string, price?: number) => void;
   placeholder?: string;
   disabled?: boolean;
 }
 
-const InventoryItemSelector: React.FC<InventoryItemSelectorProps> = ({ 
+const QuotationItemSelector: React.FC<QuotationItemSelectorProps> = ({ 
   value, 
   onChange, 
   placeholder = "Select from inventory",
@@ -18,22 +18,14 @@ const InventoryItemSelector: React.FC<InventoryItemSelectorProps> = ({
 }) => {
   const { data: inventoryItems = [], isLoading, error } = useInventory();
 
-  console.log('InventoryItemSelector - Items:', inventoryItems?.length, 'items');
-  console.log('InventoryItemSelector - Loading:', isLoading);
-  console.log('InventoryItemSelector - Error:', error);
-  console.log('InventoryItemSelector - Current value:', value);
-
   const handleValueChange = (selectedValue: string) => {
     try {
-      console.log('InventoryItemSelector - Value changing to:', selectedValue);
-      
       // Don't allow selection of placeholder items
       if (selectedValue === 'no-items' || selectedValue === 'loading') {
         return;
       }
       
       const selectedItem = inventoryItems.find(item => item.product_name === selectedValue);
-      console.log('InventoryItemSelector - Selected item:', selectedItem);
       
       if (selectedItem) {
         onChange(selectedValue, selectedItem.selling_price);
@@ -42,7 +34,7 @@ const InventoryItemSelector: React.FC<InventoryItemSelectorProps> = ({
         onChange(selectedValue);
       }
     } catch (error) {
-      console.error('InventoryItemSelector - Error in handleValueChange:', error);
+      console.error('QuotationItemSelector - Error in handleValueChange:', error);
     }
   };
 
@@ -57,7 +49,6 @@ const InventoryItemSelector: React.FC<InventoryItemSelectorProps> = ({
   }
 
   if (error) {
-    console.error('Inventory loading error:', error);
     return (
       <Select disabled>
         <SelectTrigger className="w-full">
@@ -103,4 +94,4 @@ const InventoryItemSelector: React.FC<InventoryItemSelectorProps> = ({
   );
 };
 
-export default InventoryItemSelector;
+export default QuotationItemSelector;
