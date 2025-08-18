@@ -22,19 +22,18 @@ const InvoiceItemSelector: React.FC<InvoiceItemSelectorProps> = ({
   };
 
   return (
-    <Select value={value} onValueChange={handleValueChange}>
+    <Select value={value || undefined} onValueChange={handleValueChange}>
       <SelectTrigger className="w-full">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
         {inventoryItems.map(item => (
-          <SelectItem key={item.id} value={item.product_name} className="hover:bg-gray-100">
-            <div className="flex justify-between items-center w-full">
-              <span>{item.product_name}</span>
-              <span className="text-sm text-muted-foreground ml-2">
-                ₹{item.selling_price} (Stock: {item.stock_quantity})
-              </span>
-            </div>
+          <SelectItem 
+            key={item.id} 
+            value={item.product_name} 
+            className="hover:bg-gray-100 cursor-pointer"
+          >
+            {`${item.product_name} — ₹${item.selling_price} (Stock: ${item.stock_quantity})`}
           </SelectItem>
         ))}
         {inventoryItems.length === 0 && (

@@ -84,13 +84,7 @@ const InventoryItemSelector: React.FC<InventoryItemSelectorProps> = ({
               value={item.product_name} 
               className="hover:bg-gray-100 cursor-pointer"
             >
-              <div className="flex justify-between items-center w-full">
-                <span className="font-medium">{item.product_name}</span>
-                <div className="flex flex-col items-end text-xs text-muted-foreground ml-2">
-                  <span>₹{item.selling_price}</span>
-                  <span>Stock: {item.stock_quantity}</span>
-                </div>
-              </div>
+              {`${item.product_name} — ₹${item.selling_price} (Stock: ${item.stock_quantity})`}
             </SelectItem>
           ))
         ) : (
