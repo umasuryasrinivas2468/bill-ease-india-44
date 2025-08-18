@@ -163,8 +163,8 @@ const CA = () => {
       <div className="flex items-center gap-4">
         <SidebarTrigger className="md:hidden" />
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold">CA Tools</h1>
-          <p className="text-muted-foreground">Professional tools for chartered accountants</p>
+          <h1 className="text-2xl md:text-3xl font-bold">CA Tools & Accounting</h1>
+          <p className="text-muted-foreground">Professional tools for chartered accountants and accounting management</p>
         </div>
       </div>
 

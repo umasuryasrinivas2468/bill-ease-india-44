@@ -108,7 +108,10 @@ export default function ChartOfAccounts() {
 
   return (
     <div className="p-4 space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Chart of Accounts</h1>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Chart of Accounts</h1>
+        <p className="text-muted-foreground text-sm mt-1">Manage your chart of accounts and account setup</p>
+      </div>
 
       <Card className="p-4">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-5 gap-3">

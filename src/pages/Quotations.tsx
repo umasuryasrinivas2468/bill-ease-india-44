@@ -317,6 +317,92 @@ const Quotations = () => {
     });
   };
 
+  const updateInventoryStock = async (itemName: string, quantity: number) => {
+    try {
+      // Find the inventory item by name
+      const inventoryItem = inventoryItems.find(item => item.product_name === itemName);
+      if (!inventoryItem) {
+        console.warn(`Inventory item "${itemName}" not found`);
+        return;
+      }
+
+      // Check if there's enough stock
+      if (inventoryItem.stock_quantity < quantity) {
+        throw new Error(`Insufficient stock for ${itemName}. Available: ${inventoryItem.stock_quantity}, Required: ${quantity}`);
+      }
+
+      // Update the stock quantity
+      const newStockQuantity = inventoryItem.stock_quantity - quantity;
+      
+      const { error } = await supabase
+        .from('inventory')
+        .update({ stock_quantity: newStockQuantity })
+        .eq('id', inventoryItem.id);
+
+      if (error) {
+        throw error;
+      }
+
+      console.log(`Updated stock for ${itemName}: ${inventoryItem.stock_quantity} -> ${newStockQuantity}`);
+    } catch (error) {
+      console.error('Error updating inventory stock:', error);
+      throw error;
+    }
+  };
+
+  const updateQuotationStatus = async (quotation: Quotation, newStatus: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired') => {
+    try {
+      // If quotation is being accepted, validate and update inventory stock
+      if (newStatus === 'accepted') {
+        // Validate stock availability for inventory items
+        for (const item of quotation.items) {
+          const inventoryItem = inventoryItems.find(inv => inv.product_name === item.name);
+          if (inventoryItem) {
+            if (inventoryItem.stock_quantity < item.quantity) {
+              toast({
+                title: "Insufficient Stock",
+                description: `Not enough stock for ${item.name}. Available: ${inventoryItem.stock_quantity}, Required: ${item.quantity}`,
+                variant: "destructive",
+              });
+              return;
+            }
+          }
+        }
+
+        // Update inventory stock for items that are in inventory
+        for (const item of quotation.items) {
+          const inventoryItem = inventoryItems.find(inv => inv.product_name === item.name);
+          if (inventoryItem) {
+            await updateInventoryStock(item.name, item.quantity);
+          }
+        }
+      }
+
+      const { error } = await supabase
+        .from('quotations')
+        .update({ status: newStatus })
+        .eq('id', quotation.id);
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Success",
+        description: `Quotation status updated to ${newStatus}${newStatus === 'accepted' ? ' and inventory updated!' : '!'}`,
+      });
+
+      fetchQuotations();
+    } catch (error: any) {
+      console.error('Error updating quotation status:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update quotation status.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const addItem = () => {
     setItems([...items, { name: '', quantity: 1, unit_price: 0, tax_percentage: 18, amount: 0 }]);
   };
@@ -328,9 +414,11 @@ const Quotations = () => {
   };
 
   const updateItem = (index: number, field: keyof QuotationItem, value: string | number) => {
+    console.log(`Quotations - Updating item ${index}, field ${field}, value:`, value);
     const updatedItems = [...items];
     updatedItems[index] = { ...updatedItems[index], [field]: value };
     updatedItems[index].amount = calculateItemAmount(updatedItems[index]);
+    console.log('Quotations - Updated items:', updatedItems);
     setItems(updatedItems);
   };
 
@@ -499,6 +587,7 @@ const Quotations = () => {
                       <InventoryItemSelector
                         value={item.name}
                         onChange={(value, price) => {
+                          console.log('Quotations - Inventory item selected:', value, price);
                           updateItem(index, 'name', value);
                           if (price) {
                             updateItem(index, 'unit_price', price);
@@ -682,7 +771,7 @@ const Quotations = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm mb-4">
                   <div>
                     <span className="font-medium">Date:</span> {new Date(quotation.quotation_date).toLocaleDateString()}
                   </div>
@@ -695,6 +784,41 @@ const Quotations = () => {
                   <div>
                     <span className="font-medium">Total:</span> ₹{quotation.total_amount.toFixed(2)}
                   </div>
+                </div>
+                
+                {/* Status Update Buttons */}
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-sm font-medium">Update Status:</span>
+                  {quotation.status !== 'sent' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateQuotationStatus(quotation, 'sent')}
+                      className="text-blue-600 hover:bg-blue-50"
+                    >
+                      Mark as Sent
+                    </Button>
+                  )}
+                  {quotation.status !== 'accepted' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateQuotationStatus(quotation, 'accepted')}
+                      className="text-green-600 hover:bg-green-50"
+                    >
+                      Mark as Accepted
+                    </Button>
+                  )}
+                  {quotation.status !== 'rejected' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateQuotationStatus(quotation, 'rejected')}
+                      className="text-red-600 hover:bg-red-50"
+                    >
+                      Mark as Rejected
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

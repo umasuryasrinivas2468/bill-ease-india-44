@@ -16,14 +16,36 @@ const InventoryItemSelector: React.FC<InventoryItemSelectorProps> = ({
 }) => {
   const { data: inventoryItems = [], isLoading, error } = useInventory();
 
-  console.log('InventoryItemSelector - Items:', inventoryItems);
+  // Find the selected item first
+  const selectedItem = inventoryItems.find(item => item.product_name === value);
+
+  console.log('InventoryItemSelector - Items:', inventoryItems?.length, 'items');
   console.log('InventoryItemSelector - Loading:', isLoading);
   console.log('InventoryItemSelector - Error:', error);
+  console.log('InventoryItemSelector - Current value:', JSON.stringify(value));
+  console.log('InventoryItemSelector - Selected item found:', !!selectedItem);
 
   const handleValueChange = (selectedValue: string) => {
-    const selectedItem = inventoryItems.find(item => item.product_name === selectedValue);
-    console.log('Selected item:', selectedItem);
-    onChange(selectedValue, selectedItem?.selling_price);
+    try {
+      console.log('InventoryItemSelector - Value changing to:', selectedValue);
+      const selectedItem = inventoryItems.find(item => item.product_name === selectedValue);
+      console.log('InventoryItemSelector - Selected item:', selectedItem);
+      
+      // Validate that we have required data
+      if (!selectedValue || selectedValue.trim() === '') {
+        console.warn('InventoryItemSelector - Empty value selected');
+        return;
+      }
+      
+      if (selectedValue === 'no-items') {
+        console.warn('InventoryItemSelector - "no-items" placeholder selected');
+        return;
+      }
+      
+      onChange(selectedValue, selectedItem?.selling_price);
+    } catch (error) {
+      console.error('InventoryItemSelector - Error in handleValueChange:', error);
+    }
   };
 
   if (isLoading) {
@@ -47,7 +69,7 @@ const InventoryItemSelector: React.FC<InventoryItemSelectorProps> = ({
   }
 
   return (
-    <Select value={value} onValueChange={handleValueChange}>
+    <Select value={value || undefined} onValueChange={handleValueChange}>
       <SelectTrigger className="w-full">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
@@ -56,7 +78,7 @@ const InventoryItemSelector: React.FC<InventoryItemSelectorProps> = ({
           inventoryItems.map(item => (
             <SelectItem key={item.id} value={item.product_name} className="hover:bg-gray-100">
               <div className="flex justify-between items-center w-full">
-                <span className="font-medium">{item.product_name}</span>
+                <span>{item.product_name}</span>
                 <span className="text-sm text-muted-foreground ml-2">
                   ₹{item.selling_price} (Stock: {item.stock_quantity})
                 </span>
@@ -64,7 +86,7 @@ const InventoryItemSelector: React.FC<InventoryItemSelectorProps> = ({
             </SelectItem>
           ))
         ) : (
-          <SelectItem value="no-items" disabled className="text-gray-500">
+          <SelectItem value="no-items" disabled>
             No inventory items available. Please add items to inventory first.
           </SelectItem>
         )}

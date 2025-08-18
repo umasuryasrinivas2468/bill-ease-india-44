@@ -108,7 +108,10 @@ export default function Ledgers() {
 
   return (
     <div className="p-4 space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Ledgers</h1>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Ledgers</h1>
+        <p className="text-muted-foreground text-sm mt-1">View account ledgers and transaction history</p>
+      </div>
 
       <Card className="p-4 space-y-4">
         <div className="max-w-sm">

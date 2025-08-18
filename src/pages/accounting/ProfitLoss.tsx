@@ -170,7 +170,10 @@ const ProfitLoss = () => {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Profit & Loss Report</h1>
+        <div>
+          <h1 className="text-3xl font-bold">Profit & Loss Report</h1>
+          <p className="text-muted-foreground text-sm mt-1">Comprehensive profit and loss statement</p>
+        </div>
         <Button onClick={exportToCSV} variant="outline">
           <Download className="h-4 w-4 mr-2" />
           Export CSV

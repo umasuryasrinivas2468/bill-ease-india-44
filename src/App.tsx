@@ -4,13 +4,13 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { AppSidebar } from "@/components/AppSidebar";
 import { AuthProvider } from "@/components/ClerkAuthProvider";
 import ProtectedRoute from './components/ProtectedRoute';
+import AppLayout from "./components/AppLayout";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
+import Landing from "./pages/Landing";
 import Invoices from "./pages/Invoices";
 import CreateInvoice from "./pages/CreateInvoice";
 import Clients from "./pages/Clients";
@@ -46,52 +46,47 @@ function App() {
       <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
         <AuthProvider>
           <TooltipProvider>
-            <SidebarProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <div className="flex min-h-screen w-full">
-                  <AppSidebar />
-                  <SidebarInset className="flex-1">
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/clerk-login" element={<ClerkLogin />} />
-                      
-                      {/* Protected Routes */}
-                      <Route element={<ProtectedRoute />}>
-                        <Route path="/dashboard" element={<Dashboard />} />
-                        <Route path="/invoices" element={<Invoices />} />
-                        <Route path="/create-invoice" element={<CreateInvoice />} />
-                        <Route path="/clients" element={<Clients />} />
-                        <Route path="/reports" element={<Reports />} />
-                        <Route path="/settings" element={<Settings />} />
-                        <Route path="/onboarding" element={<Onboarding />} />
-                        <Route path="/time-tracking" element={<TimeTracking />} />
-                        <Route path="/inventory" element={<Inventory />} />
-                        <Route path="/banking" element={<Banking />} />
-                        <Route path="/upi-collections" element={<UPICollections />} />
-                        <Route path="/marketplace" element={<Marketplace />} />
-                        <Route path="/support" element={<Support />} />
-                        <Route path="/notifications" element={<Notifications />} />
-                        <Route path="/ca" element={<CA />} />
-                        <Route path="/payout" element={<Payout />} />
-                        <Route path="/quotations" element={<Quotations />} />
-                        
-                        {/* Accounting Routes */}
-                        <Route path="/accounting/chart-of-accounts" element={<ChartOfAccounts />} />
-                        <Route path="/accounting/ledgers" element={<Ledgers />} />
-                        <Route path="/accounting/trial-balance" element={<TrialBalance />} />
-                        <Route path="/accounting/profit-loss" element={<ProfitLoss />} />
-                        <Route path="/accounting/manual-journals" element={<ManualJournals />} />
-                      </Route>
-                      
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </SidebarInset>
-                </div>
-              </BrowserRouter>
-            </SidebarProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppLayout>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/clerk-login" element={<ClerkLogin />} />
+                  
+                  {/* Protected Routes */}
+                  <Route element={<ProtectedRoute />}>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/invoices" element={<Invoices />} />
+                    <Route path="/create-invoice" element={<CreateInvoice />} />
+                    <Route path="/clients" element={<Clients />} />
+                    <Route path="/reports" element={<Reports />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/onboarding" element={<Onboarding />} />
+                    <Route path="/time-tracking" element={<TimeTracking />} />
+                    <Route path="/inventory" element={<Inventory />} />
+                    <Route path="/banking" element={<Banking />} />
+                    <Route path="/upi-collections" element={<UPICollections />} />
+                    <Route path="/marketplace" element={<Marketplace />} />
+                    <Route path="/support" element={<Support />} />
+                    <Route path="/notifications" element={<Notifications />} />
+                    <Route path="/ca" element={<CA />} />
+                    <Route path="/payout" element={<Payout />} />
+                    <Route path="/quotations" element={<Quotations />} />
+                    
+                    {/* Accounting Routes */}
+                    <Route path="/accounting/chart-of-accounts" element={<ChartOfAccounts />} />
+                    <Route path="/accounting/ledgers" element={<Ledgers />} />
+                    <Route path="/accounting/trial-balance" element={<TrialBalance />} />
+                    <Route path="/accounting/profit-loss" element={<ProfitLoss />} />
+                    <Route path="/accounting/manual-journals" element={<ManualJournals />} />
+                  </Route>
+                  
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </AppLayout>
+            </BrowserRouter>
           </TooltipProvider>
         </AuthProvider>
       </ThemeProvider>

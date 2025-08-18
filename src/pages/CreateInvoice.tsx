@@ -13,6 +13,9 @@ import { useNavigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import ClientSelector from '@/components/ClientSelector';
 import { Client } from '@/hooks/useClients';
+import InventoryItemSelector from '@/components/InventoryItemSelector';
+import { useInventory } from '@/hooks/useInventory';
+import { supabase } from '@/lib/supabase';
 
 interface InvoiceItem {
   description: string;
@@ -27,6 +30,7 @@ const CreateInvoice = () => {
   const navigate = useNavigate();
   const { user } = useUser();
   const createInvoiceMutation = useCreateInvoice();
+  const { data: inventoryItems = [], refetch: refetchInventory } = useInventory();
   
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [invoiceNumber, setInvoiceNumber] = useState('');
@@ -52,6 +56,7 @@ const CreateInvoice = () => {
   };
 
   const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
+    console.log(`Updating item ${index}, field ${field}, value:`, value);
     const updatedItems = [...items];
     updatedItems[index] = { ...updatedItems[index], [field]: value };
     
@@ -59,6 +64,7 @@ const CreateInvoice = () => {
       updatedItems[index].amount = updatedItems[index].quantity * updatedItems[index].rate;
     }
     
+    console.log('Updated items:', updatedItems);
     setItems(updatedItems);
   };
 
@@ -100,6 +106,21 @@ const CreateInvoice = () => {
     }
 
     try {
+      // Validate stock availability for inventory items before creating invoice
+      for (const item of items) {
+        const inventoryItem = inventoryItems.find(inv => inv.product_name === item.description);
+        if (inventoryItem) {
+          if (inventoryItem.stock_quantity < item.quantity) {
+            toast({
+              title: "Insufficient Stock",
+              description: `Not enough stock for ${item.description}. Available: ${inventoryItem.stock_quantity}, Required: ${item.quantity}`,
+              variant: "destructive",
+            });
+            return;
+          }
+        }
+      }
+
       const invoiceData = {
         invoice_number: invoiceNumber,
         client_name: selectedClient.name,
@@ -123,17 +144,28 @@ const CreateInvoice = () => {
 
       await createInvoiceMutation.mutateAsync(invoiceData);
       
+      // Update inventory stock for items that are in inventory
+      for (const item of items) {
+        const inventoryItem = inventoryItems.find(inv => inv.product_name === item.description);
+        if (inventoryItem) {
+          await updateInventoryStock(item.description, item.quantity);
+        }
+      }
+
+      // Refresh inventory data
+      refetchInventory();
+      
       toast({
         title: "Success",
-        description: "Invoice created successfully!",
+        description: "Invoice created successfully and inventory updated!",
       });
       
       navigate('/invoices');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating invoice:', error);
       toast({
         title: "Error",
-        description: "Failed to create invoice. Please try again.",
+        description: error.message || "Failed to create invoice. Please try again.",
         variant: "destructive",
       });
     }
@@ -147,6 +179,39 @@ const CreateInvoice = () => {
     setInvoiceNumber(`INV-${year}${month}-${random}`);
   };
 
+  const updateInventoryStock = async (itemName: string, quantity: number) => {
+    try {
+      // Find the inventory item by name
+      const inventoryItem = inventoryItems.find(item => item.product_name === itemName);
+      if (!inventoryItem) {
+        console.warn(`Inventory item "${itemName}" not found`);
+        return;
+      }
+
+      // Check if there's enough stock
+      if (inventoryItem.stock_quantity < quantity) {
+        throw new Error(`Insufficient stock for ${itemName}. Available: ${inventoryItem.stock_quantity}, Required: ${quantity}`);
+      }
+
+      // Update the stock quantity
+      const newStockQuantity = inventoryItem.stock_quantity - quantity;
+      
+      const { error } = await supabase
+        .from('inventory')
+        .update({ stock_quantity: newStockQuantity })
+        .eq('id', inventoryItem.id);
+
+      if (error) {
+        throw error;
+      }
+
+      console.log(`Updated stock for ${itemName}: ${inventoryItem.stock_quantity} -> ${newStockQuantity}`);
+    } catch (error) {
+      console.error('Error updating inventory stock:', error);
+      throw error;
+    }
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex items-center gap-4">
@@ -157,7 +222,7 @@ const CreateInvoice = () => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Client Information */}
           <Card>
@@ -262,13 +327,35 @@ const CreateInvoice = () => {
               {items.map((item, index) => (
                 <div key={index} className="grid grid-cols-1 md:grid-cols-7 gap-4 p-4 border rounded-lg">
                   <div className="md:col-span-2">
-                    <Label htmlFor={`description-${index}`}>Description</Label>
-                    <Input
-                      id={`description-${index}`}
+                    <Label htmlFor={`description-${index}`}>Item from Inventory</Label>
+                    <InventoryItemSelector
                       value={item.description}
-                      onChange={(e) => updateItem(index, 'description', e.target.value)}
-                      placeholder="Item description"
-                      required
+                      onChange={(value, price) => {
+                        try {
+                          console.log('CreateInvoice - Inventory item selected:', value, price);
+                          
+                          // Validate the value
+                          if (!value || typeof value !== 'string') {
+                            console.warn('CreateInvoice - Invalid value received:', value);
+                            return;
+                          }
+                          
+                          updateItem(index, 'description', value);
+                          if (price && typeof price === 'number' && price > 0) {
+                            updateItem(index, 'rate', price);
+                          }
+                          
+                          console.log('CreateInvoice - Item updated successfully');
+                        } catch (error) {
+                          console.error('CreateInvoice - Error updating item:', error);
+                          toast({
+                            title: "Error",
+                            description: "Failed to update item. Please try again.",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      placeholder="Select from inventory"
                     />
                   </div>
                   
