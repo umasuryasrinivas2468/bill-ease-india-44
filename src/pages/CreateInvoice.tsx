@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +19,7 @@ import { supabase } from '@/lib/supabase';
 
 interface InvoiceItem {
   description: string;
+  product_id: string | null;
   hsn_sac: string;
   quantity: number;
   rate: number;
@@ -43,11 +43,11 @@ const CreateInvoice = () => {
   const [discountPercentage, setDiscountPercentage] = useState(0);
   const [roundoff, setRoundoff] = useState(0);
   const [items, setItems] = useState<InvoiceItem[]>([
-    { description: '', hsn_sac: '', quantity: 1, rate: 0, amount: 0 }
+    { description: '', product_id: null, hsn_sac: '', quantity: 1, rate: 0, amount: 0 }
   ]);
 
   const addItem = () => {
-    setItems([...items, { description: '', hsn_sac: '', quantity: 1, rate: 0, amount: 0 }]);
+    setItems([...items, { description: '', product_id: null, hsn_sac: '', quantity: 1, rate: 0, amount: 0 }]);
   };
 
   const removeItem = (index: number) => {
@@ -56,7 +56,7 @@ const CreateInvoice = () => {
     }
   };
 
-  const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
+  const updateItem = (index: number, field: keyof InvoiceItem, value: string | number | null) => {
     console.log(`Updating item ${index}, field ${field}, value:`, value);
     const updatedItems = [...items];
     
@@ -115,9 +115,9 @@ const CreateInvoice = () => {
     try {
       // Validate stock availability for inventory items before creating invoice
       for (const item of items) {
-        const inventoryItem = inventoryItems.find(inv => inv.product_name === item.description);
-        if (inventoryItem) {
-          if (inventoryItem.stock_quantity < item.quantity) {
+        if (item.product_id) {
+          const inventoryItem = inventoryItems.find(inv => inv.id === item.product_id);
+          if (inventoryItem && inventoryItem.stock_quantity < item.quantity) {
             toast({
               title: "Insufficient Stock",
               description: `Not enough stock for ${item.description}. Available: ${inventoryItem.stock_quantity}, Required: ${item.quantity}`,
@@ -146,16 +146,16 @@ const CreateInvoice = () => {
         invoice_date: invoiceDate,
         due_date: dueDate,
         items: items,
+        items_with_product_id: items,
         notes: notes,
       };
 
       await createInvoiceMutation.mutateAsync(invoiceData);
       
-      // Update inventory stock for items that are in inventory
+      // Update inventory stock for items that have product_id
       for (const item of items) {
-        const inventoryItem = inventoryItems.find(inv => inv.product_name === item.description);
-        if (inventoryItem) {
-          await updateInventoryStock(item.description, item.quantity);
+        if (item.product_id) {
+          await updateInventoryStock(item.product_id, item.quantity);
         }
       }
 
@@ -186,33 +186,30 @@ const CreateInvoice = () => {
     setInvoiceNumber(`INV-${year}${month}-${random}`);
   };
 
-  const updateInventoryStock = async (itemName: string, quantity: number) => {
+  const updateInventoryStock = async (productId: string, quantity: number) => {
     try {
-      // Find the inventory item by name
-      const inventoryItem = inventoryItems.find(item => item.product_name === itemName);
+      const inventoryItem = inventoryItems.find(item => item.id === productId);
       if (!inventoryItem) {
-        console.warn(`Inventory item "${itemName}" not found`);
+        console.warn(`Inventory item with ID "${productId}" not found`);
         return;
       }
 
-      // Check if there's enough stock
       if (inventoryItem.stock_quantity < quantity) {
-        throw new Error(`Insufficient stock for ${itemName}. Available: ${inventoryItem.stock_quantity}, Required: ${quantity}`);
+        throw new Error(`Insufficient stock for ${inventoryItem.product_name}. Available: ${inventoryItem.stock_quantity}, Required: ${quantity}`);
       }
 
-      // Update the stock quantity
       const newStockQuantity = inventoryItem.stock_quantity - quantity;
       
       const { error } = await supabase
         .from('inventory')
         .update({ stock_quantity: newStockQuantity })
-        .eq('id', inventoryItem.id);
+        .eq('id', productId);
 
       if (error) {
         throw error;
       }
 
-      console.log(`Updated stock for ${itemName}: ${inventoryItem.stock_quantity} -> ${newStockQuantity}`);
+      console.log(`Updated stock for ${inventoryItem.product_name}: ${inventoryItem.stock_quantity} -> ${newStockQuantity}`);
     } catch (error) {
       console.error('Error updating inventory stock:', error);
       throw error;
@@ -231,7 +228,6 @@ const CreateInvoice = () => {
 
       <form onSubmit={handleSubmit} className="space-y-6" noValidate>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Client Information */}
           <Card>
             <CardHeader>
               <CardTitle>Client Information</CardTitle>
@@ -254,13 +250,11 @@ const CreateInvoice = () => {
             </CardContent>
           </Card>
 
-          {/* Invoice Details */}
           <Card>
             <CardHeader>
               <CardTitle>Invoice Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* From Email Display */}
               <div className="p-3 bg-blue-50 rounded-lg">
                 <p className="text-sm font-medium text-blue-800">
                   From: {user?.emailAddresses?.[0]?.emailAddress || 'No email available'}
@@ -324,7 +318,6 @@ const CreateInvoice = () => {
           </Card>
         </div>
 
-        {/* Invoice Items */}
         <Card>
           <CardHeader>
             <CardTitle>Invoice Items</CardTitle>
@@ -340,8 +333,14 @@ const CreateInvoice = () => {
                       onChange={(value, price) => {
                         console.log('CreateInvoice - Inventory item selected:', value, price);
                         
-                        // Update description first
+                        // Find the selected inventory item to get product_id
+                        const selectedInventoryItem = inventoryItems.find(inv => inv.product_name === value);
+                        
+                        // Update description
                         updateItem(index, 'description', value);
+                        
+                        // Update product_id
+                        updateItem(index, 'product_id', selectedInventoryItem?.id || null);
                         
                         // Update price if provided
                         if (price && typeof price === 'number' && price > 0) {
@@ -418,7 +417,6 @@ const CreateInvoice = () => {
           </CardContent>
         </Card>
 
-        {/* Additional Charges and Discounts */}
         <Card>
           <CardHeader>
             <CardTitle>Additional Details</CardTitle>
@@ -467,7 +465,6 @@ const CreateInvoice = () => {
           </CardContent>
         </Card>
 
-        {/* Invoice Summary */}
         <Card>
           <CardHeader>
             <CardTitle>Invoice Summary</CardTitle>
@@ -512,7 +509,6 @@ const CreateInvoice = () => {
           </CardContent>
         </Card>
 
-        {/* Notes */}
         <Card>
           <CardHeader>
             <CardTitle>Additional Notes</CardTitle>
@@ -527,7 +523,6 @@ const CreateInvoice = () => {
           </CardContent>
         </Card>
 
-        {/* Submit Button */}
         <div className="flex justify-end">
           <Button 
             type="submit" 
