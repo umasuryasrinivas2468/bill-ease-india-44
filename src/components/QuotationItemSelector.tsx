@@ -4,8 +4,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useInventory } from '@/hooks/useInventory';
 
 interface QuotationItemSelectorProps {
+  // The selected product_id
   value: string;
-  onChange: (value: string, price?: number) => void;
+  // onChange with productId and meta (name, price)
+  onChange: (productId: string, meta?: { name: string; price: number }) => void;
   placeholder?: string;
   disabled?: boolean;
 }
@@ -18,23 +20,13 @@ const QuotationItemSelector: React.FC<QuotationItemSelectorProps> = ({
 }) => {
   const { data: inventoryItems = [], isLoading, error } = useInventory();
 
-  const handleValueChange = (selectedValue: string) => {
-    try {
-      // Don't allow selection of placeholder items
-      if (selectedValue === 'no-items' || selectedValue === 'loading') {
-        return;
-      }
-      
-      const selectedItem = inventoryItems.find(item => item.product_name === selectedValue);
-      
-      if (selectedItem) {
-        onChange(selectedValue, selectedItem.selling_price);
-      } else {
-        // Handle manual entry case
-        onChange(selectedValue);
-      }
-    } catch (error) {
-      console.error('QuotationItemSelector - Error in handleValueChange:', error);
+  const handleValueChange = (selectedProductId: string) => {
+    // Don't allow selection of placeholder items
+    if (selectedProductId === 'no-items' || selectedProductId === 'loading') return;
+
+    const selectedItem = inventoryItems.find(item => item.id === selectedProductId);
+    if (selectedItem) {
+      onChange(selectedItem.id, { name: selectedItem.product_name, price: Number(selectedItem.selling_price) });
     }
   };
 
@@ -72,7 +64,7 @@ const QuotationItemSelector: React.FC<QuotationItemSelectorProps> = ({
           inventoryItems.map(item => (
             <SelectItem 
               key={item.id} 
-              value={item.product_name} 
+              value={item.id} 
               className="hover:bg-gray-100 cursor-pointer"
             >
               {`${item.product_name} — ₹${item.selling_price} (Stock: ${item.stock_quantity})`}

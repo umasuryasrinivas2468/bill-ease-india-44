@@ -802,6 +802,7 @@ export type Database = {
           discount: number | null
           id: string
           items: Json
+          items_with_product_id: Json | null
           quotation_date: string
           quotation_number: string
           status: string | null
@@ -822,6 +823,7 @@ export type Database = {
           discount?: number | null
           id?: string
           items?: Json
+          items_with_product_id?: Json | null
           quotation_date: string
           quotation_number: string
           status?: string | null
@@ -842,6 +844,7 @@ export type Database = {
           discount?: number | null
           id?: string
           items?: Json
+          items_with_product_id?: Json | null
           quotation_date?: string
           quotation_number?: string
           status?: string | null

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,7 @@ import { supabase } from '@/lib/supabase';
 import QuotationItemSelector from '@/components/QuotationItemSelector';
 
 interface QuotationItem {
+  product_id?: string;
   name: string;
   description: string;
   quantity: number;
@@ -39,11 +39,11 @@ const Quotations = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [items, setItems] = useState<QuotationItem[]>([
-    { name: '', description: '', quantity: 1, price: 0, amount: 0 }
+    { product_id: '', name: '', description: '', quantity: 1, price: 0, amount: 0 }
   ]);
 
   const addItem = () => {
-    setItems([...items, { name: '', description: '', quantity: 1, price: 0, amount: 0 }]);
+    setItems([...items, { product_id: '', name: '', description: '', quantity: 1, price: 0, amount: 0 }]);
   };
 
   const removeItem = (index: number) => {
@@ -58,7 +58,9 @@ const Quotations = () => {
     
     // Recalculate amount when quantity or price changes
     if (field === 'quantity' || field === 'price') {
-      updatedItems[index].amount = updatedItems[index].quantity * updatedItems[index].price;
+      const qty = Number(updatedItems[index].quantity) || 0;
+      const price = Number(updatedItems[index].price) || 0;
+      updatedItems[index].amount = qty * price;
     }
     
     setItems(updatedItems);
@@ -146,6 +148,16 @@ const Quotations = () => {
     setIsSubmitting(true);
 
     try {
+      // Prepare items_with_product_id including product_id
+      const itemsWithProductId = items.map((it) => ({
+        product_id: it.product_id || null,
+        name: it.name,
+        description: it.description,
+        quantity: it.quantity,
+        price: it.price,
+        amount: it.amount,
+      }));
+
       const quotationData = {
         quotation_number: quotationNumber,
         client_name: clientName,
@@ -154,7 +166,8 @@ const Quotations = () => {
         client_address: clientAddress || null,
         quotation_date: quotationDate,
         validity_period: validityPeriod,
-        items: items,
+        items: items, // keep legacy items array for compatibility
+        items_with_product_id: itemsWithProductId, // new array with product_id
         discount: discount,
         subtotal: subtotal,
         tax_amount: taxAmount,
@@ -193,7 +206,7 @@ const Quotations = () => {
       setValidityPeriod(30);
       setTermsConditions('');
       setDiscount(0);
-      setItems([{ name: '', description: '', quantity: 1, price: 0, amount: 0 }]);
+      setItems([{ product_id: '', name: '', description: '', quantity: 1, price: 0, amount: 0 }]);
       
     } catch (error: any) {
       console.error('Error creating quotation:', error);
@@ -342,16 +355,24 @@ const Quotations = () => {
               {items.map((item, index) => (
                 <div key={index} className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border rounded-lg">
                   <div className="md:col-span-2">
-                    <Label htmlFor={`item-name-${index}`}>Item Name *</Label>
+                    <Label htmlFor={`item-name-${index}`}>Item *</Label>
                     <QuotationItemSelector
-                      value={item.name}
-                      onChange={(value, price) => {
-                        updateItem(index, 'name', value);
-                        if (price && typeof price === 'number' && price > 0) {
-                          updateItem(index, 'price', price);
-                        }
+                      value={item.product_id || ''}
+                      onChange={(productId, meta) => {
+                        // Update product_id, name, and price from selection
+                        const updatedItems = [...items];
+                        const current = { ...updatedItems[index] };
+                        current.product_id = productId;
+                        if (meta?.name) current.name = meta.name;
+                        if (typeof meta?.price === 'number') current.price = meta.price;
+                        // recalc amount
+                        const qty = Number(current.quantity) || 0;
+                        const price = Number(current.price) || 0;
+                        current.amount = qty * price;
+                        updatedItems[index] = current;
+                        setItems(updatedItems);
                       }}
-                      placeholder="Select from inventory or type manually"
+                      placeholder="Select an item from inventory"
                     />
                   </div>
                   
