@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -58,8 +59,14 @@ const CreateInvoice = () => {
   const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
     console.log(`Updating item ${index}, field ${field}, value:`, value);
     const updatedItems = [...items];
-    updatedItems[index] = { ...updatedItems[index], [field]: value };
     
+    // Update the specific field
+    updatedItems[index] = { 
+      ...updatedItems[index], 
+      [field]: value 
+    };
+    
+    // Recalculate amount if quantity or rate changed
     if (field === 'quantity' || field === 'rate') {
       updatedItems[index].amount = updatedItems[index].quantity * updatedItems[index].rate;
     }
@@ -331,28 +338,14 @@ const CreateInvoice = () => {
                     <InventoryItemSelector
                       value={item.description}
                       onChange={(value, price) => {
-                        try {
-                          console.log('CreateInvoice - Inventory item selected:', value, price);
-                          
-                          // Validate the value
-                          if (!value || typeof value !== 'string') {
-                            console.warn('CreateInvoice - Invalid value received:', value);
-                            return;
-                          }
-                          
-                          updateItem(index, 'description', value);
-                          if (price && typeof price === 'number' && price > 0) {
-                            updateItem(index, 'rate', price);
-                          }
-                          
-                          console.log('CreateInvoice - Item updated successfully');
-                        } catch (error) {
-                          console.error('CreateInvoice - Error updating item:', error);
-                          toast({
-                            title: "Error",
-                            description: "Failed to update item. Please try again.",
-                            variant: "destructive",
-                          });
+                        console.log('CreateInvoice - Inventory item selected:', value, price);
+                        
+                        // Update description first
+                        updateItem(index, 'description', value);
+                        
+                        // Update price if provided
+                        if (price && typeof price === 'number' && price > 0) {
+                          updateItem(index, 'rate', price);
                         }
                       }}
                       placeholder="Select from inventory"
