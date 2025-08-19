@@ -1,8 +1,7 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@clerk/clerk-react';
-import { normalizeUserId, isValidUserId } from '@/lib/userUtils';
+import { isValidUserId } from '@/lib/userUtils';
 
 export interface Invoice {
   id: string;
@@ -25,6 +24,8 @@ export interface Invoice {
   items: any[];
   // Add items_with_product_id so we can read it from DB when present
   items_with_product_id?: any[];
+  // Also support items_product_mapping for compatibility
+  items_product_mapping?: any[];
   notes?: string;
   created_at: string;
 }
@@ -40,13 +41,13 @@ export const useInvoices = () => {
         throw new Error('User not authenticated or invalid user ID');
       }
       
-      const normalizedUserId = normalizeUserId(user.id);
-      console.log('Fetching invoices for user:', normalizedUserId);
+      const uid = user.id;
+      console.log('Fetching invoices for user:', uid);
       
       const { data, error } = await supabase
         .from('invoices')
         .select('*')
-        .eq('user_id', normalizedUserId)
+        .eq('user_id', uid)
         .order('created_at', { ascending: false });
       
       if (error) {
@@ -56,7 +57,7 @@ export const useInvoices = () => {
       
       console.log('Fetched invoices:', data);
       
-      // Check for overdue invoices and update status
+      // Check for overdue invoices and update status (client-side for view)
       const today = new Date().toISOString().split('T')[0];
       const invoicesWithStatus = (data || []).map(invoice => {
         if (invoice.status === 'pending' && invoice.due_date < today) {
@@ -82,10 +83,10 @@ export const useCreateInvoice = () => {
         throw new Error('User not authenticated or invalid user ID');
       }
       
-      const normalizedUserId = normalizeUserId(user.id);
+      const uid = user.id;
 
       // Build items_with_product_id by mapping invoice items to inventory product IDs
-      // We attempt to match by common name fields: product_name, name, or description.
+      // Prefer the product_id already present on each item; otherwise map by product_name/description.
       let itemsWithProductId: any[] = [];
       if (Array.isArray(invoiceData.items) && invoiceData.items.length > 0) {
         console.log('[CreateInvoice] Mapping items to inventory product IDs...');
@@ -93,7 +94,7 @@ export const useCreateInvoice = () => {
         const { data: inventory, error: invError } = await supabase
           .from('inventory')
           .select('id, product_name')
-          .eq('user_id', normalizedUserId);
+          .eq('user_id', uid);
 
         if (invError) {
           console.error('[CreateInvoice] Failed to fetch inventory for mapping:', invError);
@@ -102,6 +103,12 @@ export const useCreateInvoice = () => {
 
         const inv = inventory || [];
         itemsWithProductId = invoiceData.items.map((item: any, idx: number) => {
+          // Prefer existing product_id if already set by the UI
+          if (item?.product_id) {
+            console.log(`[CreateInvoice] Item #${idx + 1} already has product_id:`, item.product_id);
+            return item;
+          }
+
           const nameCandidate =
             item?.product_name ??
             item?.name ??
@@ -119,9 +126,11 @@ export const useCreateInvoice = () => {
 
       const payload = { 
         ...invoiceData, 
-        user_id: normalizedUserId,
+        user_id: uid,
         // Persist the mapping alongside existing items
-        items_with_product_id: itemsWithProductId.length ? itemsWithProductId : invoiceData.items
+        items_with_product_id: itemsWithProductId.length ? itemsWithProductId : invoiceData.items,
+        // Also keep a copy in items_product_mapping for compatibility
+        items_product_mapping: itemsWithProductId.length ? itemsWithProductId : invoiceData.items,
       };
       
       console.log('[CreateInvoice] Creating invoice with payload:', {
@@ -132,7 +141,7 @@ export const useCreateInvoice = () => {
       console.log('[CreateInvoice] Target table: invoices');
       console.log('[CreateInvoice] Supabase URL:', 'https://vhntnkvtzmerpdhousfr.supabase.co');
       console.log('[CreateInvoice] Request URL:', `https://vhntnkvtzmerpdhousfr.supabase.co/rest/v1/invoices`);
-      console.log('[CreateInvoice] User ID normalized:', normalizedUserId);
+      console.log('[CreateInvoice] User ID:', uid);
       
       const { data, error } = await supabase
         .from('invoices')
@@ -184,13 +193,13 @@ export const useDeleteInvoice = () => {
         throw new Error('User not authenticated or invalid user ID');
       }
       
-      const normalizedUserId = normalizeUserId(user.id);
+      const uid = user.id;
       
       const { error } = await supabase
         .from('invoices')
         .delete()
         .eq('id', invoiceId)
-        .eq('user_id', normalizedUserId);
+        .eq('user_id', uid);
       
       if (error) {
         console.error('Error deleting invoice:', error);
@@ -220,13 +229,13 @@ export const useUpdateInvoiceStatus = () => {
         throw new Error('User not authenticated or invalid user ID');
       }
       
-      const normalizedUserId = normalizeUserId(user.id);
+      const uid = user.id;
       
       const { data, error } = await supabase
         .from('invoices')
         .update({ status })
         .eq('id', invoiceId)
-        .eq('user_id', normalizedUserId)
+        .eq('user_id', uid)
         .select()
         .single();
       
