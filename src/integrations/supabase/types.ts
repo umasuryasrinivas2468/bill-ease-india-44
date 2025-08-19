@@ -481,6 +481,7 @@ export type Database = {
           invoice_date: string
           invoice_number: string
           items: Json
+          items_with_product_id: Json | null
           notes: string | null
           roundoff: number | null
           status: string | null
@@ -506,6 +507,7 @@ export type Database = {
           invoice_date: string
           invoice_number: string
           items?: Json
+          items_with_product_id?: Json | null
           notes?: string | null
           roundoff?: number | null
           status?: string | null
@@ -531,6 +533,7 @@ export type Database = {
           invoice_date?: string
           invoice_number?: string
           items?: Json
+          items_with_product_id?: Json | null
           notes?: string | null
           roundoff?: number | null
           status?: string | null

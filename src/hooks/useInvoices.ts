@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@clerk/clerk-react';
@@ -22,6 +23,8 @@ export interface Invoice {
   invoice_date: string;
   due_date: string;
   items: any[];
+  // Add items_with_product_id so we can read it from DB when present
+  items_with_product_id?: any[];
   notes?: string;
   created_at: string;
 }
@@ -80,9 +83,52 @@ export const useCreateInvoice = () => {
       }
       
       const normalizedUserId = normalizeUserId(user.id);
-      const payload = { ...invoiceData, user_id: normalizedUserId };
+
+      // Build items_with_product_id by mapping invoice items to inventory product IDs
+      // We attempt to match by common name fields: product_name, name, or description.
+      let itemsWithProductId: any[] = [];
+      if (Array.isArray(invoiceData.items) && invoiceData.items.length > 0) {
+        console.log('[CreateInvoice] Mapping items to inventory product IDs...');
+        // Fetch minimal inventory list for mapping
+        const { data: inventory, error: invError } = await supabase
+          .from('inventory')
+          .select('id, product_name')
+          .eq('user_id', normalizedUserId);
+
+        if (invError) {
+          console.error('[CreateInvoice] Failed to fetch inventory for mapping:', invError);
+          throw invError;
+        }
+
+        const inv = inventory || [];
+        itemsWithProductId = invoiceData.items.map((item: any, idx: number) => {
+          const nameCandidate =
+            item?.product_name ??
+            item?.name ??
+            item?.description ??
+            item?.item_name ??
+            '';
+
+          const matched = inv.find(i => i.product_name === nameCandidate);
+          const mapped = { ...item, product_id: matched?.id ?? null };
+
+          console.log(`[CreateInvoice] Item #${idx + 1} "${nameCandidate}" => product_id:`, mapped.product_id);
+          return mapped;
+        });
+      }
+
+      const payload = { 
+        ...invoiceData, 
+        user_id: normalizedUserId,
+        // Persist the mapping alongside existing items
+        items_with_product_id: itemsWithProductId.length ? itemsWithProductId : invoiceData.items
+      };
       
-      console.log('[CreateInvoice] Creating invoice with payload:', payload);
+      console.log('[CreateInvoice] Creating invoice with payload:', {
+        ...payload,
+        // Avoid logging huge arrays completely
+        items_with_product_id_preview: Array.isArray(payload.items_with_product_id) ? payload.items_with_product_id.slice(0, 3) : null
+      });
       console.log('[CreateInvoice] Target table: invoices');
       console.log('[CreateInvoice] Supabase URL:', 'https://vhntnkvtzmerpdhousfr.supabase.co');
       console.log('[CreateInvoice] Request URL:', `https://vhntnkvtzmerpdhousfr.supabase.co/rest/v1/invoices`);
