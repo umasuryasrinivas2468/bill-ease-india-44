@@ -75,6 +75,25 @@ const CreateInvoice = () => {
     setItems(updatedItems);
   };
 
+  const updateItemMultiple = (index: number, updates: Partial<InvoiceItem>) => {
+    console.log(`Updating multiple fields for item ${index}:`, updates);
+    const updatedItems = [...items];
+    
+    // Apply all updates at once
+    updatedItems[index] = { 
+      ...updatedItems[index], 
+      ...updates
+    };
+    
+    // Recalculate amount if quantity or rate was updated
+    if ('quantity' in updates || 'rate' in updates) {
+      updatedItems[index].amount = updatedItems[index].quantity * updatedItems[index].rate;
+    }
+    
+    console.log('Updated items (multiple):', updatedItems);
+    setItems(updatedItems);
+  };
+
   const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
   const discountAmount = subtotal * (discountPercentage / 100);
   const afterDiscount = subtotal - discountAmount;
@@ -336,16 +355,18 @@ const CreateInvoice = () => {
                         // Find the selected inventory item to get product_id
                         const selectedInventoryItem = inventoryItems.find(inv => inv.product_name === value);
                         
-                        // Update description
-                        updateItem(index, 'description', value);
-                        
-                        // Update product_id
-                        updateItem(index, 'product_id', selectedInventoryItem?.id || null);
+                        // Update multiple fields at once to prevent clearing
+                        const updates: Partial<InvoiceItem> = {
+                          description: value,
+                          product_id: selectedInventoryItem?.id || null,
+                        };
                         
                         // Update price if provided
                         if (price && typeof price === 'number' && price > 0) {
-                          updateItem(index, 'rate', price);
+                          updates.rate = price;
                         }
+                        
+                        updateItemMultiple(index, updates);
                       }}
                       placeholder="Select from inventory"
                     />
