@@ -330,15 +330,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "credit_notes_original_invoice_id_fkey"
-            columns: ["original_invoice_id"]
-            isOneToOne: false
-            referencedRelation: "invoices"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       debit_notes: {
         Row: {
@@ -398,15 +390,7 @@ export type Database = {
           vendor_gst_number?: string | null
           vendor_name?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "debit_notes_original_invoice_id_fkey"
-            columns: ["original_invoice_id"]
-            isOneToOne: false
-            referencedRelation: "invoices"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       inventory: {
         Row: {
@@ -469,7 +453,6 @@ export type Database = {
           client_address: string | null
           client_email: string | null
           client_gst_number: string | null
-          client_id: string | null
           client_name: string
           created_at: string | null
           discount: number | null
@@ -481,7 +464,6 @@ export type Database = {
           invoice_date: string
           invoice_number: string
           items: Json
-          items_product_mapping: Json | null
           items_with_product_id: Json | null
           notes: string | null
           roundoff: number | null
@@ -492,28 +474,26 @@ export type Database = {
         }
         Insert: {
           advance?: number | null
-          amount: number
+          amount?: number
           client_address?: string | null
           client_email?: string | null
           client_gst_number?: string | null
-          client_id?: string | null
           client_name: string
           created_at?: string | null
           discount?: number | null
           due_date: string
           from_email?: string | null
-          gst_amount: number
+          gst_amount?: number
           gst_rate?: number | null
           id?: string
           invoice_date: string
           invoice_number: string
           items?: Json
-          items_product_mapping?: Json | null
           items_with_product_id?: Json | null
           notes?: string | null
           roundoff?: number | null
           status?: string | null
-          total_amount: number
+          total_amount?: number
           updated_at?: string | null
           user_id: string
         }
@@ -523,7 +503,6 @@ export type Database = {
           client_address?: string | null
           client_email?: string | null
           client_gst_number?: string | null
-          client_id?: string | null
           client_name?: string
           created_at?: string | null
           discount?: number | null
@@ -535,7 +514,6 @@ export type Database = {
           invoice_date?: string
           invoice_number?: string
           items?: Json
-          items_product_mapping?: Json | null
           items_with_product_id?: Json | null
           notes?: string | null
           roundoff?: number | null
@@ -544,15 +522,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "invoices_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       journal_lines: {
         Row: {
@@ -678,15 +648,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "payment_reminders_invoice_id_fkey"
-            columns: ["invoice_id"]
-            isOneToOne: false
-            referencedRelation: "invoices"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       processed_documents: {
         Row: {
