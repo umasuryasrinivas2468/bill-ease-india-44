@@ -22,10 +22,8 @@ export interface Invoice {
   invoice_date: string;
   due_date: string;
   items: any[];
-  // Add items_with_product_id so we can read it from DB when present
+  // Keep items_with_product_id for storing mapped items with product_id
   items_with_product_id?: any[];
-  // Also support items_product_mapping for compatibility
-  items_product_mapping?: any[];
   notes?: string;
   created_at: string;
 }
@@ -86,7 +84,6 @@ export const useCreateInvoice = () => {
       const uid = user.id;
 
       // Build items_with_product_id by mapping invoice items to inventory product IDs
-      // Prefer the product_id already present on each item; otherwise map by product_name/description.
       let itemsWithProductId: any[] = [];
       if (Array.isArray(invoiceData.items) && invoiceData.items.length > 0) {
         console.log('[CreateInvoice] Mapping items to inventory product IDs...');
@@ -104,11 +101,6 @@ export const useCreateInvoice = () => {
         const inv = inventory || [];
         itemsWithProductId = invoiceData.items.map((item: any, idx: number) => {
           // Prefer existing product_id if already set by the UI
-          if (item?.product_id) {
-            console.log(`[CreateInvoice] Item #${idx + 1} already has product_id:`, item.product_id);
-            return item;
-          }
-
           const nameCandidate =
             item?.product_name ??
             item?.name ??
@@ -117,9 +109,25 @@ export const useCreateInvoice = () => {
             '';
 
           const matched = inv.find(i => i.product_name === nameCandidate);
-          const mapped = { ...item, product_id: matched?.id ?? null };
+          const product_id = item?.product_id ?? matched?.id ?? null;
 
-          console.log(`[CreateInvoice] Item #${idx + 1} "${nameCandidate}" => product_id:`, mapped.product_id);
+          const quantity = Number(item?.quantity ?? 0);
+          const rate = Number(item?.rate ?? 0);
+          const amountFromItem = Number(item?.amount);
+          const amount = Number.isFinite(amountFromItem) ? amountFromItem : quantity * rate;
+
+          const hsn_sac = item?.hsn_sac ?? '';
+
+          const mapped = {
+            ...item,
+            product_id,
+            quantity,
+            rate,
+            amount,
+            hsn_sac,
+          };
+
+          console.log(`[CreateInvoice] Item #${idx + 1} "${nameCandidate}" => product_id:`, product_id);
           return mapped;
         });
       }
@@ -127,15 +135,12 @@ export const useCreateInvoice = () => {
       const payload = { 
         ...invoiceData, 
         user_id: uid,
-        // Persist the mapping alongside existing items
+        // Persist only items_with_product_id (drop items_product_mapping)
         items_with_product_id: itemsWithProductId.length ? itemsWithProductId : invoiceData.items,
-        // Also keep a copy in items_product_mapping for compatibility
-        items_product_mapping: itemsWithProductId.length ? itemsWithProductId : invoiceData.items,
       };
       
       console.log('[CreateInvoice] Creating invoice with payload:', {
         ...payload,
-        // Avoid logging huge arrays completely
         items_with_product_id_preview: Array.isArray(payload.items_with_product_id) ? payload.items_with_product_id.slice(0, 3) : null
       });
       console.log('[CreateInvoice] Target table: invoices');
