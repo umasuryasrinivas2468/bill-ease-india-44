@@ -29,7 +29,9 @@ import Notifications from "./pages/Notifications";
 import CA from "./pages/CA";
 import Payout from "./pages/Payout";
 import Quotations from "./pages/Quotations";
+import QuotationsInfo from "./pages/QuotationsInfo";
 import NotFound from "./pages/NotFound";
+import CashFlowForecasting from "./pages/CashFlowForecasting";
 
 // Accounting pages
 import ChartOfAccounts from "./pages/accounting/ChartOfAccounts";
@@ -62,6 +64,7 @@ function App() {
                     <Route path="/create-invoice" element={<CreateInvoice />} />
                     <Route path="/clients" element={<Clients />} />
                     <Route path="/reports" element={<Reports />} />
+                    <Route path="/reports/cash-flow-forecasting" element={<CashFlowForecasting />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/onboarding" element={<Onboarding />} />
                     <Route path="/time-tracking" element={<TimeTracking />} />
@@ -73,7 +76,8 @@ function App() {
                     <Route path="/notifications" element={<Notifications />} />
                     <Route path="/ca" element={<CA />} />
                     <Route path="/payout" element={<Payout />} />
-                    <Route path="/quotations" element={<Quotations />} />
+                    <Route path="/quotations" element={<QuotationsInfo />} />
+                    <Route path="/quotations/create" element={<Quotations />} />
                     
                     {/* Accounting Routes */}
                     <Route path="/accounting/chart-of-accounts" element={<ChartOfAccounts />} />

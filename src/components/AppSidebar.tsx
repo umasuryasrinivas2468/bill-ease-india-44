@@ -19,9 +19,11 @@ import {
   ListTree,
   TrendingUp,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  LineChart
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
+import { useBusinessData } from "@/hooks/useBusinessData";
 import {
   Sidebar,
   SidebarContent,
@@ -47,10 +49,14 @@ const mainMenuItems = [
   { title: "Quotations", url: "/quotations", icon: Quote },
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Inventory", url: "/inventory", icon: Package },
-  { title: "Reports", url: "/reports", icon: BarChart3 },
   { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Settings", url: "/settings", icon: Settings },
   { title: "Support", url: "/support", icon: HelpCircle },
+];
+
+const reportsMenuItems = [
+  { title: "Business Reports", url: "/reports", icon: BarChart3 },
+  { title: "Cash Flow Forecasting", url: "/reports/cash-flow-forecasting", icon: LineChart },
 ];
 
 const caToolsMenuItems = [
@@ -66,9 +72,14 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
   const { signOut } = useClerk();
+  const { getBusinessInfo, getBusinessAssets } = useBusinessData();
   const currentPath = location.pathname;
   const isCollapsed = state === "collapsed";
   const [isCAToolsOpen, setIsCAToolsOpen] = useState(false);
+  const [isReportsOpen, setIsReportsOpen] = useState(false);
+  
+  const businessInfo = getBusinessInfo();
+  const businessAssets = getBusinessAssets();
 
   const isActive = (path: string) => {
     // Handle dashboard routing - both "/" and "/dashboard" should highlight dashboard
@@ -93,20 +104,40 @@ export function AppSidebar() {
         <div className="flex items-center justify-between p-2 border-b border-sidebar-border">
           {!isCollapsed ? (
             <div className="flex items-center space-x-3">
-              <div className="h-8 w-8 bg-gradient-to-r from-blue-600 to-orange-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">A</span>
-              </div>
+              {businessAssets.logoBase64 ? (
+                <img 
+                  src={`data:image/png;base64,${businessAssets.logoBase64}`}
+                  alt="Business Logo" 
+                  className="h-8 w-8 object-contain rounded"
+                />
+              ) : (
+                <div className="h-8 w-8 bg-gradient-to-r from-blue-600 to-orange-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">
+                    {businessInfo?.businessName ? businessInfo.businessName.charAt(0).toUpperCase() : 'B'}
+                  </span>
+                </div>
+              )}
               <div>
                 <h1 className="text-lg font-bold text-sidebar-foreground tracking-tight">
-                  Aczen
+                  {businessInfo?.businessName || 'Business'}
                 </h1>
               </div>
             </div>
           ) : (
             <div className="flex justify-center w-full">
-              <div className="h-8 w-8 bg-gradient-to-r from-blue-600 to-orange-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">A</span>
-              </div>
+              {businessAssets.logoBase64 ? (
+                <img 
+                  src={`data:image/png;base64,${businessAssets.logoBase64}`}
+                  alt="Business Logo" 
+                  className="h-8 w-8 object-contain rounded"
+                />
+              ) : (
+                <div className="h-8 w-8 bg-gradient-to-r from-blue-600 to-orange-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">
+                    {businessInfo?.businessName ? businessInfo.businessName.charAt(0).toUpperCase() : 'B'}
+                  </span>
+                </div>
+              )}
             </div>
           )}
           <SidebarTrigger className="h-6 w-6" />
@@ -135,6 +166,61 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
+                
+                {/* Reports Collapsible Menu */}
+                <SidebarMenuItem>
+                  <Collapsible 
+                    open={isReportsOpen} 
+                    onOpenChange={setIsReportsOpen}
+                    className="w-full"
+                  >
+                    <div
+                      onMouseEnter={() => !isCollapsed && setIsReportsOpen(true)}
+                      onMouseLeave={() => !isCollapsed && setIsReportsOpen(false)}
+                      className="w-full"
+                    >
+                      <SidebarMenuButton 
+                        asChild
+                        className={`w-full ${currentPath.startsWith('/reports') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
+                        title="Reports & Analytics"
+                      >
+                        <CollapsibleTrigger 
+                          className="w-full"
+                          onClick={() => setIsReportsOpen(!isReportsOpen)}
+                        >
+                          <BarChart3 className="h-4 w-4" />
+                          {!isCollapsed && (
+                            <>
+                              <span>Reports & Analytics</span>
+                              <ChevronRight className={`h-4 w-4 ml-auto transition-transform duration-200 ${isReportsOpen ? 'rotate-90' : ''}`} />
+                            </>
+                          )}
+                        </CollapsibleTrigger>
+                      </SidebarMenuButton>
+                      
+                      {!isCollapsed && (
+                        <CollapsibleContent className="transition-all duration-200 ease-in-out">
+                          <SidebarMenuSub>
+                            {reportsMenuItems.map((item) => (
+                              <SidebarMenuSubItem key={item.title}>
+                                <SidebarMenuSubButton asChild>
+                                  <NavLink
+                                    to={item.url}
+                                    className={`${getNavCls(item.url)} ml-4 text-sm`}
+                                    title={item.title}
+                                  >
+                                    <item.icon className="h-3 w-3" />
+                                    <span>{item.title}</span>
+                                  </NavLink>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      )}
+                    </div>
+                  </Collapsible>
+                </SidebarMenuItem>
                 
                 {/* CA Tools Collapsible Menu */}
                 <SidebarMenuItem>

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Save, Building, CreditCard, FileImage, Link } from 'lucide-react';
+import { Save, Building, CreditCard, FileImage, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -36,9 +36,12 @@ const Settings = () => {
   });
 
   const [businessAssets, setBusinessAssets] = useState({
-    logoUrl: '',
-    signatureUrl: '',
+    logoBase64: '',
+    signatureBase64: '',
   });
+
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const signatureInputRef = useRef<HTMLInputElement>(null);
 
   // Load data from user metadata on component mount
   useEffect(() => {
@@ -53,12 +56,12 @@ const Settings = () => {
         setBankDetails(metadata.bankDetails);
       }
       
-      if (metadata.logoUrl) {
-        setBusinessAssets(prev => ({ ...prev, logoUrl: metadata.logoUrl }));
+      if (metadata.logoBase64) {
+        setBusinessAssets(prev => ({ ...prev, logoBase64: metadata.logoBase64 }));
       }
       
-      if (metadata.signatureUrl) {
-        setBusinessAssets(prev => ({ ...prev, signatureUrl: metadata.signatureUrl }));
+      if (metadata.signatureBase64) {
+        setBusinessAssets(prev => ({ ...prev, signatureBase64: metadata.signatureBase64 }));
       }
     }
   }, [user]);
@@ -133,19 +136,112 @@ const Settings = () => {
     }
   };
 
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          // Remove the data URL prefix and return only the base64 string
+          const base64 = reader.result.split(',')[1];
+          resolve(base64);
+        } else {
+          reject(new Error('Failed to read file'));
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+    });
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please upload an image file (PNG, JPG, JPEG, GIF).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      toast({
+        title: "File Too Large",
+        description: "Please upload an image smaller than 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const base64 = await convertFileToBase64(file);
+      setBusinessAssets(prev => ({ ...prev, logoBase64: base64 }));
+      toast({
+        title: "Logo Uploaded",
+        description: "Logo has been uploaded successfully. Don't forget to save!",
+      });
+    } catch (error) {
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload logo. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSignatureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please upload an image file (PNG, JPG, JPEG, GIF).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      toast({
+        title: "File Too Large",
+        description: "Please upload an image smaller than 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const base64 = await convertFileToBase64(file);
+      setBusinessAssets(prev => ({ ...prev, signatureBase64: base64 }));
+      toast({
+        title: "Signature Uploaded",
+        description: "Signature has been uploaded successfully. Don't forget to save!",
+      });
+    } catch (error) {
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload signature. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSaveBusinessAssets = async () => {
     try {
       await user?.update({
         unsafeMetadata: {
           ...user.unsafeMetadata,
-          logoUrl: businessAssets.logoUrl,
-          signatureUrl: businessAssets.signatureUrl,
+          logoBase64: businessAssets.logoBase64,
+          signatureBase64: businessAssets.signatureBase64,
         }
       });
       
       toast({
         title: "Business Assets Updated",
-        description: "Your logo and signature URLs have been saved successfully.",
+        description: "Your logo and signature have been saved successfully.",
       });
     } catch (error) {
       toast({
@@ -372,71 +468,109 @@ const Settings = () => {
                 Business Branding
               </CardTitle>
               <CardDescription>
-                Manage your business logo and signature URLs for invoices
+                Upload your business logo and signature files for professional invoices
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="logoUrl">Business Logo URL</Label>
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                      {businessAssets.logoUrl ? (
+                  <Label>Business Logo</Label>
+                  <div className="flex items-start gap-6">
+                    <div className="w-32 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
+                      {businessAssets.logoBase64 ? (
                         <img 
-                          src={businessAssets.logoUrl} 
+                          src={`data:image/png;base64,${businessAssets.logoBase64}`}
                           alt="Logo preview" 
                           className="w-full h-full object-contain rounded-lg" 
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                          }}
                         />
                       ) : (
-                        <FileImage className="h-6 w-6 text-gray-400" />
+                        <FileImage className="h-8 w-8 text-gray-400" />
                       )}
                     </div>
-                    <div className="flex-1">
-                      <Input
-                        id="logoUrl"
-                        type="url"
-                        value={businessAssets.logoUrl}
-                        onChange={(e) => setBusinessAssets({...businessAssets, logoUrl: e.target.value})}
-                        placeholder="https://example.com/logo.png"
-                      />
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Enter the URL of your business logo
+                    <div className="flex-1 space-y-3">
+                      <div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => logoInputRef.current?.click()}
+                          className="w-full sm:w-auto"
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload Logo
+                        </Button>
+                        <input
+                          ref={logoInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                        />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Recommended: PNG or JPG format, max 5MB. Optimal size: 200x80 pixels.
                       </p>
+                      {businessAssets.logoBase64 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setBusinessAssets(prev => ({ ...prev, logoBase64: '' }))}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          Remove Logo
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="signatureUrl">Digital Signature URL</Label>
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                      {businessAssets.signatureUrl ? (
+                  <Label>Digital Signature</Label>
+                  <div className="flex items-start gap-6">
+                    <div className="w-32 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
+                      {businessAssets.signatureBase64 ? (
                         <img 
-                          src={businessAssets.signatureUrl} 
+                          src={`data:image/png;base64,${businessAssets.signatureBase64}`}
                           alt="Signature preview" 
                           className="w-full h-full object-contain rounded-lg" 
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                          }}
                         />
                       ) : (
-                        <Link className="h-6 w-6 text-gray-400" />
+                        <FileImage className="h-8 w-8 text-gray-400" />
                       )}
                     </div>
-                    <div className="flex-1">
-                      <Input
-                        id="signatureUrl"
-                        type="url"
-                        value={businessAssets.signatureUrl}
-                        onChange={(e) => setBusinessAssets({...businessAssets, signatureUrl: e.target.value})}
-                        placeholder="https://example.com/signature.png"
-                      />
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Enter the URL of your digital signature
+                    <div className="flex-1 space-y-3">
+                      <div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => signatureInputRef.current?.click()}
+                          className="w-full sm:w-auto"
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload Signature
+                        </Button>
+                        <input
+                          ref={signatureInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleSignatureUpload}
+                          className="hidden"
+                        />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Recommended: PNG with transparent background, max 5MB. Optimal size: 150x60 pixels.
                       </p>
+                      {businessAssets.signatureBase64 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setBusinessAssets(prev => ({ ...prev, signatureBase64: '' }))}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          Remove Signature
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>

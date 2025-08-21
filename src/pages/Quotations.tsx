@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Plus, Minus, FileText } from 'lucide-react';
+import { Plus, Minus, FileText, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
@@ -196,17 +196,8 @@ const Quotations = () => {
         description: "Quotation created successfully!",
       });
       
-      // Reset form
-      setQuotationNumber('');
-      setClientName('');
-      setClientEmail('');
-      setClientPhone('');
-      setClientAddress('');
-      setQuotationDate(new Date().toISOString().split('T')[0]);
-      setValidityPeriod(30);
-      setTermsConditions('');
-      setDiscount(0);
-      setItems([{ product_id: '', name: '', description: '', quantity: 1, price: 0, amount: 0 }]);
+      // Navigate back to quotations list
+      navigate('/quotations');
       
     } catch (error: any) {
       console.error('Error creating quotation:', error);
@@ -222,11 +213,22 @@ const Quotations = () => {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <div className="flex items-center gap-4">
-        <SidebarTrigger className="md:hidden" />
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Create Quotation</h1>
-          <p className="text-muted-foreground">Generate a new quotation for your client</p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger className="md:hidden" />
+          <Button
+            variant="outline"
+            size="sm" 
+            onClick={() => navigate('/quotations')}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Quotations
+          </Button>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">Create Quotation</h1>
+            <p className="text-muted-foreground">Generate a new quotation for your client</p>
+          </div>
         </div>
       </div>
 

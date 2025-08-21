@@ -7,9 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Check, XCircle, PauseCircle } from 'lucide-react';
+import { Search, Check, XCircle, PauseCircle, Plus, Eye, Download } from 'lucide-react';
 import { useQuotations, useUpdateQuotationStatus, Quotation } from '@/hooks/useQuotations';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
+import QuotationViewer from '@/components/QuotationViewer';
 
 const statusColors: Record<Quotation['status'], string> = {
   draft: 'bg-gray-100 text-gray-800',
@@ -24,9 +26,12 @@ const QuotationsInfo: React.FC = () => {
   const { data: quotations = [], isLoading } = useQuotations();
   const updateStatus = useUpdateQuotationStatus();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | Quotation['status']>('all');
+  const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const s = searchTerm.toLowerCase();
@@ -60,13 +65,23 @@ const QuotationsInfo: React.FC = () => {
     <Badge className={statusColors[status]}>{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>
   );
 
+  const handleViewQuotation = (quotation: Quotation) => {
+    setSelectedQuotation(quotation);
+    setIsViewerOpen(true);
+  };
+
+  const handleCloseViewer = () => {
+    setIsViewerOpen(false);
+    setSelectedQuotation(null);
+  };
+
   if (isLoading) {
     return (
       <div className="p-4 md:p-6 space-y-6">
         <div className="flex items-center gap-4">
           <SidebarTrigger className="md:hidden" />
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Quotations Info</h1>
+            <h1 className="text-2xl md:text-3xl font-bold">Quotations</h1>
             <p className="text-muted-foreground">Loading quotations...</p>
           </div>
         </div>
@@ -84,10 +99,17 @@ const QuotationsInfo: React.FC = () => {
         <div className="flex items-center gap-4">
           <SidebarTrigger className="md:hidden" />
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Quotations Info</h1>
+            <h1 className="text-2xl md:text-3xl font-bold">Quotations</h1>
             <p className="text-muted-foreground">View and manage your quotations and their statuses</p>
           </div>
         </div>
+        <Button 
+          onClick={() => navigate('/quotations/create')}
+          className="flex items-center gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Create Quotation
+        </Button>
       </div>
 
       <Card>
@@ -149,6 +171,7 @@ const QuotationsInfo: React.FC = () => {
                     <TableHead>Total</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Date</TableHead>
+                    <TableHead>Actions</TableHead>
                     <TableHead>Change Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -160,6 +183,19 @@ const QuotationsInfo: React.FC = () => {
                       <TableCell className="font-medium">₹{Number(q.total_amount).toLocaleString()}</TableCell>
                       <TableCell>{renderStatusBadge(q.status)}</TableCell>
                       <TableCell>{new Date(q.quotation_date).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewQuotation(q)}
+                            className="flex items-center gap-1"
+                          >
+                            <Eye className="h-3 w-3" />
+                            View
+                          </Button>
+                        </div>
+                      </TableCell>
                       <TableCell className="min-w-[180px]">
                         <Select
                           value={q.status}
@@ -186,6 +222,12 @@ const QuotationsInfo: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      <QuotationViewer
+        quotation={selectedQuotation}
+        isOpen={isViewerOpen}
+        onClose={handleCloseViewer}
+      />
     </div>
   );
 };
