@@ -14,6 +14,7 @@ import AgingReports from '@/components/reports/AgingReports';
 import ReceivablesReport from '@/components/reports/ReceivablesReport';
 import PayablesReport from '@/components/reports/PayablesReport';
 import CreditDebitNotesSection from '@/components/reports/CreditDebitNotesSection';
+import TDSReport from '@/components/tds/TDSReport';
 
 const Reports = () => {
   const [selectedMonth, setSelectedMonth] = useState('2024-01');
@@ -326,6 +327,17 @@ const Reports = () => {
 
       {/* Aging Reports */}
       <AgingReports />
+
+      {/* TDS Reports */}
+      <Card>
+        <CardHeader>
+          <CardTitle>TDS Report</CardTitle>
+          <CardDescription>Tax Deducted at Source compliance and reporting</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TDSReport />
+        </CardContent>
+      </Card>
 
       {/* AR / AP Reports */}
       <ReceivablesReport />

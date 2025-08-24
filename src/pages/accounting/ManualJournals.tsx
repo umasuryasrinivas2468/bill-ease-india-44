@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, AlertTriangle, Download } from 'lucide-react';
+import { useCSVExport } from '@/hooks/useCSVExport';
 
 interface Account {
   id: string;
@@ -42,6 +43,7 @@ interface Journal {
 const ManualJournals = () => {
   const { user } = useUser();
   const queryClient = useQueryClient();
+  const { exportJournals, isExporting } = useCSVExport();
   
   const [journalDate, setJournalDate] = useState(new Date().toISOString().split('T')[0]);
   const [narration, setNarration] = useState('');
@@ -94,6 +96,31 @@ const ManualJournals = () => {
       return data as Journal[];
     },
     enabled: !!user?.id,
+  });
+
+  // Fetch journal lines for export
+  const { data: allJournalLines = [] } = useQuery({
+    queryKey: ['journal_lines', user?.id],
+    queryFn: async () => {
+      if (!user?.id || journals.length === 0) return [];
+      
+      const journalIds = journals.map(j => j.id);
+      const { data, error } = await supabase
+        .from('journal_lines')
+        .select(`
+          *,
+          accounts!inner(account_code, account_name)
+        `)
+        .in('journal_id', journalIds);
+      
+      if (error) throw error;
+      return data.map(line => ({
+        ...line,
+        account_code: line.accounts?.account_code,
+        account_name: line.accounts?.account_name
+      }));
+    },
+    enabled: !!user?.id && journals.length > 0,
   });
 
   // Create journal mutation
@@ -401,7 +428,22 @@ const ManualJournals = () => {
       {/* Journal Entries List */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Journal Entries</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Recent Journal Entries</CardTitle>
+            <Button 
+              onClick={() => {
+                if (journals && allJournalLines) {
+                  exportJournals(journals, allJournalLines);
+                }
+              }}
+              variant="outline"
+              disabled={!journals || journals.length === 0 || isExporting}
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              {isExporting ? 'Exporting...' : 'Export CSV'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">

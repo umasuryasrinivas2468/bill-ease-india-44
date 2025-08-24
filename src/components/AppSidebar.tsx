@@ -20,7 +20,10 @@ import {
   TrendingUp,
   ChevronDown,
   ChevronRight,
-  LineChart
+  LineChart,
+  Percent,
+  CreditCard,
+  Brain
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import { useBusinessData } from "@/hooks/useBusinessData";
@@ -57,10 +60,12 @@ const mainMenuItems = [
 const reportsMenuItems = [
   { title: "Business Reports", url: "/reports", icon: BarChart3 },
   { title: "Cash Flow Forecasting", url: "/reports/cash-flow-forecasting", icon: LineChart },
+  { title: "AI Business Tax Advisor", url: "/reports/ai-tax-advisor", icon: Brain },
 ];
 
 const caToolsMenuItems = [
   { title: "CA Dashboard", url: "/ca", icon: Calculator },
+  { title: "TDS Management", url: "/tds", icon: Percent },
   { title: "Manual Journals", url: "/accounting/manual-journals", icon: BookOpen },
   { title: "Ledgers", url: "/accounting/ledgers", icon: BookOpenText },
   { title: "Trial Balance", url: "/accounting/trial-balance", icon: Scale },

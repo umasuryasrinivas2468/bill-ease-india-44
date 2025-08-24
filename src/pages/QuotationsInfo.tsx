@@ -12,6 +12,7 @@ import { useQuotations, useUpdateQuotationStatus, Quotation } from '@/hooks/useQ
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import QuotationViewer from '@/components/QuotationViewer';
+import { useCSVExport } from '@/hooks/useCSVExport';
 
 const statusColors: Record<Quotation['status'], string> = {
   draft: 'bg-gray-100 text-gray-800',
@@ -27,6 +28,7 @@ const QuotationsInfo: React.FC = () => {
   const updateStatus = useUpdateQuotationStatus();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { exportQuotations, isExporting } = useCSVExport();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | Quotation['status']>('all');
@@ -103,13 +105,24 @@ const QuotationsInfo: React.FC = () => {
             <p className="text-muted-foreground">View and manage your quotations and their statuses</p>
           </div>
         </div>
-        <Button 
-          onClick={() => navigate('/quotations/create')}
-          className="flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Create Quotation
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={() => exportQuotations(filtered)}
+            variant="outline"
+            disabled={filtered.length === 0 || isExporting}
+            className="flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            {isExporting ? 'Exporting...' : 'Export CSV'}
+          </Button>
+          <Button 
+            onClick={() => navigate('/quotations/create')}
+            className="flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Create Quotation
+          </Button>
+        </div>
       </div>
 
       <Card>
