@@ -142,8 +142,8 @@ const Inventory = () => {
       type: formData.type,
       purchase_price: formData.purchase_price ? parseFloat(formData.purchase_price) : null,
       selling_price: parseFloat(formData.selling_price),
-      stock_quantity: parseInt(formData.stock_quantity) || 0,
-      reorder_level: parseInt(formData.reorder_level) || 10,
+      stock_quantity: formData.type === 'services' ? null : (parseInt(formData.stock_quantity) || 0),
+      reorder_level: formData.type === 'services' ? null : (parseInt(formData.reorder_level) || 10),
       supplier_name: formData.supplier_name || null,
       supplier_contact: formData.supplier_contact || null,
       supplier_email: formData.supplier_email || null,
@@ -209,12 +209,17 @@ const Inventory = () => {
   };
 
   const getLowStockItems = () => {
-    return inventory.filter(item => item.type === 'goods' && item.stock_quantity <= item.reorder_level);
+    return inventory.filter(item => 
+      item.type === 'goods' && 
+      item.stock_quantity !== null && 
+      item.reorder_level !== null &&
+      item.stock_quantity <= item.reorder_level
+    );
   };
 
   const getTotalValue = () => {
     return inventory.reduce((sum, item) => {
-      if (item.type === 'goods' && item.purchase_price) {
+      if (item.type === 'goods' && item.purchase_price && item.stock_quantity !== null) {
         return sum + (item.purchase_price * item.stock_quantity);
       }
       return sum;
@@ -442,7 +447,7 @@ const Inventory = () => {
                     <span className="text-sm text-muted-foreground ml-2">({item.sku})</span>
                   </div>
                   <Badge variant="outline" className="text-orange-700 border-orange-300">
-                    {item.stock_quantity} left
+                    {item.type === 'services' ? 'N/A' : `${item.stock_quantity} left`}
                   </Badge>
                 </div>
               ))}
@@ -496,16 +501,14 @@ const Inventory = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                  {item.type === 'goods' && (
-                    <div>
-                      <span className="font-medium">Stock:</span> {item.stock_quantity}
-                      {item.stock_quantity <= item.reorder_level && (
-                        <Badge variant="outline" className="ml-2 text-orange-700 border-orange-300">
-                          Low Stock
-                        </Badge>
-                      )}
-                    </div>
-                  )}
+                  <div>
+                    <span className="font-medium">Stock:</span> {item.type === 'services' ? 'N/A' : item.stock_quantity}
+                    {item.type === 'goods' && item.stock_quantity <= item.reorder_level && (
+                      <Badge variant="outline" className="ml-2 text-orange-700 border-orange-300">
+                        Low Stock
+                      </Badge>
+                    )}
+                  </div>
                   {item.purchase_price && (
                     <div>
                       <span className="font-medium">Purchase:</span> ₹{item.purchase_price.toFixed(2)}

@@ -67,7 +67,7 @@ const QuotationItemSelector: React.FC<QuotationItemSelectorProps> = ({
               value={item.id} 
               className="hover:bg-gray-100 cursor-pointer"
             >
-              {`${item.product_name} — ₹${item.selling_price} (Stock: ${item.stock_quantity})`}
+              {`${item.product_name} — ₹${item.selling_price} (Stock: ${item.type === 'service' ? 'N/A' : item.stock_quantity})`}
             </SelectItem>
           ))
         ) : (

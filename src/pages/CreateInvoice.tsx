@@ -132,11 +132,11 @@ const CreateInvoice = () => {
     }
 
     try {
-      // Validate stock availability for inventory items before creating invoice
+      // Validate stock availability for inventory items before creating invoice (only for goods, not services)
       for (const item of items) {
         if (item.product_id) {
           const inventoryItem = inventoryItems.find(inv => inv.id === item.product_id);
-          if (inventoryItem && inventoryItem.stock_quantity < item.quantity) {
+          if (inventoryItem && inventoryItem.type === 'goods' && inventoryItem.stock_quantity < item.quantity) {
             toast({
               title: "Insufficient Stock",
               description: `Not enough stock for ${item.description}. Available: ${inventoryItem.stock_quantity}, Required: ${item.quantity}`,
@@ -171,10 +171,13 @@ const CreateInvoice = () => {
 
       await createInvoiceMutation.mutateAsync(invoiceData);
       
-      // Update inventory stock for items that have product_id
+      // Update inventory stock for items that have product_id (only for goods, not services)
       for (const item of items) {
         if (item.product_id) {
-          await updateInventoryStock(item.product_id, item.quantity);
+          const inventoryItem = inventoryItems.find(inv => inv.id === item.product_id);
+          if (inventoryItem && inventoryItem.type === 'goods') {
+            await updateInventoryStock(item.product_id, item.quantity);
+          }
         }
       }
 
@@ -210,6 +213,12 @@ const CreateInvoice = () => {
       const inventoryItem = inventoryItems.find(item => item.id === productId);
       if (!inventoryItem) {
         console.warn(`Inventory item with ID "${productId}" not found`);
+        return;
+      }
+
+      // Skip stock update for services
+      if (inventoryItem.type === 'services') {
+        console.log(`Skipping stock update for service: ${inventoryItem.product_name}`);
         return;
       }
 

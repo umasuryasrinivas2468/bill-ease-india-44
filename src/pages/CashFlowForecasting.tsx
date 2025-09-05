@@ -426,7 +426,7 @@ const HistoricalDataView: React.FC<{ historicalData: CashFlowData[] }> = ({ hist
       {/* Historical Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Historical Cash Flow Trend</CardTitle>
+          <CardTitle>Monthly Cash Flow Trend (Historical)</CardTitle>
           <CardDescription>
             Actual cash flow movements over the past 6 months
           </CardDescription>
@@ -509,7 +509,7 @@ const HistoricalDataView: React.FC<{ historicalData: CashFlowData[] }> = ({ hist
       {/* Historical Inflows vs Outflows Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Historical Inflows vs Outflows</CardTitle>
+          <CardTitle>Monthly Cash Flow Comparison (Historical)</CardTitle>
           <CardDescription>
             Comparison of actual cash inflows and outflows by month
           </CardDescription>
@@ -619,7 +619,7 @@ const ForecastDataView: React.FC<{
         {/* Forecast Chart */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Cash Flow Trend</CardTitle>
+            <CardTitle>Monthly Cash Flow Trend</CardTitle>
             <CardDescription>
               Projected cash balance over the next {assumptions.forecastMonths} months
             </CardDescription>
@@ -703,7 +703,7 @@ const ForecastDataView: React.FC<{
       {/* Inflows vs Outflows Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Monthly Inflows vs Outflows</CardTitle>
+          <CardTitle>Monthly Cash Flow Comparison</CardTitle>
           <CardDescription>
             Comparison of expected cash inflows and outflows by month
           </CardDescription>
