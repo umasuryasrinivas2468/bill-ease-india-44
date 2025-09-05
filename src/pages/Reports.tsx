@@ -4,23 +4,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Download, FileSpreadsheet, Calendar, TrendingUp, IndianRupee } from 'lucide-react';
+import { Download, FileSpreadsheet, Calendar, TrendingUp, IndianRupee, Database, Users, Building, Receipt } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useInvoices } from '@/hooks/useInvoices';
 import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@clerk/clerk-react';
+import { normalizeUserId } from '@/lib/userUtils';
 import DayBook from '@/components/reports/DayBook';
 import GSTR3BSummary from '@/components/reports/GSTR3BSummary';
-import AgingReports from '@/components/reports/AgingReports';
-import ReceivablesReport from '@/components/reports/ReceivablesReport';
-import PayablesReport from '@/components/reports/PayablesReport';
-import CreditDebitNotesSection from '@/components/reports/CreditDebitNotesSection';
-import TDSReport from '@/components/tds/TDSReport';
+import CustomerAging from '@/components/reports/CustomerAging';
+import VendorAging from '@/components/reports/VendorAging';
+import AccountReceivables from '@/components/reports/AccountReceivables';
+import AccountPayables from '@/components/reports/AccountPayables';
+import CashFlowAnalysis from '@/components/reports/CashFlowAnalysis';
+
+import { createSampleBusinessData } from '@/utils/createSampleBusinessData';
 
 const Reports = () => {
   const [selectedMonth, setSelectedMonth] = useState('2024-01');
   const [selectedYear, setSelectedYear] = useState('2024');
+  const [isCreatingSample, setIsCreatingSample] = useState(false);
   const { data: invoices = [] } = useInvoices();
   const { toast } = useToast();
+  const { user } = useUser();
 
   // Calculate stats from real data
   const totalInvoices = invoices.length;
@@ -133,15 +139,62 @@ const Reports = () => {
     });
   };
 
+  const handleCreateSampleData = async () => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "User not authenticated",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCreatingSample(true);
+    try {
+      const normalizedUserId = normalizeUserId(user.id);
+      await createSampleBusinessData(normalizedUserId);
+      toast({
+        title: "Sample Data Created",
+        description: "Sample business data has been created successfully. Refresh the page to see the reports.",
+      });
+      // Refresh the page to show new data
+      setTimeout(() => window.location.reload(), 2000);
+    } catch (error) {
+      console.error('Error creating sample data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create sample data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingSample(false);
+    }
+  };
+
+
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <SidebarTrigger className="md:hidden" />
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Reports</h1>
-            <p className="text-muted-foreground">View your business analytics and GST reports</p>
+            <h1 className="text-2xl md:text-3xl font-bold">Reports & Analysis</h1>
+            <p className="text-muted-foreground">View your business analytics and comprehensive reports</p>
           </div>
+        </div>
+        
+        {/* Sample Data Controls */}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCreateSampleData}
+            disabled={isCreatingSample}
+          >
+            <Database className="h-4 w-4 mr-2" />
+            {isCreatingSample ? 'Creating...' : 'Create Sample Data'}
+          </Button>
         </div>
       </div>
 
@@ -316,32 +369,103 @@ const Reports = () => {
         </CardContent>
       </Card>
 
+      {/* Business Reports Section */}
+      <Card className="border-t-4 border-t-blue-500">
+        <CardHeader>
+          <CardTitle className="text-xl flex items-center gap-2">
+            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">B</div>
+            Business Reports & Analysis
+          </CardTitle>
+          <CardDescription>Comprehensive business reports for decision making and compliance</CardDescription>
+        </CardHeader>
+      </Card>
+
       {/* Day Book */}
-      <DayBook />
-
-      {/* GSTR-3B Filing Support */}
-      <GSTR3BSummary />
-
-      {/* Credit / Debit Notes Section */}
-      <CreditDebitNotesSection />
-
-      {/* Aging Reports */}
-      <AgingReports />
-
-      {/* TDS Reports */}
       <Card>
         <CardHeader>
-          <CardTitle>TDS Report</CardTitle>
-          <CardDescription>Tax Deducted at Source compliance and reporting</CardDescription>
+          <CardTitle className="text-lg text-green-700">📋 Day Book</CardTitle>
+          <CardDescription>Daily cash and bank transactions summary</CardDescription>
         </CardHeader>
         <CardContent>
-          <TDSReport />
+          <DayBook />
         </CardContent>
       </Card>
 
-      {/* AR / AP Reports */}
-      <ReceivablesReport />
-      <PayablesReport />
+
+      {/* Account Receivables */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg text-blue-700 flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Account Receivables
+          </CardTitle>
+          <CardDescription>Outstanding customer invoices and collection analysis</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AccountReceivables />
+        </CardContent>
+      </Card>
+
+      {/* Account Payables */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg text-orange-700 flex items-center gap-2">
+            <Building className="h-5 w-5" />
+            Account Payables
+          </CardTitle>
+          <CardDescription>Outstanding vendor bills and payment analysis</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AccountPayables />
+        </CardContent>
+      </Card>
+
+      {/* Customer Aging Analysis */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg text-purple-700 flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Customer Aging Analysis
+          </CardTitle>
+          <CardDescription>Aging analysis of outstanding customer receivables</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CustomerAging />
+        </CardContent>
+      </Card>
+
+      {/* Vendor Aging Analysis */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg text-teal-700 flex items-center gap-2">
+            <Building className="h-5 w-5" />
+            Vendor Aging Analysis
+          </CardTitle>
+          <CardDescription>Aging analysis of outstanding vendor payables</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <VendorAging />
+        </CardContent>
+      </Card>
+
+      {/* Cash Flow Analysis */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg text-blue-700 flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Cash Flow Analysis & Projections
+          </CardTitle>
+          <CardDescription>12-week cash flow projections with alerts and recommendations</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CashFlowAnalysis />
+        </CardContent>
+      </Card>
+
+
+
+      {/* GSTR-3B Filing Support */}
+      <GSTR3BSummary />
     </div>
   );
 };
