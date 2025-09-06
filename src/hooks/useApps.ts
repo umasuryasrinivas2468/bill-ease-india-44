@@ -1,8 +1,6 @@
 
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
-import { supabase } from '@/integrations/supabase/client';
-import { normalizeUserId } from '@/lib/userUtils';
 import { useToast } from '@/hooks/use-toast';
 
 export interface App {
@@ -33,184 +31,42 @@ export const useApps = () => {
   const [userApps, setUserApps] = useState<UserApp[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Create demo apps if none exist
+  // Create demo apps - disabled since apps table doesn't exist
   const createDemoApp = async () => {
-    try {
-      const { data: existingApps, error: checkError } = await supabase
-        .from('apps')
-        .select('*');
-
-      if (checkError) throw checkError;
-
-      // Check if Aczen Inventory exists and needs updating
-      const aczenApp = existingApps?.find(app => app.name === 'Aczen Inventory');
-      
-      if (aczenApp) {
-        // Update existing Aczen Inventory app with new details
-        const { error: updateError } = await supabase
-          .from('apps')
-          .update({
-            description: 'An inventory logo serves as a visual representation of your business\'s core function: managing and tracking goods. A strong logo',
-            icon_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTixbDnlVd-0O4xIMt7mS1LgZEbgMfIMm2wTg&s',
-            category: 'inventory',
-            developer: 'Aczen Solutions',
-            version: '1.5.2'
-          })
-          .eq('id', aczenApp.id);
-
-        if (updateError) throw updateError;
-      } else if (!existingApps || existingApps.length === 0) {
-        // Only create demo apps if no apps exist
-        const demoApps = [
-          {
-            name: 'QuickBooks Integration',
-            description: 'Seamlessly sync your invoices and financial data with QuickBooks. Automate your accounting workflow and keep your books up to date.',
-            icon_url: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=100&h=100&fit=crop&crop=center',
-            category: 'accounting',
-            developer: 'FinTech Solutions',
-            version: '2.1.0'
-          },
-          {
-            name: 'Aczen Inventory',
-            description: 'An inventory logo serves as a visual representation of your business\'s core function: managing and tracking goods. A strong logo',
-            icon_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTixbDnlVd-0O4xIMt7mS1LgZEbgMfIMm2wTg&s',
-            category: 'inventory',
-            developer: 'Aczen Solutions',
-            version: '1.5.2'
-          }
-        ];
-
-        const { error: insertError } = await supabase
-          .from('apps')
-          .insert(demoApps);
-
-        if (insertError) throw insertError;
-      }
-    } catch (error) {
-      console.error('Error creating/updating demo apps:', error);
-    }
+    // Apps functionality disabled - no apps table in database
+    console.log('Apps table not available');
   };
 
-  // Fetch all available apps
+  // Fetch all available apps - disabled since apps table doesn't exist
   const fetchApps = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('apps')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setApps(data || []);
-    } catch (error) {
-      console.error('Error fetching apps:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load apps",
-        variant: "destructive"
-      });
-    }
+    // Apps functionality disabled - no apps table in database
+    setApps([]);
   };
 
-  // Fetch user's installed apps
+  // Fetch user's installed apps - disabled since apps table doesn't exist
   const fetchUserApps = async () => {
-    if (!user || !isLoaded) return;
-
-    try {
-      console.log('Fetching user apps for user:', user.id);
-      const { data, error } = await supabase
-        .from('user_apps')
-        .select('*')
-        .eq('user_id', normalizeUserId(user.id))
-        .eq('is_active', true);
-
-      if (error) {
-        console.error('Error fetching user apps:', error);
-        throw error;
-      }
-      
-      console.log('User apps fetched:', data);
-      setUserApps(data || []);
-    } catch (error) {
-      console.error('Error fetching user apps:', error);
-    }
+    // Apps functionality disabled - no apps table in database
+    setUserApps([]);
   };
 
-  // Install an app
+  // Install an app - disabled since apps table doesn't exist
   const installApp = async (appId: string) => {
-    if (!user || !isLoaded) {
-      toast({
-        title: "Error",
-        description: "Please log in to install apps",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    try {
-      console.log('Installing app:', appId, 'for user:', user.id);
-      
-      const { error } = await supabase
-        .from('user_apps')
-        .insert({
-          user_id: normalizeUserId(user.id),
-          app_id: appId
-        });
-
-      if (error) {
-        console.error('Error installing app:', error);
-        throw error;
-      }
-
-      toast({
-        title: "Success",
-        description: "App installed successfully"
-      });
-
-      // Refresh user apps
-      await fetchUserApps();
-      return true;
-    } catch (error) {
-      console.error('Error installing app:', error);
-      toast({
-        title: "Error",
-        description: "Failed to install app. Please try again.",
-        variant: "destructive"
-      });
-      return false;
-    }
+    toast({
+      title: "Info",
+      description: "Apps functionality is not available",
+      variant: "destructive"
+    });
+    return false;
   };
 
-  // Uninstall an app
+  // Uninstall an app - disabled since apps table doesn't exist
   const uninstallApp = async (appId: string) => {
-    if (!user || !isLoaded) return false;
-
-    try {
-      const { error } = await supabase
-        .from('user_apps')
-        .delete()
-        .eq('user_id', normalizeUserId(user.id))
-        .eq('app_id', appId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "App uninstalled successfully"
-      });
-
-      // Refresh user apps
-      await fetchUserApps();
-      return true;
-    } catch (error) {
-      console.error('Error uninstalling app:', error);
-      toast({
-        title: "Error",
-        description: "Failed to uninstall app",
-        variant: "destructive"
-      });
-      return false;
-    }
+    toast({
+      title: "Info",
+      description: "Apps functionality is not available",
+      variant: "destructive"
+    });
+    return false;
   };
 
   // Check if an app is installed
@@ -247,38 +103,9 @@ export const useApps = () => {
     }
   }, [user, isLoaded]);
 
-  // Set up real-time subscriptions
+  // Real-time subscriptions disabled since apps table doesn't exist
   useEffect(() => {
-    if (!isLoaded) return;
-
-    const appsChannel = supabase
-      .channel('apps-changes')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'apps'
-      }, () => {
-        fetchApps();
-      })
-      .subscribe();
-
-    const userAppsChannel = supabase
-      .channel('user-apps-changes')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'user_apps'
-      }, () => {
-        if (user && isLoaded) {
-          fetchUserApps();
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(appsChannel);
-      supabase.removeChannel(userAppsChannel);
-    };
+    // Apps functionality disabled
   }, [user, isLoaded]);
 
   return {

@@ -174,9 +174,9 @@ const TDSReport = () => {
 
               {selectedPeriod === 'custom' && (
                 <DateRangePicker 
-                  from={dateRange.from} 
-                  to={dateRange.to} 
-                  onSelect={setDateRange} 
+                  startDate={dateRange.from} 
+                  endDate={dateRange.to} 
+                  onChange={(range) => setDateRange({ from: range.startDate, to: range.endDate })} 
                 />
               )}
 
