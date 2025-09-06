@@ -50,6 +50,45 @@ export type Database = {
         }
         Relationships: []
       }
+      apps: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          developer: string | null
+          icon_url: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+          version: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          developer?: string | null
+          icon_url?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+          version?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          developer?: string | null
+          icon_url?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+          version?: string | null
+        }
+        Relationships: []
+      }
       bank_details: {
         Row: {
           account_holder_name: string | null
@@ -569,6 +608,84 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_reminders: {
+        Row: {
+          created_at: string | null
+          email_sent_to: string
+          id: string
+          invoice_id: string
+          reminder_type: string
+          response_token: string | null
+          scheduled_date: string
+          sent_at: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email_sent_to: string
+          id?: string
+          invoice_id: string
+          reminder_type: string
+          response_token?: string | null
+          scheduled_date: string
+          sent_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          email_sent_to?: string
+          id?: string
+          invoice_id?: string
+          reminder_type?: string
+          response_token?: string | null
+          scheduled_date?: string
+          sent_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      processed_documents: {
+        Row: {
+          created_at: string | null
+          file_name: string
+          id: string
+          original_file_url: string | null
+          processed_file_url: string | null
+          records_count: number | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          file_name: string
+          id?: string
+          original_file_url?: string | null
+          processed_file_url?: string | null
+          records_count?: number | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string
+          id?: string
+          original_file_url?: string | null
+          processed_file_url?: string | null
+          records_count?: number | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       purchase_bills: {
         Row: {
           amount: number
@@ -734,7 +851,15 @@ export type Database = {
           response_type?: string
           user_agent?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "reminder_responses_reminder_id_fkey"
+            columns: ["reminder_id"]
+            isOneToOne: false
+            referencedRelation: "payment_reminders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reports: {
         Row: {
@@ -781,96 +906,6 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           year?: number
-        }
-        Relationships: []
-      }
-      tds_rules: {
-        Row: {
-          category: string
-          created_at: string | null
-          description: string | null
-          id: string
-          is_active: boolean | null
-          rate_percentage: number
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          category: string
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          is_active?: boolean | null
-          rate_percentage: number
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          category?: string
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          is_active?: boolean | null
-          rate_percentage?: number
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      tds_transactions: {
-        Row: {
-          certificate_number: string | null
-          client_id: string | null
-          created_at: string | null
-          description: string | null
-          id: string
-          invoice_id: string | null
-          net_payable: number
-          tds_amount: number
-          tds_rate: number
-          tds_rule_id: string | null
-          transaction_amount: number
-          transaction_date: string
-          updated_at: string | null
-          user_id: string
-          vendor_name: string
-          vendor_pan: string | null
-        }
-        Insert: {
-          certificate_number?: string | null
-          client_id?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          invoice_id?: string | null
-          net_payable: number
-          tds_amount: number
-          tds_rate: number
-          tds_rule_id?: string | null
-          transaction_amount: number
-          transaction_date: string
-          updated_at?: string | null
-          user_id: string
-          vendor_name: string
-          vendor_pan?: string | null
-        }
-        Update: {
-          certificate_number?: string | null
-          client_id?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          invoice_id?: string | null
-          net_payable?: number
-          tds_amount?: number
-          tds_rate?: number
-          tds_rule_id?: string | null
-          transaction_amount?: number
-          transaction_date?: string
-          updated_at?: string | null
-          user_id?: string
-          vendor_name?: string
-          vendor_pan?: string | null
         }
         Relationships: []
       }
@@ -944,7 +979,15 @@ export type Database = {
           is_active?: boolean | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_apps_app_id_fkey"
+            columns: ["app_id"]
+            isOneToOne: false
+            referencedRelation: "apps"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       users: {
         Row: {
@@ -954,7 +997,6 @@ export type Database = {
           full_name: string | null
           id: string
           is_pro: boolean | null
-          onboarding_completed: boolean | null
           phone_number: string | null
           updated_at: string | null
         }
@@ -965,7 +1007,6 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_pro?: boolean | null
-          onboarding_completed?: boolean | null
           phone_number?: string | null
           updated_at?: string | null
         }
@@ -976,7 +1017,6 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_pro?: boolean | null
-          onboarding_completed?: boolean | null
           phone_number?: string | null
           updated_at?: string | null
         }
@@ -1026,42 +1066,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      approve_journal_from_bank_statement: {
-        Args: {
-          p_approval_id: string
-          p_approved_by: string
-          p_user_id: string
-        }
-        Returns: boolean
-      }
-      auto_match_bank_statements: {
-        Args: { p_user_id: string }
-        Returns: {
-          matched_count: number
-          partially_matched_count: number
-        }[]
-      }
-      create_journal_from_bank_statement: {
-        Args: {
-          p_account_id: string
-          p_amount: number
-          p_bank_statement_id: string
-          p_contra_account_id?: string
-          p_is_debit: boolean
-          p_journal_date: string
-          p_narration: string
-          p_user_id: string
-        }
-        Returns: string
-      }
-      create_sample_data_for_testing: {
-        Args: { p_user_id: string }
-        Returns: undefined
-      }
-      setup_basic_accounts_for_user: {
-        Args: { p_user_id: string }
-        Returns: undefined
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never

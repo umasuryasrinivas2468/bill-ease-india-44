@@ -4,7 +4,6 @@ import { useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useOnboardingData, BusinessInfo, BankDetails, BusinessAssets } from './useOnboardingData';
-import { supabase } from '@/integrations/supabase/client';
 
 const generateSessionId = (): string => {
   const now = new Date();
@@ -122,7 +121,6 @@ export const useOnboardingState = () => {
       const assetsSuccess = await saveBusinessAssets(businessAssets);
       
       if (assetsSuccess) {
-        // Update Clerk metadata
         await user?.update({
           unsafeMetadata: {
             businessInfo,
@@ -134,22 +132,12 @@ export const useOnboardingState = () => {
           }
         });
 
-        // Update Supabase users table
-        const { error: updateError } = await supabase
-          .from('users')
-          .update({ onboarding_completed: true })
-          .eq('clerk_id', user?.id);
-
-        if (updateError) {
-          console.error('Error updating onboarding status:', updateError);
-        }
-
         toast({
           title: "Setup Complete!",
           description: "Welcome to Aczen Bilz. You're ready to start creating invoices.",
         });
 
-        navigate('/dashboard', { replace: true });
+        navigate('/', { replace: true });
       }
     } catch (error) {
       console.error('Error completing onboarding:', error);
