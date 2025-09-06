@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/components/ClerkAuthProvider";
 import ProtectedRoute from './components/ProtectedRoute';
+import OnboardingGuard from './components/OnboardingGuard';
 import AppLayout from "./components/AppLayout";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
@@ -62,27 +63,29 @@ function App() {
                   
                   {/* Protected Routes */}
                   <Route element={<ProtectedRoute />}>
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/invoices" element={<Invoices />} />
-                    <Route path="/create-invoice" element={<CreateInvoice />} />
-                    <Route path="/clients" element={<Clients />} />
-                    <Route path="/reports" element={<Reports />} />
-                    <Route path="/reports/cash-flow-forecasting" element={<CashFlowForecasting />} />
-                    <Route path="/reports/ai-tax-advisor" element={<AIBusinessTaxAdvisor />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/onboarding" element={<Onboarding />} />
-                    <Route path="/time-tracking" element={<TimeTracking />} />
-                    <Route path="/inventory" element={<Inventory />} />
-                    <Route path="/banking" element={<Banking />} />
-                    <Route path="/upi-collections" element={<UPICollections />} />
-                    <Route path="/marketplace" element={<Marketplace />} />
-                    <Route path="/support" element={<Support />} />
-                    <Route path="/notifications" element={<Notifications />} />
-                    <Route path="/ca" element={<CA />} />
-                    <Route path="/payout" element={<Payout />} />
-                    <Route path="/quotations" element={<QuotationsInfo />} />
-                    <Route path="/quotations/create" element={<Quotations />} />
-                    <Route path="/tds" element={<TDS />} />
+                    <Route element={<OnboardingGuard />}>
+                      <Route path="/onboarding" element={<Onboarding />} />
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/invoices" element={<Invoices />} />
+                      <Route path="/create-invoice" element={<CreateInvoice />} />
+                      <Route path="/clients" element={<Clients />} />
+                      <Route path="/reports" element={<Reports />} />
+                      <Route path="/reports/cash-flow-forecasting" element={<CashFlowForecasting />} />
+                      <Route path="/reports/ai-tax-advisor" element={<AIBusinessTaxAdvisor />} />
+                      <Route path="/settings" element={<Settings />} />
+                      <Route path="/time-tracking" element={<TimeTracking />} />
+                      <Route path="/inventory" element={<Inventory />} />
+                      <Route path="/banking" element={<Banking />} />
+                      <Route path="/upi-collections" element={<UPICollections />} />
+                      <Route path="/marketplace" element={<Marketplace />} />
+                      <Route path="/support" element={<Support />} />
+                      <Route path="/notifications" element={<Notifications />} />
+                      <Route path="/ca" element={<CA />} />
+                      <Route path="/payout" element={<Payout />} />
+                      <Route path="/quotations" element={<QuotationsInfo />} />
+                      <Route path="/quotations/create" element={<Quotations />} />
+                      <Route path="/tds" element={<TDS />} />
+                    </Route>
                     
                     {/* Accounting Routes */}
                     <Route path="/accounting/chart-of-accounts" element={<ChartOfAccounts />} />
