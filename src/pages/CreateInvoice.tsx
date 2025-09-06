@@ -16,6 +16,8 @@ import { Client } from '@/hooks/useClients';
 import InventoryItemSelector from '@/components/InventoryItemSelector';
 import { useInventory } from '@/hooks/useInventory';
 import { supabase } from '@/lib/supabase';
+import { useSettingsValidation } from '@/hooks/useSettingsValidation';
+import SettingsPromptDialog from '@/components/SettingsPromptDialog';
 
 interface InvoiceItem {
   description: string;
@@ -32,8 +34,10 @@ const CreateInvoice = () => {
   const { user } = useUser();
   const createInvoiceMutation = useCreateInvoice();
   const { data: inventoryItems = [], refetch: refetchInventory } = useInventory();
+  const { isAllSettingsComplete, missingFields } = useSettingsValidation();
   
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [showSettingsPrompt, setShowSettingsPrompt] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [dueDate, setDueDate] = useState('');
@@ -103,6 +107,12 @@ const CreateInvoice = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check if all required settings are complete
+    if (!isAllSettingsComplete) {
+      setShowSettingsPrompt(true);
+      return;
+    }
     
     if (!selectedClient) {
       toast({
@@ -206,6 +216,16 @@ const CreateInvoice = () => {
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
     setInvoiceNumber(`INV-${year}${month}-${random}`);
+  };
+
+  const handleGoToSettings = () => {
+    setShowSettingsPrompt(false);
+    navigate('/settings');
+    toast({
+      title: "Complete Your Profile",
+      description: "Please fill in all required business information, bank details, and upload your business logo.",
+      variant: "default",
+    });
   };
 
   const updateInventoryStock = async (productId: string, quantity: number) => {
@@ -563,6 +583,13 @@ const CreateInvoice = () => {
           </Button>
         </div>
       </form>
+
+      <SettingsPromptDialog
+        open={showSettingsPrompt}
+        onOpenChange={setShowSettingsPrompt}
+        onGoToSettings={handleGoToSettings}
+        missingFields={missingFields}
+      />
     </div>
   );
 };

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Save, Building, CreditCard, FileImage, Upload } from 'lucide-react';
+import { Save, Building, CreditCard, FileImage, Upload, Link, Globe, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -39,6 +39,11 @@ const Settings = () => {
     logoBase64: '',
     signatureBase64: '',
   });
+
+  const [logoUrl, setLogoUrl] = useState('');
+  const [signatureUrl, setSignatureUrl] = useState('');
+  const [isLoadingLogo, setIsLoadingLogo] = useState(false);
+  const [isLoadingSignature, setIsLoadingSignature] = useState(false);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
@@ -142,9 +147,24 @@ const Settings = () => {
       reader.readAsDataURL(file);
       reader.onload = () => {
         if (typeof reader.result === 'string') {
-          // Remove the data URL prefix and return only the base64 string
-          const base64 = reader.result.split(',')[1];
-          resolve(base64);
+          // Create image to compress it
+          const img = new Image();
+          img.onload = () => {
+            try {
+              const compressedBase64 = compressImage(img, 400, 300, 0.8);
+              resolve(compressedBase64);
+            } catch (error) {
+              // Fallback to original if compression fails
+              const base64 = (reader.result as string).split(',')[1];
+              resolve(base64);
+            }
+          };
+          img.onerror = () => {
+            // Fallback to original if image load fails
+            const base64 = (reader.result as string).split(',')[1];
+            resolve(base64);
+          };
+          img.src = reader.result as string;
         } else {
           reject(new Error('Failed to read file'));
         }
@@ -229,9 +249,217 @@ const Settings = () => {
     }
   };
 
-  const handleSaveBusinessAssets = async () => {
+  const compressImage = (img: HTMLImageElement, maxWidth: number = 400, maxHeight: number = 300, quality: number = 0.8): string => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) {
+      throw new Error('Unable to create canvas context');
+    }
+    
+    // Calculate new dimensions while maintaining aspect ratio
+    let { width, height } = img;
+    
+    if (width > maxWidth || height > maxHeight) {
+      const ratio = Math.min(maxWidth / width, maxHeight / height);
+      width = Math.floor(width * ratio);
+      height = Math.floor(height * ratio);
+    }
+    
+    canvas.width = width;
+    canvas.height = height;
+    
+    // Draw and compress
+    ctx.drawImage(img, 0, 0, width, height);
+    return canvas.toDataURL('image/jpeg', quality).split(',')[1];
+  };
+
+  const convertImageUrlToBase64 = async (imageUrl: string): Promise<string> => {
+    return new Promise(async (resolve, reject) => {
+      // First try to validate if it's a proper image URL
+      if (!imageUrl.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i)) {
+        reject(new Error('URL does not appear to be an image file. Please use a direct link to an image file.'));
+        return;
+      }
+
+      // Method 1: Try fetch first (works better with CORS-enabled URLs)
+      try {
+        console.log('Attempting to fetch image from URL:', imageUrl);
+        const response = await fetch(imageUrl, {
+          mode: 'cors',
+          headers: {
+            'Accept': 'image/*',
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const blob = await response.blob();
+        const reader = new FileReader();
+        
+        reader.onload = () => {
+          const result = reader.result as string;
+          
+          // Create image to compress it
+          const img = new Image();
+          img.onload = () => {
+            try {
+              const compressedBase64 = compressImage(img, 400, 300, 0.8);
+              resolve(compressedBase64);
+            } catch (error) {
+              const base64 = result.split(',')[1];
+              resolve(base64);
+            }
+          };
+          img.onerror = () => {
+            const base64 = result.split(',')[1];
+            resolve(base64);
+          };
+          img.src = result;
+        };
+        
+        reader.onerror = () => {
+          reject(new Error('Failed to convert blob to base64'));
+        };
+        
+        reader.readAsDataURL(blob);
+        return;
+        
+      } catch (fetchError) {
+        console.log('Fetch method failed, trying Image element approach:', fetchError);
+      }
+
+      // Method 2: Fallback to Image element approach
+      const img = new Image();
+      
+      img.onload = () => {
+        try {
+          const compressedBase64 = compressImage(img, 400, 300, 0.8);
+          resolve(compressedBase64);
+        } catch (error) {
+          reject(new Error('Failed to convert image to base64. This might be due to CORS restrictions.'));
+        }
+      };
+      
+      img.onerror = () => {
+        // Method 3: Try without CORS
+        const imgNoCors = new Image();
+        imgNoCors.onload = () => {
+          try {
+            const compressedBase64 = compressImage(imgNoCors, 400, 300, 0.8);
+            resolve(compressedBase64);
+          } catch (error) {
+            reject(new Error('Image loaded but could not be processed due to security restrictions. Try using a different image hosting service or upload the file directly.'));
+          }
+        };
+        
+        imgNoCors.onerror = () => {
+          reject(new Error('Failed to load image from URL. Please check if the URL is accessible and points to a valid image file.'));
+        };
+        
+        imgNoCors.src = imageUrl;
+      };
+      
+      // Try with crossOrigin first
+      img.crossOrigin = 'anonymous';
+      img.src = imageUrl;
+    });
+  };
+
+  const handleLogoUrlUpload = async () => {
+    if (!logoUrl.trim()) {
+      toast({
+        title: "Invalid URL",
+        description: "Please enter a valid image URL.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoadingLogo(true);
     try {
-      await user?.update({
+      const base64 = await convertImageUrlToBase64(logoUrl);
+      setBusinessAssets(prev => ({ ...prev, logoBase64: base64 }));
+      setLogoUrl(''); // Clear the URL input after successful upload
+      toast({
+        title: "Logo Loaded Successfully",
+        description: "Logo has been loaded from URL successfully. Click 'Save Branding Assets' to save it.",
+      });
+    } catch (error: any) {
+      console.error('Logo URL upload error:', error);
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to load image from URL. Please check the URL and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingLogo(false);
+    }
+  };
+
+  const handleSignatureUrlUpload = async () => {
+    if (!signatureUrl.trim()) {
+      toast({
+        title: "Invalid URL",
+        description: "Please enter a valid image URL.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoadingSignature(true);
+    try {
+      const base64 = await convertImageUrlToBase64(signatureUrl);
+      setBusinessAssets(prev => ({ ...prev, signatureBase64: base64 }));
+      setSignatureUrl(''); // Clear the URL input after successful upload
+      toast({
+        title: "Signature Loaded Successfully",
+        description: "Signature has been loaded from URL successfully. Click 'Save Branding Assets' to save it.",
+      });
+    } catch (error: any) {
+      console.error('Signature URL upload error:', error);
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to load image from URL. Please check the URL and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingSignature(false);
+    }
+  };
+
+  const handleSaveBusinessAssets = async () => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "User not authenticated. Please refresh and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Check if base64 data is too large (Clerk has size limits)
+      const totalSize = (businessAssets.logoBase64.length + businessAssets.signatureBase64.length) / 1024; // KB
+      
+      if (totalSize > 500) { // Limit to ~500KB total
+        toast({
+          title: "Images Too Large",
+          description: `Combined image size is ${Math.round(totalSize)}KB. Please use smaller images (recommended: under 500KB total).`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Saving business assets...', {
+        logoSize: businessAssets.logoBase64.length,
+        signatureSize: businessAssets.signatureBase64.length,
+        totalSizeKB: Math.round(totalSize)
+      });
+
+      await user.update({
         unsafeMetadata: {
           ...user.unsafeMetadata,
           logoBase64: businessAssets.logoBase64,
@@ -243,10 +471,22 @@ const Settings = () => {
         title: "Business Assets Updated",
         description: "Your logo and signature have been saved successfully.",
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error saving business assets:', error);
+      
+      let errorMessage = "Failed to save business assets.";
+      
+      if (error?.message?.includes('metadata')) {
+        errorMessage = "Image data is too large. Please use smaller images or try uploading files directly.";
+      } else if (error?.message?.includes('network')) {
+        errorMessage = "Network error. Please check your connection and try again.";
+      } else if (error?.message?.includes('limit')) {
+        errorMessage = "Data size limit exceeded. Please use smaller images.";
+      }
+      
       toast({
-        title: "Error",
-        description: "Failed to save business assets.",
+        title: "Save Failed",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -487,28 +727,61 @@ const Settings = () => {
                         <FileImage className="h-8 w-8 text-gray-400" />
                       )}
                     </div>
-                    <div className="flex-1 space-y-3">
-                      <div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => logoInputRef.current?.click()}
-                          className="w-full sm:w-auto"
-                        >
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload Logo
-                        </Button>
-                        <input
-                          ref={logoInputRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleLogoUpload}
-                          className="hidden"
-                        />
+                    <div className="flex-1 space-y-4">
+                      <div className="space-y-3">
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => logoInputRef.current?.click()}
+                            className="flex-1 sm:flex-none"
+                          >
+                            <Upload className="h-4 w-4 mr-2" />
+                            Upload File
+                          </Button>
+                          <input
+                            ref={logoInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleLogoUpload}
+                            className="hidden"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Or upload from URL:</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              value={logoUrl}
+                              onChange={(e) => setLogoUrl(e.target.value)}
+                              placeholder="https://example.com/logo.png"
+                              className="flex-1"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={handleLogoUrlUpload}
+                              disabled={!logoUrl.trim() || isLoadingLogo}
+                            >
+                              {isLoadingLogo ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <Globe className="h-4 w-4 mr-2" />
+                              )}
+                              {isLoadingLogo ? 'Loading...' : 'Load'}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            💡 <strong>Tip:</strong> For best results, use direct image links (ending in .jpg, .png, etc.) from services like GitHub, Imgur, or your own website. 
+                            If you get CORS errors, try uploading the image to a public cloud storage service first.
+                          </p>
+                        </div>
                       </div>
+                      
                       <p className="text-sm text-muted-foreground">
                         Recommended: PNG or JPG format, max 5MB. Optimal size: 200x80 pixels.
                       </p>
+                      
                       {businessAssets.logoBase64 && (
                         <Button
                           type="button"
@@ -538,28 +811,61 @@ const Settings = () => {
                         <FileImage className="h-8 w-8 text-gray-400" />
                       )}
                     </div>
-                    <div className="flex-1 space-y-3">
-                      <div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => signatureInputRef.current?.click()}
-                          className="w-full sm:w-auto"
-                        >
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload Signature
-                        </Button>
-                        <input
-                          ref={signatureInputRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleSignatureUpload}
-                          className="hidden"
-                        />
+                    <div className="flex-1 space-y-4">
+                      <div className="space-y-3">
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => signatureInputRef.current?.click()}
+                            className="flex-1 sm:flex-none"
+                          >
+                            <Upload className="h-4 w-4 mr-2" />
+                            Upload File
+                          </Button>
+                          <input
+                            ref={signatureInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleSignatureUpload}
+                            className="hidden"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Or upload from URL:</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              value={signatureUrl}
+                              onChange={(e) => setSignatureUrl(e.target.value)}
+                              placeholder="https://example.com/signature.png"
+                              className="flex-1"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={handleSignatureUrlUpload}
+                              disabled={!signatureUrl.trim() || isLoadingSignature}
+                            >
+                              {isLoadingSignature ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <Globe className="h-4 w-4 mr-2" />
+                              )}
+                              {isLoadingSignature ? 'Loading...' : 'Load'}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            💡 <strong>Tip:</strong> For best results, use direct image links (ending in .jpg, .png, etc.) from services like GitHub, Imgur, or your own website. 
+                            If you get CORS errors, try uploading the image to a public cloud storage service first.
+                          </p>
+                        </div>
                       </div>
+                      
                       <p className="text-sm text-muted-foreground">
                         Recommended: PNG with transparent background, max 5MB. Optimal size: 150x60 pixels.
                       </p>
+                      
                       {businessAssets.signatureBase64 && (
                         <Button
                           type="button"
