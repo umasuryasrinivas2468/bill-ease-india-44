@@ -9,66 +9,74 @@ import useSimpleBranding from '@/hooks/useSimpleBranding';
 const SimpleBrandingManager: React.FC = () => {
   const { branding, isLoading, updateBranding, isUpdating, getBrandingWithFallback } = useSimpleBranding();
   
-  // Current saved URLs from database
+  // Get current saved URLs from database with fallback
   const brandingData = getBrandingWithFallback();
-  const currentLogoUrl = brandingData.logo_url || '';
-  const currentSignatureUrl = brandingData.signature_url || '';
   
-  // Edit states
+  // Local state for editing
   const [isEditingLogo, setIsEditingLogo] = useState(false);
   const [isEditingSignature, setIsEditingSignature] = useState(false);
-  const [tempLogoUrl, setTempLogoUrl] = useState('');
-  const [tempSignatureUrl, setTempSignatureUrl] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [signatureUrl, setSignatureUrl] = useState('');
   const [showLogoPreview, setShowLogoPreview] = useState(false);
   const [showSignaturePreview, setShowSignaturePreview] = useState(false);
 
-  // Show preview automatically for existing URLs
+  // Sync local state with database values whenever they change
   useEffect(() => {
-    if (currentLogoUrl && isValidUrl(currentLogoUrl)) {
+    setLogoUrl(brandingData.logo_url || '');
+    setSignatureUrl(brandingData.signature_url || '');
+    
+    // Auto-show previews for existing valid URLs
+    if (brandingData.logo_url && isValidUrl(brandingData.logo_url)) {
       setShowLogoPreview(true);
     }
-    if (currentSignatureUrl && isValidUrl(currentSignatureUrl)) {
+    if (brandingData.signature_url && isValidUrl(brandingData.signature_url)) {
       setShowSignaturePreview(true);
     }
-  }, [currentLogoUrl, currentSignatureUrl]);
+  }, [brandingData.logo_url, brandingData.signature_url]);
 
   const handleEditLogo = () => {
-    setTempLogoUrl(currentLogoUrl);
     setIsEditingLogo(true);
   };
 
   const handleEditSignature = () => {
-    setTempSignatureUrl(currentSignatureUrl);
     setIsEditingSignature(true);
   };
 
-  const handleSaveLogo = () => {
-    if (isValidUrl(tempLogoUrl)) {
-      updateBranding({
-        logo_url: tempLogoUrl.trim() || undefined,
-        signature_url: currentSignatureUrl || undefined,
-      });
-      setIsEditingLogo(false);
+  const handleSaveLogo = async () => {
+    if (isValidUrl(logoUrl)) {
+      try {
+        await updateBranding({
+          logo_url: logoUrl.trim() || undefined,
+          signature_url: signatureUrl || undefined,
+        });
+        setIsEditingLogo(false);
+      } catch (error) {
+        console.error('Error saving logo:', error);
+      }
     }
   };
 
-  const handleSaveSignature = () => {
-    if (isValidUrl(tempSignatureUrl)) {
-      updateBranding({
-        logo_url: currentLogoUrl || undefined,
-        signature_url: tempSignatureUrl.trim() || undefined,
-      });
-      setIsEditingSignature(false);
+  const handleSaveSignature = async () => {
+    if (isValidUrl(signatureUrl)) {
+      try {
+        await updateBranding({
+          logo_url: logoUrl || undefined,
+          signature_url: signatureUrl.trim() || undefined,
+        });
+        setIsEditingSignature(false);
+      } catch (error) {
+        console.error('Error saving signature:', error);
+      }
     }
   };
 
   const handleCancelEdit = (type: 'logo' | 'signature') => {
     if (type === 'logo') {
       setIsEditingLogo(false);
-      setTempLogoUrl('');
+      setLogoUrl(brandingData.logo_url || ''); // Reset to saved value
     } else {
       setIsEditingSignature(false);
-      setTempSignatureUrl('');
+      setSignatureUrl(brandingData.signature_url || ''); // Reset to saved value
     }
   };
 
@@ -112,17 +120,17 @@ const SimpleBrandingManager: React.FC = () => {
             {!isEditingLogo ? (
               <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50/50">
                 <div className="flex-1">
-                  {currentLogoUrl ? (
+                  {logoUrl ? (
                     <div className="space-y-1">
                       <p className="text-sm font-medium text-green-700">✅ Logo URL saved</p>
-                      <p className="text-xs text-gray-600 break-all">{currentLogoUrl}</p>
+                      <p className="text-xs text-gray-600 break-all">{logoUrl}</p>
                     </div>
                   ) : (
                     <p className="text-sm text-gray-500">No logo URL set</p>
                   )}
                 </div>
                 <div className="flex gap-2">
-                  {currentLogoUrl && (
+                  {logoUrl && (
                     <Button
                       type="button"
                       variant="outline"
@@ -146,17 +154,17 @@ const SimpleBrandingManager: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex gap-2">
                   <Input
-                    value={tempLogoUrl}
-                    onChange={(e) => setTempLogoUrl(e.target.value)}
+                    value={logoUrl}
+                    onChange={(e) => setLogoUrl(e.target.value)}
                     placeholder="https://example.com/logo.png"
-                    className={!isValidUrl(tempLogoUrl) ? 'border-red-500' : ''}
+                    className={!isValidUrl(logoUrl) ? 'border-red-500' : ''}
                   />
                   <Button
                     type="button"
                     variant="default"
                     size="sm"
                     onClick={handleSaveLogo}
-                    disabled={!isValidUrl(tempLogoUrl) || isUpdating}
+                    disabled={!isValidUrl(logoUrl) || isUpdating}
                   >
                     {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                   </Button>
@@ -169,7 +177,7 @@ const SimpleBrandingManager: React.FC = () => {
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
-                {tempLogoUrl && !isValidUrl(tempLogoUrl) && (
+                {logoUrl && !isValidUrl(logoUrl) && (
                   <p className="text-sm text-red-500">Please enter a valid URL</p>
                 )}
               </div>
@@ -181,13 +189,13 @@ const SimpleBrandingManager: React.FC = () => {
           </div>
 
           {/* Logo Preview */}
-          {showLogoPreview && currentLogoUrl && isValidUrl(currentLogoUrl) && (
+          {showLogoPreview && logoUrl && isValidUrl(logoUrl) && (
             <div className="space-y-3">
               <Label className="text-base font-semibold">Logo Preview</Label>
               <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 dark:bg-gray-900/50">
                 <div className="w-full max-w-md mx-auto flex items-center justify-center min-h-24">
                   <img 
-                    src={currentLogoUrl}
+                    src={logoUrl}
                     alt="Business Logo preview" 
                     className="max-w-full max-h-24 object-contain rounded-lg shadow-sm" 
                     onError={(e) => {
@@ -217,17 +225,17 @@ const SimpleBrandingManager: React.FC = () => {
             {!isEditingSignature ? (
               <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50/50">
                 <div className="flex-1">
-                  {currentSignatureUrl ? (
+                  {signatureUrl ? (
                     <div className="space-y-1">
                       <p className="text-sm font-medium text-green-700">✅ Signature URL saved</p>
-                      <p className="text-xs text-gray-600 break-all">{currentSignatureUrl}</p>
+                      <p className="text-xs text-gray-600 break-all">{signatureUrl}</p>
                     </div>
                   ) : (
                     <p className="text-sm text-gray-500">No signature URL set</p>
                   )}
                 </div>
                 <div className="flex gap-2">
-                  {currentSignatureUrl && (
+                  {signatureUrl && (
                     <Button
                       type="button"
                       variant="outline"
@@ -251,17 +259,17 @@ const SimpleBrandingManager: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex gap-2">
                   <Input
-                    value={tempSignatureUrl}
-                    onChange={(e) => setTempSignatureUrl(e.target.value)}
+                    value={signatureUrl}
+                    onChange={(e) => setSignatureUrl(e.target.value)}
                     placeholder="https://example.com/signature.png"
-                    className={!isValidUrl(tempSignatureUrl) ? 'border-red-500' : ''}
+                    className={!isValidUrl(signatureUrl) ? 'border-red-500' : ''}
                   />
                   <Button
                     type="button"
                     variant="default"
                     size="sm"
                     onClick={handleSaveSignature}
-                    disabled={!isValidUrl(tempSignatureUrl) || isUpdating}
+                    disabled={!isValidUrl(signatureUrl) || isUpdating}
                   >
                     {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                   </Button>
@@ -274,7 +282,7 @@ const SimpleBrandingManager: React.FC = () => {
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
-                {tempSignatureUrl && !isValidUrl(tempSignatureUrl) && (
+                {signatureUrl && !isValidUrl(signatureUrl) && (
                   <p className="text-sm text-red-500">Please enter a valid URL</p>
                 )}
               </div>
@@ -286,13 +294,13 @@ const SimpleBrandingManager: React.FC = () => {
           </div>
 
           {/* Signature Preview */}
-          {showSignaturePreview && currentSignatureUrl && isValidUrl(currentSignatureUrl) && (
+          {showSignaturePreview && signatureUrl && isValidUrl(signatureUrl) && (
             <div className="space-y-3">
               <Label className="text-base font-semibold">Signature Preview</Label>
               <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 dark:bg-gray-900/50">
                 <div className="w-full max-w-sm mx-auto flex items-center justify-center min-h-20">
                   <img 
-                    src={currentSignatureUrl}
+                    src={signatureUrl}
                     alt="Digital Signature preview" 
                     className="max-w-full max-h-20 object-contain rounded-lg shadow-sm" 
                     onError={(e) => {
