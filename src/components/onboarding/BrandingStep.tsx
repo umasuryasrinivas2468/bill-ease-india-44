@@ -52,20 +52,23 @@ export const BrandingStep: React.FC<BrandingStepProps> = ({
           <div>
             <Label className="text-base font-medium">Business Logo URL *</Label>
             <div className="flex items-center gap-4 mt-2">
-              <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                {businessAssets.logoUrl && !logoError ? (
-                  <img 
-                    src={businessAssets.logoUrl} 
-                    alt="Logo preview" 
-                    className="w-full h-full object-contain rounded-lg" 
-                    onError={handleLogoError}
-                  />
-                ) : businessAssets.logoUrl && logoError ? (
-                  <div className="text-red-500 text-xs text-center p-1">Invalid URL</div>
-                ) : (
-                  <FileImage className="h-8 w-8 text-gray-400" />
-                )}
-              </div>
+               <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+                 {businessAssets.logoUrl && !logoError ? (
+                   <img 
+                     src={businessAssets.logoUrl} 
+                     alt="Logo preview" 
+                     className="w-full h-full object-contain rounded-lg" 
+                     onError={handleLogoError}
+                   />
+                 ) : businessAssets.logoUrl && logoError ? (
+                   <div className="text-red-500 text-xs text-center p-1">No Preview</div>
+                 ) : (
+                   <div className="flex flex-col items-center">
+                     <FileImage className="h-8 w-8 text-gray-400" />
+                     <span className="text-xs text-gray-500 mt-1">No Preview</span>
+                   </div>
+                 )}
+               </div>
               <div className="flex-1">
                 <Input
                   type="url"
@@ -85,20 +88,23 @@ export const BrandingStep: React.FC<BrandingStepProps> = ({
           <div>
             <Label className="text-base font-medium">Digital Signature URL *</Label>
             <div className="flex items-center gap-4 mt-2">
-              <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                {businessAssets.signatureUrl && !signatureError ? (
-                  <img 
-                    src={businessAssets.signatureUrl} 
-                    alt="Signature preview" 
-                    className="w-full h-full object-contain rounded-lg" 
-                    onError={handleSignatureError}
-                  />
-                ) : businessAssets.signatureUrl && signatureError ? (
-                  <div className="text-red-500 text-xs text-center p-1">Invalid URL</div>
-                ) : (
-                  <Link className="h-8 w-8 text-gray-400" />
-                )}
-              </div>
+               <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+                 {businessAssets.signatureUrl && !signatureError ? (
+                   <img 
+                     src={businessAssets.signatureUrl} 
+                     alt="Signature preview" 
+                     className="w-full h-full object-contain rounded-lg" 
+                     onError={handleSignatureError}
+                   />
+                 ) : businessAssets.signatureUrl && signatureError ? (
+                   <div className="text-red-500 text-xs text-center p-1">No Preview</div>
+                 ) : (
+                   <div className="flex flex-col items-center">
+                     <Link className="h-8 w-8 text-gray-400" />
+                     <span className="text-xs text-gray-500 mt-1">No Preview</span>
+                   </div>
+                 )}
+               </div>
               <div className="flex-1">
                 <Input
                   type="url"

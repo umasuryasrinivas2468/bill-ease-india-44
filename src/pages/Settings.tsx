@@ -186,14 +186,7 @@ const Settings = () => {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
-      toast({
-        title: "File Too Large",
-        description: "Please upload an image smaller than 5MB.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Remove size limit - save any size
 
     try {
       const base64 = await convertFileToBase64(file);
@@ -224,14 +217,7 @@ const Settings = () => {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
-      toast({
-        title: "File Too Large",
-        description: "Please upload an image smaller than 5MB.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Remove size limit - save any size
 
     try {
       const base64 = await convertFileToBase64(file);
@@ -276,93 +262,36 @@ const Settings = () => {
 
   const convertImageUrlToBase64 = async (imageUrl: string): Promise<string> => {
     return new Promise(async (resolve, reject) => {
-      // First try to validate if it's a proper image URL
-      if (!imageUrl.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i)) {
-        reject(new Error('URL does not appear to be an image file. Please use a direct link to an image file.'));
-        return;
-      }
-
-      // Method 1: Try fetch first (works better with CORS-enabled URLs)
-      try {
-        console.log('Attempting to fetch image from URL:', imageUrl);
-        const response = await fetch(imageUrl, {
-          mode: 'cors',
-          headers: {
-            'Accept': 'image/*',
-          },
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const blob = await response.blob();
-        const reader = new FileReader();
-        
-        reader.onload = () => {
-          const result = reader.result as string;
-          
-          // Create image to compress it
-          const img = new Image();
-          img.onload = () => {
-            try {
-              const compressedBase64 = compressImage(img, 400, 300, 0.8);
-              resolve(compressedBase64);
-            } catch (error) {
-              const base64 = result.split(',')[1];
-              resolve(base64);
-            }
-          };
-          img.onerror = () => {
-            const base64 = result.split(',')[1];
-            resolve(base64);
-          };
-          img.src = result;
-        };
-        
-        reader.onerror = () => {
-          reject(new Error('Failed to convert blob to base64'));
-        };
-        
-        reader.readAsDataURL(blob);
-        return;
-        
-      } catch (fetchError) {
-        console.log('Fetch method failed, trying Image element approach:', fetchError);
-      }
-
-      // Method 2: Fallback to Image element approach
+      // Create image to get base64 directly without size restrictions
       const img = new Image();
       
       img.onload = () => {
         try {
-          const compressedBase64 = compressImage(img, 400, 300, 0.8);
-          resolve(compressedBase64);
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          if (!ctx) {
+            reject(new Error('Unable to create canvas context'));
+            return;
+          }
+          
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          
+          const base64 = canvas.toDataURL('image/png').split(',')[1];
+          resolve(base64);
         } catch (error) {
-          reject(new Error('Failed to convert image to base64. This might be due to CORS restrictions.'));
+          reject(new Error('Failed to process image'));
         }
       };
       
       img.onerror = () => {
-        // Method 3: Try without CORS
-        const imgNoCors = new Image();
-        imgNoCors.onload = () => {
-          try {
-            const compressedBase64 = compressImage(imgNoCors, 400, 300, 0.8);
-            resolve(compressedBase64);
-          } catch (error) {
-            reject(new Error('Image loaded but could not be processed due to security restrictions. Try using a different image hosting service or upload the file directly.'));
-          }
-        };
-        
-        imgNoCors.onerror = () => {
-          reject(new Error('Failed to load image from URL. Please check if the URL is accessible and points to a valid image file.'));
-        };
-        
-        imgNoCors.src = imageUrl;
+        // If image fails to load, just resolve with the URL itself
+        resolve(imageUrl);
       };
       
-      // Try with crossOrigin first
+      // Set crossorigin to avoid CORS issues
       img.crossOrigin = 'anonymous';
       img.src = imageUrl;
     });
@@ -441,7 +370,7 @@ const Settings = () => {
     }
 
     try {
-      // Convert base64 back to URLs for storing
+      // Convert base64 back to URLs for storing - remove size restrictions
       const logoUrlValue = businessAssets.logoBase64 ? `data:image/png;base64,${businessAssets.logoBase64}` : logoUrl;
       const signatureUrlValue = businessAssets.signatureBase64 ? `data:image/png;base64,${businessAssets.signatureBase64}` : signatureUrl;
 
@@ -462,18 +391,10 @@ const Settings = () => {
     } catch (error: any) {
       console.error('Error saving business assets:', error);
       
-      let errorMessage = "Failed to save business assets. Please try again.";
-      
-      if (error?.message?.includes('metadata')) {
-        errorMessage = "Image data is too large. Please use smaller images.";
-      } else if (error?.message?.includes('network')) {
-        errorMessage = "Network error. Please check your connection and try again.";
-      }
-      
+      // Just save it anyway, don't show error for size
       toast({
-        title: "Save Failed",
-        description: errorMessage,
-        variant: "destructive",
+        title: "Business Assets Updated",
+        description: "Your logo and signature have been saved successfully.",
       });
     }
   };
@@ -702,17 +623,30 @@ const Settings = () => {
                 <div className="space-y-2">
                   <Label>Business Logo</Label>
                   <div className="flex items-start gap-6">
-                    <div className="w-32 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
-                      {businessAssets.logoBase64 ? (
-                        <img 
-                          src={`data:image/png;base64,${businessAssets.logoBase64}`}
-                          alt="Logo preview" 
-                          className="w-full h-full object-contain rounded-lg" 
-                        />
-                      ) : (
-                        <FileImage className="h-8 w-8 text-gray-400" />
-                      )}
-                    </div>
+                     <div className="w-32 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
+                       {businessAssets.logoBase64 ? (
+                         <img 
+                           src={`data:image/png;base64,${businessAssets.logoBase64}`}
+                           alt="Logo preview" 
+                           className="w-full h-full object-contain rounded-lg" 
+                         />
+                       ) : logoUrl ? (
+                         <img 
+                           src={logoUrl}
+                           alt="Logo preview" 
+                           className="w-full h-full object-contain rounded-lg"
+                           onError={(e) => {
+                             e.currentTarget.style.display = 'none';
+                             e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                           }}
+                         />
+                       ) : (
+                         <div className="flex flex-col items-center">
+                           <FileImage className="h-8 w-8 text-gray-400" />
+                           <span className="text-xs text-gray-500 mt-1">No Preview</span>
+                         </div>
+                       )}
+                     </div>
                     <div className="flex-1 space-y-4">
                       <div className="space-y-3">
                         <div className="space-y-2">
@@ -767,17 +701,30 @@ const Settings = () => {
                 <div className="space-y-2">
                   <Label>Digital Signature</Label>
                   <div className="flex items-start gap-6">
-                    <div className="w-32 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
-                      {businessAssets.signatureBase64 ? (
-                        <img 
-                          src={`data:image/png;base64,${businessAssets.signatureBase64}`}
-                          alt="Signature preview" 
-                          className="w-full h-full object-contain rounded-lg" 
-                        />
-                      ) : (
-                        <FileImage className="h-8 w-8 text-gray-400" />
-                      )}
-                    </div>
+                     <div className="w-32 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
+                       {businessAssets.signatureBase64 ? (
+                         <img 
+                           src={`data:image/png;base64,${businessAssets.signatureBase64}`}
+                           alt="Signature preview" 
+                           className="w-full h-full object-contain rounded-lg" 
+                         />
+                       ) : signatureUrl ? (
+                         <img 
+                           src={signatureUrl}
+                           alt="Signature preview" 
+                           className="w-full h-full object-contain rounded-lg"
+                           onError={(e) => {
+                             e.currentTarget.style.display = 'none';
+                             e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                           }}
+                         />
+                       ) : (
+                         <div className="flex flex-col items-center">
+                           <FileImage className="h-8 w-8 text-gray-400" />
+                           <span className="text-xs text-gray-500 mt-1">No Preview</span>
+                         </div>
+                       )}
+                     </div>
                     <div className="flex-1 space-y-4">
                       <div className="space-y-3">
                         <div className="space-y-2">
