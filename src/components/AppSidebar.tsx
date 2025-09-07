@@ -23,10 +23,12 @@ import {
   LineChart,
   Percent,
   CreditCard,
-  Brain
+  Brain,
+  Palette
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import { useBusinessData } from "@/hooks/useBusinessData";
+import useSimpleBranding from '@/hooks/useSimpleBranding';
 import {
   Sidebar,
   SidebarContent,
@@ -52,6 +54,7 @@ const mainMenuItems = [
   { title: "Quotations", url: "/quotations", icon: Quote },
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Inventory", url: "/inventory", icon: Package },
+  { title: "Branding", url: "/branding", icon: Palette },
   { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Settings", url: "/settings", icon: Settings },
   { title: "Support", url: "/support", icon: HelpCircle },
@@ -78,6 +81,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { signOut } = useClerk();
   const { getBusinessInfo, getBusinessAssets } = useBusinessData();
+  const { getBrandingWithFallback } = useSimpleBranding();
   const currentPath = location.pathname;
   const isCollapsed = state === "collapsed";
   const [isCAToolsOpen, setIsCAToolsOpen] = useState(false);
@@ -85,6 +89,20 @@ export function AppSidebar() {
   
   const businessInfo = getBusinessInfo();
   const businessAssets = getBusinessAssets();
+  const brandingAssets = getBrandingWithFallback();
+
+  // Get the best logo URL, prioritizing new branding system over old base64 data
+  const getLogoSrc = () => {
+    if (brandingAssets.logo_url) {
+      return brandingAssets.logo_url;
+    }
+    if (businessAssets.logoBase64) {
+      return `data:image/png;base64,${businessAssets.logoBase64}`;
+    }
+    return null;
+  };
+
+  const logoSrc = getLogoSrc();
 
   const isActive = (path: string) => {
     // Handle dashboard routing - both "/" and "/dashboard" should highlight dashboard
@@ -109,9 +127,9 @@ export function AppSidebar() {
         <div className="flex items-center justify-between p-2 border-b border-sidebar-border">
           {!isCollapsed ? (
             <div className="flex items-center space-x-3">
-              {businessAssets.logoBase64 ? (
+              {logoSrc ? (
                 <img 
-                  src={`data:image/png;base64,${businessAssets.logoBase64}`}
+                  src={logoSrc}
                   alt="Business Logo" 
                   className="h-8 w-8 object-contain rounded"
                 />
@@ -130,9 +148,9 @@ export function AppSidebar() {
             </div>
           ) : (
             <div className="flex justify-center w-full">
-              {businessAssets.logoBase64 ? (
+              {logoSrc ? (
                 <img 
-                  src={`data:image/png;base64,${businessAssets.logoBase64}`}
+                  src={logoSrc}
                   alt="Business Logo" 
                   className="h-8 w-8 object-contain rounded"
                 />

@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Download, X } from 'lucide-react';
 import { Invoice } from '@/hooks/useInvoices';
 import { useUser } from '@clerk/clerk-react';
-import { useBusinessData } from '@/hooks/useBusinessData';
+import { useEnhancedBusinessData } from '@/hooks/useEnhancedBusinessData';
+import useSimpleBranding from '@/hooks/useSimpleBranding';
 import { toWords } from 'number-to-words';
 
 interface InvoiceViewerProps {
@@ -17,7 +18,8 @@ interface InvoiceViewerProps {
 const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose }) => {
   const printRef = useRef<HTMLDivElement>(null);
   const { user } = useUser();
-  const { getBusinessInfo, getBankDetails, getBusinessAssets } = useBusinessData();
+  const { getBusinessInfo, getBankDetails, getPreferredLogo, getPreferredSignature } = useEnhancedBusinessData();
+  const { getBrandingWithFallback } = useSimpleBranding();
 
   if (!invoice) return null;
 
@@ -217,7 +219,7 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
           <body>
             <div class="header">
               <div class="logo-section">
-                ${businessAssets.logoBase64 ? `<img src="data:image/png;base64,${businessAssets.logoBase64}" alt="Business Logo" class="business-logo" />` : businessAssets.logoUrl ? `<img src="${businessAssets.logoUrl}" alt="Business Logo" class="business-logo" />` : ''}
+                ${logoUrl ? `<img src="${logoUrl}" alt="Business Logo" class="business-logo" />` : ''}
                 <div>
                   <h1 class="business-name">${businessInfo?.businessName || 'Your Business'}</h1>
                   <p class="business-tagline">Professional Invoice Services</p>
@@ -352,10 +354,10 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
               </div>
             ` : ''}
             
-            ${businessAssets.signatureBase64 || businessAssets.signatureUrl ? `
+            ${signatureUrl ? `
               <div class="signature-section">
                 <div class="signature">
-                  <img src="${businessAssets.signatureBase64 ? `data:image/png;base64,${businessAssets.signatureBase64}` : businessAssets.signatureUrl}" alt="Authorized Signature" class="signature-img" />
+                  <img src="${signatureUrl}" alt="Authorized Signature" class="signature-img" />
                   <div class="signature-line">
                     <p style="margin: 5px 0; font-size: 14px; font-weight: bold;">Authorized Signature</p>
                     <p style="margin: 0; font-size: 12px; color: #6b7280;">${businessInfo?.ownerName || 'Authorized Person'}</p>
@@ -378,7 +380,9 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
 
   const businessInfo = getBusinessInfo();
   const bankDetails = getBankDetails();
-  const businessAssets = getBusinessAssets();
+  const brandingAssets = getBrandingWithFallback();
+  const logoUrl = brandingAssets.logo_url || getPreferredLogo();
+  const signatureUrl = brandingAssets.signature_url || getPreferredSignature();
 
   // Convert total amount to words
   const totalInWords = toWords(Math.floor(Number(invoice.total_amount)));
@@ -409,9 +413,9 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
           {/* Header */}
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-4">
-              {(businessAssets.logoBase64 || businessAssets.logoUrl) && (
+              {logoUrl && (
                 <img 
-                  src={businessAssets.logoBase64 ? `data:image/png;base64,${businessAssets.logoBase64}` : businessAssets.logoUrl}
+                  src={logoUrl}
                   alt="Business Logo" 
                   className="w-20 h-16 object-contain"
                 />
@@ -570,11 +574,11 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
           )}
 
           {/* Signature */}
-          {businessAssets.signatureBase64 && (
+          {signatureUrl && (
             <div className="flex justify-end pt-6">
               <div className="text-center">
                 <img 
-                  src={`data:image/png;base64,${businessAssets.signatureBase64}`}
+                  src={signatureUrl}
                   alt="Authorized Signature" 
                   className="max-w-32 max-h-16 object-contain mx-auto mb-2"
                 />

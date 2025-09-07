@@ -34,6 +34,7 @@ import NotFound from "./pages/NotFound";
 import CashFlowForecasting from "./pages/CashFlowForecasting";
 import TDS from "./pages/TDS";
 import AIBusinessTaxAdvisor from "./pages/AIBusinessTaxAdvisor";
+import Branding from "./pages/Branding";
 
 
 // Accounting pages
@@ -82,6 +83,7 @@ function App() {
                     <Route path="/payout" element={<Payout />} />
                     <Route path="/quotations" element={<QuotationsInfo />} />
                     <Route path="/quotations/create" element={<Quotations />} />
+                    <Route path="/branding" element={<Branding />} />
                     <Route path="/tds" element={<TDS />} />
                     
                     {/* Accounting Routes */}

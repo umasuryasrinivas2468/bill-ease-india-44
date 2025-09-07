@@ -167,38 +167,24 @@ export const useOnboardingData = (sessionId: string) => {
       console.log('Saving business assets for user:', user.id);
       console.log('Business assets data:', assets);
 
-      // Save logo
-      const { error: logoError } = await supabase
-        .from('business_assets')
+      // Save both logo and signature in one record
+      const { error } = await supabase
+        .from('user_branding')
         .upsert({
           user_id: user.id,
-          asset_type: 'logo',
-          asset_data: assets.logoUrl,
+          logo_url: assets.logoUrl || null,
+          signature_url: assets.signatureUrl || null,
         });
 
-      if (logoError) {
-        console.error('Error saving logo:', logoError);
-        throw logoError;
-      }
-
-      // Save signature
-      const { error: signatureError } = await supabase
-        .from('business_assets')
-        .upsert({
-          user_id: user.id,
-          asset_type: 'signature',
-          asset_data: assets.signatureUrl,
-        });
-
-      if (signatureError) {
-        console.error('Error saving signature:', signatureError);
-        throw signatureError;
+      if (error) {
+        console.error('Error saving branding assets:', error);
+        throw error;
       }
 
       console.log('Business assets saved successfully');
       toast({
         title: "Success",
-        description: "Business assets saved successfully!",
+        description: "Business branding assets saved successfully!",
       });
       return true;
     } catch (error) {
