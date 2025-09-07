@@ -441,29 +441,17 @@ const Settings = () => {
     }
 
     try {
-      // Check if base64 data is too large (Clerk has size limits)
-      const totalSize = (businessAssets.logoBase64.length + businessAssets.signatureBase64.length) / 1024; // KB
-      
-      if (totalSize > 500) { // Limit to ~500KB total
-        toast({
-          title: "Images Too Large",
-          description: `Combined image size is ${Math.round(totalSize)}KB. Please use smaller images (recommended: under 500KB total).`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('Saving business assets...', {
-        logoSize: businessAssets.logoBase64.length,
-        signatureSize: businessAssets.signatureBase64.length,
-        totalSizeKB: Math.round(totalSize)
-      });
+      // Convert base64 back to URLs for storing
+      const logoUrlValue = businessAssets.logoBase64 ? `data:image/png;base64,${businessAssets.logoBase64}` : logoUrl;
+      const signatureUrlValue = businessAssets.signatureBase64 ? `data:image/png;base64,${businessAssets.signatureBase64}` : signatureUrl;
 
       await user.update({
         unsafeMetadata: {
           ...user.unsafeMetadata,
           logoBase64: businessAssets.logoBase64,
           signatureBase64: businessAssets.signatureBase64,
+          logoUrl: logoUrlValue,
+          signatureUrl: signatureUrlValue,
         }
       });
       
@@ -474,14 +462,12 @@ const Settings = () => {
     } catch (error: any) {
       console.error('Error saving business assets:', error);
       
-      let errorMessage = "Failed to save business assets.";
+      let errorMessage = "Failed to save business assets. Please try again.";
       
       if (error?.message?.includes('metadata')) {
-        errorMessage = "Image data is too large. Please use smaller images or try uploading files directly.";
+        errorMessage = "Image data is too large. Please use smaller images.";
       } else if (error?.message?.includes('network')) {
         errorMessage = "Network error. Please check your connection and try again.";
-      } else if (error?.message?.includes('limit')) {
-        errorMessage = "Data size limit exceeded. Please use smaller images.";
       }
       
       toast({
@@ -729,27 +715,8 @@ const Settings = () => {
                     </div>
                     <div className="flex-1 space-y-4">
                       <div className="space-y-3">
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => logoInputRef.current?.click()}
-                            className="flex-1 sm:flex-none"
-                          >
-                            <Upload className="h-4 w-4 mr-2" />
-                            Upload File
-                          </Button>
-                          <input
-                            ref={logoInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleLogoUpload}
-                            className="hidden"
-                          />
-                        </div>
-                        
                         <div className="space-y-2">
-                          <Label className="text-sm font-medium">Or upload from URL:</Label>
+                          <Label className="text-sm font-medium">Upload from URL:</Label>
                           <div className="flex gap-2">
                             <Input
                               value={logoUrl}
@@ -813,27 +780,8 @@ const Settings = () => {
                     </div>
                     <div className="flex-1 space-y-4">
                       <div className="space-y-3">
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => signatureInputRef.current?.click()}
-                            className="flex-1 sm:flex-none"
-                          >
-                            <Upload className="h-4 w-4 mr-2" />
-                            Upload File
-                          </Button>
-                          <input
-                            ref={signatureInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleSignatureUpload}
-                            className="hidden"
-                          />
-                        </div>
-                        
                         <div className="space-y-2">
-                          <Label className="text-sm font-medium">Or upload from URL:</Label>
+                          <Label className="text-sm font-medium">Upload from URL:</Label>
                           <div className="flex gap-2">
                             <Input
                               value={signatureUrl}

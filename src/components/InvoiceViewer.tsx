@@ -217,7 +217,7 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
           <body>
             <div class="header">
               <div class="logo-section">
-                ${businessAssets.logoBase64 ? `<img src="data:image/png;base64,${businessAssets.logoBase64}" alt="Business Logo" class="business-logo" />` : ''}
+                ${businessAssets.logoBase64 ? `<img src="data:image/png;base64,${businessAssets.logoBase64}" alt="Business Logo" class="business-logo" />` : businessAssets.logoUrl ? `<img src="${businessAssets.logoUrl}" alt="Business Logo" class="business-logo" />` : ''}
                 <div>
                   <h1 class="business-name">${businessInfo?.businessName || 'Your Business'}</h1>
                   <p class="business-tagline">Professional Invoice Services</p>
@@ -352,10 +352,10 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
               </div>
             ` : ''}
             
-            ${businessAssets.signatureBase64 ? `
+            ${businessAssets.signatureBase64 || businessAssets.signatureUrl ? `
               <div class="signature-section">
                 <div class="signature">
-                  <img src="data:image/png;base64,${businessAssets.signatureBase64}" alt="Authorized Signature" class="signature-img" />
+                  <img src="${businessAssets.signatureBase64 ? `data:image/png;base64,${businessAssets.signatureBase64}` : businessAssets.signatureUrl}" alt="Authorized Signature" class="signature-img" />
                   <div class="signature-line">
                     <p style="margin: 5px 0; font-size: 14px; font-weight: bold;">Authorized Signature</p>
                     <p style="margin: 0; font-size: 12px; color: #6b7280;">${businessInfo?.ownerName || 'Authorized Person'}</p>
@@ -409,9 +409,9 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
           {/* Header */}
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-4">
-              {businessAssets.logoBase64 && (
+              {(businessAssets.logoBase64 || businessAssets.logoUrl) && (
                 <img 
-                  src={`data:image/png;base64,${businessAssets.logoBase64}`}
+                  src={businessAssets.logoBase64 ? `data:image/png;base64,${businessAssets.logoBase64}` : businessAssets.logoUrl}
                   alt="Business Logo" 
                   className="w-20 h-16 object-contain"
                 />

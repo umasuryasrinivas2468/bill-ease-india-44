@@ -266,8 +266,8 @@ export class TaxAnalysisExportService {
           deduction.section,
           deduction.title,
           deduction.description,
-          deduction.eligible_amount,
-          deduction.max_limit || '',
+          String(deduction.eligible_amount || ''),
+          String(deduction.max_limit || ''),
           deduction.applicable ? 'Yes' : 'No',
           deduction.recommendation
         ]);
@@ -288,7 +288,7 @@ export class TaxAnalysisExportService {
           suggestion.title,
           suggestion.category,
           suggestion.description,
-          suggestion.potential_savings,
+          String(suggestion.potential_savings || ''),
           suggestion.priority,
           suggestion.implementation_steps.join('; ')
         ]);

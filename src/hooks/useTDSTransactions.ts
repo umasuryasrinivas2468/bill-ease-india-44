@@ -2,13 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useSupabaseUser } from './useSupabaseUser';
 import { toast } from '@/hooks/use-toast';
-import type { 
-  TDSTransaction, 
-  CreateTDSTransactionData, 
-  TDSSummary, 
-  TDSCategoryBreakdown 
-} from '@/types/tds';
-
 export interface TDSTransaction {
   id: string;
   user_id: string;
@@ -36,7 +29,7 @@ export interface TDSTransaction {
 }
 
 export interface CreateTDSTransactionData {
-  client_id: string;
+  client_id?: string;
   invoice_id?: string;
   tds_rule_id?: string;
   transaction_amount: number;
@@ -208,7 +201,7 @@ export const useTDSSummary = (filters?: {
 
       // Group by category
       const categoryBreakdown = data.reduce((acc, t) => {
-        const category = t.tds_rules?.category || 'Other';
+        const category = (t.tds_rules as any)?.category || 'Other';
         if (!acc[category]) {
           acc[category] = {
             category,

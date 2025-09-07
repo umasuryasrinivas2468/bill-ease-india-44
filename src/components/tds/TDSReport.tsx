@@ -173,11 +173,11 @@ const TDSReport = () => {
               </Select>
 
               {selectedPeriod === 'custom' && (
-                <DateRangePicker 
-                  from={dateRange.from} 
-                  to={dateRange.to} 
-                  onSelect={setDateRange} 
-                />
+          <DateRangePicker
+            startDate={dateRange.from}
+            endDate={dateRange.to}
+            onChange={(range) => setDateRange({ from: range.startDate || new Date(), to: range.endDate || new Date() })}
+          />
               )}
 
               <Button variant="outline" onClick={handleExportExcel}>

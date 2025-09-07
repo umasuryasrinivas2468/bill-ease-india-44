@@ -30,6 +30,8 @@ export interface BankDetails {
 export interface BusinessAssets {
   logoBase64?: string;
   signatureBase64?: string;
+  logoUrl?: string;
+  signatureUrl?: string;
 }
 
 export const useBusinessData = () => {
@@ -50,6 +52,8 @@ export const useBusinessData = () => {
     return {
       logoBase64: metadata?.logoBase64 || '',
       signatureBase64: metadata?.signatureBase64 || '',
+      logoUrl: metadata?.logoUrl || '',
+      signatureUrl: metadata?.signatureUrl || '',
     };
   };
 
