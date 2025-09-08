@@ -20,19 +20,22 @@ const SimpleBrandingManager: React.FC = () => {
   const [showLogoPreview, setShowLogoPreview] = useState(false);
   const [showSignaturePreview, setShowSignaturePreview] = useState(false);
 
-  // Sync local state with database values whenever they change
+  // Sync local state with database values whenever they change,
+  // but do not clobber user input while editing
   useEffect(() => {
-    setLogoUrl(brandingData.logo_url || '');
-    setSignatureUrl(brandingData.signature_url || '');
-    
-    // Auto-show previews for existing valid URLs
-    if (brandingData.logo_url && isValidUrl(brandingData.logo_url)) {
-      setShowLogoPreview(true);
+    if (!isEditingLogo) {
+      setLogoUrl(brandingData.logo_url || '');
+      if (brandingData.logo_url && isValidUrl(brandingData.logo_url)) {
+        setShowLogoPreview(true);
+      }
     }
-    if (brandingData.signature_url && isValidUrl(brandingData.signature_url)) {
-      setShowSignaturePreview(true);
+    if (!isEditingSignature) {
+      setSignatureUrl(brandingData.signature_url || '');
+      if (brandingData.signature_url && isValidUrl(brandingData.signature_url)) {
+        setShowSignaturePreview(true);
+      }
     }
-  }, [brandingData.logo_url, brandingData.signature_url]);
+  }, [brandingData.logo_url, brandingData.signature_url, isEditingLogo, isEditingSignature]);
 
   const handleEditLogo = () => {
     setIsEditingLogo(true);

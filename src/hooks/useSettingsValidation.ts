@@ -1,4 +1,6 @@
-import { useBusinessData, BusinessInfo, BankDetails, BusinessAssets } from './useBusinessData';
+import { BusinessInfo, BankDetails } from './useBusinessData';
+import { useEnhancedBusinessData } from './useEnhancedBusinessData';
+import type { BusinessAssets } from './useEnhancedBusinessData';
 
 export interface SettingsValidation {
   isBusinessInfoComplete: boolean;
@@ -9,7 +11,7 @@ export interface SettingsValidation {
 }
 
 export const useSettingsValidation = (): SettingsValidation => {
-  const { getBusinessInfo, getBankDetails, getBusinessAssets } = useBusinessData();
+  const { getBusinessInfo, getBankDetails, getBusinessAssets } = useEnhancedBusinessData();
 
   const businessInfo = getBusinessInfo();
   const bankDetails = getBankDetails();
@@ -54,8 +56,13 @@ export const useSettingsValidation = (): SettingsValidation => {
   };
 
   const validateBranding = (assets: BusinessAssets): boolean => {
-    // At least logo should be present for branding
-    return !!(assets.logoBase64 && assets.logoBase64.trim() !== '');
+    // Accept logo from any source: DB url, metadata url, or base64
+    const logoCandidates = [
+      (assets as any).defaultLogo,
+      assets.logoUrl,
+      assets.logoBase64,
+    ].filter(Boolean) as string[];
+    return logoCandidates.some((val) => String(val).trim() !== '');
   };
 
   const getMissingFields = (): string[] => {

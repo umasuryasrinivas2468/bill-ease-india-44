@@ -52,6 +52,21 @@ export const useSimpleBranding = () => {
         .single();
 
       if (error) throw error;
+
+      // Also mirror to Clerk metadata as a resilient fallback for persistence
+      try {
+        await user.update({
+          unsafeMetadata: {
+            ...(user.unsafeMetadata as any),
+            ...(logo_url !== undefined ? { logoUrl: logo_url || '' } : {}),
+            ...(signature_url !== undefined ? { signatureUrl: signature_url || '' } : {}),
+          },
+        } as any);
+      } catch (clerkErr) {
+        // Non-fatal; persistence still exists in Supabase. Log for debugging.
+        console.warn('Failed to mirror branding to Clerk metadata:', clerkErr);
+      }
+
       return data;
     },
     onSuccess: (data) => {
@@ -88,7 +103,7 @@ export const useSimpleBranding = () => {
     branding,
     isLoading,
     error,
-    updateBranding: updateBrandingMutation.mutate,
+    updateBranding: updateBrandingMutation.mutateAsync,
     isUpdating: updateBrandingMutation.isPending,
     getBrandingWithFallback,
   };
