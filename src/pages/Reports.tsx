@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Download, FileSpreadsheet, Calendar, TrendingUp, IndianRupee, Database, Users, Building, Receipt } from 'lucide-react';
+import { Download, FileSpreadsheet, Calendar, TrendingUp, IndianRupee, Database, Users, Building, Receipt, FileText as FileTextIcon } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useInvoices } from '@/hooks/useInvoices';
 import { useToast } from '@/hooks/use-toast';
@@ -19,14 +19,18 @@ import AccountPayables from '@/components/reports/AccountPayables';
 import CashFlowAnalysis from '@/components/reports/CashFlowAnalysis';
 
 import { createSampleBusinessData } from '@/utils/createSampleBusinessData';
+import { usePerformanceData } from '@/hooks/usePerformanceData';
+import { generatePerformancePDF } from '@/services/performanceReportService';
 
 const Reports = () => {
   const [selectedMonth, setSelectedMonth] = useState('2024-01');
   const [selectedYear, setSelectedYear] = useState('2024');
   const [isCreatingSample, setIsCreatingSample] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const { data: invoices = [] } = useInvoices();
   const { toast } = useToast();
   const { user } = useUser();
+  const performanceData = usePerformanceData();
 
   // Calculate stats from real data
   const totalInvoices = invoices.length;
@@ -171,6 +175,29 @@ const Reports = () => {
     }
   };
 
+  const handleGeneratePerformancePDF = async () => {
+    setIsGeneratingPDF(true);
+    try {
+      const pdf = await generatePerformancePDF(performanceData);
+      pdf.save(`performance-report-${new Date().toISOString().split('T')[0]}.pdf`);
+      
+      toast({
+        title: "Performance Report Generated",
+        description: "Your performance report has been downloaded successfully.",
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      const errMsg = error instanceof Error ? error.message : String(error);
+      toast({
+        title: "Error",
+        description: `Failed to generate performance report. ${errMsg}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
 
 
   return (
@@ -184,8 +211,17 @@ const Reports = () => {
           </div>
         </div>
         
-        {/* Sample Data Controls */}
+        {/* Action Controls */}
         <div className="flex gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleGeneratePerformancePDF}
+            disabled={isGeneratingPDF}
+          >
+            <FileTextIcon className="h-4 w-4 mr-2" />
+            {isGeneratingPDF ? 'Generating...' : 'Performance'}
+          </Button>
           <Button
             variant="outline"
             size="sm"

@@ -11,6 +11,7 @@ import { Save, Building, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import SimpleBrandingManager from '@/components/SimpleBrandingManager';
+import Support from './Support';
 
 const Settings = () => {
   const { user } = useUser();
@@ -139,10 +140,11 @@ const Settings = () => {
       </div>
 
       <Tabs defaultValue="business" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="business">Business</TabsTrigger>
           <TabsTrigger value="banking">Banking</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
+          <TabsTrigger value="support">Support</TabsTrigger>
         </TabsList>
 
         <TabsContent value="business">
@@ -336,6 +338,9 @@ const Settings = () => {
         <TabsContent value="branding">
           {/* Database-based Branding Manager */}
           <SimpleBrandingManager />
+        </TabsContent>
+        <TabsContent value="support">
+          <Support />
         </TabsContent>
       </Tabs>
     </div>

@@ -24,7 +24,9 @@ import {
   Percent,
   CreditCard,
   Brain,
-  Palette
+  Palette,
+  Banknote,
+  HandCoins
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import { useBusinessData } from "@/hooks/useBusinessData";
@@ -47,6 +49,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { BankingUnavailableModal } from "@/components/BankingUnavailableModal";
 
 const mainMenuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -54,10 +57,10 @@ const mainMenuItems = [
   { title: "Quotations", url: "/quotations", icon: Quote },
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Inventory", url: "/inventory", icon: Package },
+  { title: "Banking", url: "#", icon: Banknote, special: "banking" },
   { title: "Branding", url: "/branding", icon: Palette },
   { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Settings", url: "/settings", icon: Settings },
-  { title: "Support", url: "/support", icon: HelpCircle },
 ];
 
 const reportsMenuItems = [
@@ -68,7 +71,6 @@ const reportsMenuItems = [
 
 const caToolsMenuItems = [
   { title: "CA Dashboard", url: "/ca", icon: Calculator },
-  { title: "TDS Management", url: "/tds", icon: Percent },
   { title: "Manual Journals", url: "/accounting/manual-journals", icon: BookOpen },
   { title: "Ledgers", url: "/accounting/ledgers", icon: BookOpenText },
   { title: "Trial Balance", url: "/accounting/trial-balance", icon: Scale },
@@ -86,6 +88,7 @@ export function AppSidebar() {
   const isCollapsed = state === "collapsed";
   const [isCAToolsOpen, setIsCAToolsOpen] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
+  const [isBankingModalOpen, setIsBankingModalOpen] = useState(false);
   
   const businessInfo = getBusinessInfo();
   const businessAssets = getBusinessAssets();
@@ -177,18 +180,46 @@ export function AppSidebar() {
               <SidebarMenu>
                 {mainMenuItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        className={getNavCls(item.url)}
-                        title={item.title}
-                      >
-                        <item.icon className="h-4 w-4" />
-                        {!isCollapsed && <span>{item.title}</span>}
-                      </NavLink>
+                    <SidebarMenuButton asChild={!(item as any).special}>
+                      {(item as any).special === "banking" ? (
+                        <button
+                          onClick={() => setIsBankingModalOpen(true)}
+                          className="w-full flex items-center gap-2 px-3 py-2 hover:bg-accent hover:text-accent-foreground rounded-md text-left"
+                          title={item.title}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          {!isCollapsed && <span>{item.title}</span>}
+                        </button>
+                      ) : (
+                        <NavLink
+                          to={item.url}
+                          className={getNavCls(item.url)}
+                          title={item.title}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          {!isCollapsed && <span>{item.title}</span>}
+                        </NavLink>
+                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
+                {/* Compliance and Loans links immediately under Banking */}
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink to="/compliance" className={`${getNavCls('/compliance')} ml-4 text-sm`} title="Compliance Calendar">
+                      <BookOpenText className="h-3 w-3" />
+                      {!isCollapsed && <span>Compliance</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink to="/loans" className={`${getNavCls('/loans')} ml-4 text-sm`} title="Business Loans">
+                      <HandCoins className="h-3 w-3" />
+                      {!isCollapsed && <span>Loans</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
                 
                 {/* Reports Collapsible Menu */}
                 <SidebarMenuItem>
@@ -321,6 +352,11 @@ export function AppSidebar() {
           </Button>
         </div>
       </SidebarContent>
+      
+      <BankingUnavailableModal 
+        isOpen={isBankingModalOpen}
+        onClose={() => setIsBankingModalOpen(false)}
+      />
     </Sidebar>
   );
 }

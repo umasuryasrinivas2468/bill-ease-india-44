@@ -32,9 +32,11 @@ import Quotations from "./pages/Quotations";
 import QuotationsInfo from "./pages/QuotationsInfo";
 import NotFound from "./pages/NotFound";
 import CashFlowForecasting from "./pages/CashFlowForecasting";
-import TDS from "./pages/TDS";
+
 import AIBusinessTaxAdvisor from "./pages/AIBusinessTaxAdvisor";
 import Branding from "./pages/Branding";
+import ComplianceCalendar from "./pages/ComplianceCalendar";
+import Loans from "./pages/Loans";
 
 
 // Accounting pages
@@ -68,6 +70,8 @@ function App() {
                     <Route path="/create-invoice" element={<CreateInvoice />} />
                     <Route path="/clients" element={<Clients />} />
                     <Route path="/reports" element={<Reports />} />
+                    <Route path="/compliance" element={<ComplianceCalendar />} />
+                    <Route path="/loans" element={<Loans />} />
                     <Route path="/reports/cash-flow-forecasting" element={<CashFlowForecasting />} />
                     <Route path="/reports/ai-tax-advisor" element={<AIBusinessTaxAdvisor />} />
                     <Route path="/settings" element={<Settings />} />
@@ -84,7 +88,6 @@ function App() {
                     <Route path="/quotations" element={<QuotationsInfo />} />
                     <Route path="/quotations/create" element={<Quotations />} />
                     <Route path="/branding" element={<Branding />} />
-                    <Route path="/tds" element={<TDS />} />
                     
                     {/* Accounting Routes */}
                     <Route path="/accounting/chart-of-accounts" element={<ChartOfAccounts />} />
