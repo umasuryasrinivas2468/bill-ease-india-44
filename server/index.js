@@ -1,4 +1,7 @@
 
+
+
+
 const express = require('express');
 const cors = require('cors');
 const federalBankService = require('./federalBankService');
@@ -14,6 +17,8 @@ app.use(express.json());
 // In-memory storage for user VPAs (in production, use a database)
 const userVPAs = new Map();
 const transactions = new Map();
+// In-memory store for created payment links
+const paymentLinks = new Map();
 
 // Generate reference ID
 const generateReferenceId = () => {
@@ -277,6 +282,123 @@ app.get('/transactions/:userId', (req, res) => {
       success: false,
       error: 'Failed to get transactions'
     });
+  }
+});
+
+// Helper to call Razorpay API
+async function razorpayCreatePaymentLink({ amount, currency = 'INR', description, customer }){
+  const key = process.env.RAZORPAY_KEY_ID;
+  const secret = process.env.RAZORPAY_KEY_SECRET;
+  if (!key || !secret) throw new Error('Razorpay keys not configured');
+
+  const auth = Buffer.from(`${key}:${secret}`).toString('base64');
+  const payload = {
+    amount: Math.round(Number(amount) * 100), // paise
+    currency,
+    accept_partial: false,
+    description: description || '',
+    customer: {
+      name: customer?.name || '',
+      email: customer?.email || '',
+      contact: customer?.contact || ''
+    },
+    notify: { sms: false, email: true },
+    reminder_enable: true
+  };
+
+  const resp = await fetch('https://api.razorpay.com/v1/payment_links', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${auth}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`Razorpay create link failed: ${resp.status} ${text}`);
+  }
+  const data = await resp.json();
+  return data;
+}
+
+// POST /payments/send-link - create a Razorpay payment link and optionally send email via SendGrid
+app.post('/payments/send-link', async (req, res) => {
+  try {
+    const { userId, amount, description, customer } = req.body;
+    if (!userId || !amount || !customer || !customer.email) {
+      return res.status(400).json({ success: false, error: 'Missing required fields: userId, amount, customer.email' });
+    }
+
+    const link = await razorpayCreatePaymentLink({ amount, description, customer });
+
+    // store minimal info
+    paymentLinks.set(link.id, { id: link.id, short_url: link.short_url, link_url: link.short_url || link.long_url || link.url, amount: link.amount, currency: link.currency, status: link.status, created_at: new Date().toISOString(), meta: link });
+
+    // Try to send email via SendGrid if configured
+    let emailSent = false;
+    if (process.env.SENDGRID_API_KEY) {
+      try {
+        const sgResp = await fetch('https://api.sendgrid.com/v3/mail/send', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            personalizations: [{ to: [{ email: customer.email, name: customer.name }]}],
+            from: { email: process.env.SUPPORT_FROM_EMAIL || 'no-reply@example.com', name: process.env.SUPPORT_FROM_NAME || 'Aczen' },
+            subject: `Payment link from ${process.env.SUPPORT_FROM_NAME || 'Aczen'}`,
+            content: [{ type: 'text/plain', value: `Please complete your payment using the following link:\n\n${link.short_url || link.long_url}\n\nDescription: ${description || ''}` }]
+          })
+        });
+        emailSent = sgResp.ok;
+      } catch (e) {
+        console.error('SendGrid send failed', e.message);
+      }
+    }
+
+    res.json({ success: true, data: { link, emailSent } });
+  } catch (error) {
+    console.error('Error creating payment link:', error.message);
+    res.status(500).json({ success: false, error: 'Failed to create payment link', details: error.message });
+  }
+});
+
+// GET /payments/user/:userId - return created links for user (in-memory)
+app.get('/payments/user/:userId', (req, res) => {
+  try {
+    const { userId } = req.params;
+    // return all stored links (no multi-tenant logic in this demo)
+    const arr = Array.from(paymentLinks.values()).sort((a,b)=> new Date(b.created_at) - new Date(a.created_at));
+    res.json({ success: true, data: arr });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /payments/:linkId - fetch link status from Razorpay if key present
+app.get('/payments/:linkId', async (req, res) => {
+  try {
+    const { linkId } = req.params;
+    const stored = paymentLinks.get(linkId);
+    if (!stored) return res.status(404).json({ success: false, error: 'Link not found' });
+
+    if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+      const auth = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64');
+      const resp = await fetch(`https://api.razorpay.com/v1/payment_links/${linkId}`, { headers: { Authorization: `Basic ${auth}` } });
+      if (resp.ok) {
+        const data = await resp.json();
+        // update stored
+        paymentLinks.set(linkId, { ...stored, status: data.status, meta: data });
+        return res.json({ success: true, data });
+      }
+    }
+
+    res.json({ success: true, data: stored });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
   }
 });
 

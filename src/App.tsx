@@ -37,6 +37,9 @@ import AIBusinessTaxAdvisor from "./pages/AIBusinessTaxAdvisor";
 import Branding from "./pages/Branding";
 import ComplianceCalendar from "./pages/ComplianceCalendar";
 import Loans from "./pages/Loans";
+import Payments from "./pages/Payments";
+import PayLink from "./pages/PayLink";
+import GST3Filing from "./pages/reports/GST3Filing";
 
 
 // Accounting pages
@@ -74,6 +77,7 @@ function App() {
                     <Route path="/loans" element={<Loans />} />
                     <Route path="/reports/cash-flow-forecasting" element={<CashFlowForecasting />} />
                     <Route path="/reports/ai-tax-advisor" element={<AIBusinessTaxAdvisor />} />
+                    <Route path="/reports/gst3-filing" element={<GST3Filing />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/onboarding" element={<Onboarding />} />
                     <Route path="/time-tracking" element={<TimeTracking />} />
@@ -88,6 +92,7 @@ function App() {
                     <Route path="/quotations" element={<QuotationsInfo />} />
                     <Route path="/quotations/create" element={<Quotations />} />
                     <Route path="/branding" element={<Branding />} />
+                    <Route path="/payments" element={<Payments />} />
                     
                     {/* Accounting Routes */}
                     <Route path="/accounting/chart-of-accounts" element={<ChartOfAccounts />} />
@@ -96,6 +101,9 @@ function App() {
                     <Route path="/accounting/profit-loss" element={<ProfitLoss />} />
                     <Route path="/accounting/manual-journals" element={<ManualJournals />} />
                   </Route>
+
+                  {/* Public payment landing (customers) */}
+                  <Route path="/pay" element={<PayLink />} />
                   
                   <Route path="*" element={<NotFound />} />
                 </Routes>

@@ -225,6 +225,14 @@ const Reports = () => {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => window.open('/reports/gst3-filing', '_blank')}
+          >
+            <Receipt className="h-4 w-4 mr-2" />
+            GST-3 Filing
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleCreateSampleData}
             disabled={isCreatingSample}
           >

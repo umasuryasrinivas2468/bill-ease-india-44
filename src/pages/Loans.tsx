@@ -156,29 +156,29 @@ const Loans = () => {
         <Card className="text-center">
           <CardContent className="p-4">
             <Clock className="h-8 w-8 mx-auto mb-3 text-green-600" />
-            <h3 className="font-semibold mb-2">Quick Approval</h3>
-            <p className="text-sm text-muted-foreground">Get approved in 48-72 hours</p>
+            <h3 className="font-semibold mb-2 text-center">Quick Approval</h3>
+            <p className="text-sm text-muted-foreground text-center">Get approved in 48-72 hours</p>
           </CardContent>
         </Card>
         <Card className="text-center">
           <CardContent className="p-4">
             <Percent className="h-8 w-8 mx-auto mb-3 text-blue-600" />
-            <h3 className="font-semibold mb-2">Low Interest Rates</h3>
-            <p className="text-sm text-muted-foreground">Starting from 11% per annum</p>
+            <h3 className="font-semibold mb-2 text-center">Low Interest Rates</h3>
+            <p className="text-sm text-muted-foreground text-center">Starting from 11% per annum</p>
           </CardContent>
         </Card>
         <Card className="text-center">
           <CardContent className="p-4">
             <FileText className="h-8 w-8 mx-auto mb-3 text-purple-600" />
-            <h3 className="font-semibold mb-2">Minimal Documentation</h3>
-            <p className="text-sm text-muted-foreground">Simple and quick process</p>
+            <h3 className="font-semibold mb-2 text-center">Minimal Documentation</h3>
+            <p className="text-sm text-muted-foreground text-center">Simple and quick process</p>
           </CardContent>
         </Card>
         <Card className="text-center">
           <CardContent className="p-4">
             <Shield className="h-8 w-8 mx-auto mb-3 text-orange-600" />
-            <h3 className="font-semibold mb-2">No Collateral</h3>
-            <p className="text-sm text-muted-foreground">Up to ₹75 Lakhs without security</p>
+            <h3 className="font-semibold mb-2 text-center">No Collateral</h3>
+            <p className="text-sm text-muted-foreground text-center">Up to ₹75 Lakhs without security</p>
           </CardContent>
         </Card>
       </div>
@@ -198,12 +198,12 @@ const Loans = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <h4 className="font-semibold mb-2 text-sm">Key Features</h4>
-                  <ul className="text-sm space-y-1">
+                  <h4 className="font-semibold mb-3 text-sm text-gray-800 dark:text-gray-200">Key Features</h4>
+                  <ul className="text-sm space-y-2">
                     {loan.features.slice(0, 3).map((feature, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
+                      <li key={idx} className="flex items-start gap-2 text-left">
                         <CheckCircle className="h-3 w-3 text-green-600 mt-1 flex-shrink-0" />
-                        <span>{feature}</span>
+                        <span className="text-gray-700 dark:text-gray-300 leading-relaxed">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -226,50 +226,50 @@ const Loans = () => {
                 </Button>
 
                 {selectedLoan === loan.id && (
-                  <div className="mt-4 space-y-4 border-t pt-4">
+                  <div className="mt-4 space-y-4 border-t pt-4 text-left">
                     <div>
-                      <h5 className="font-semibold text-sm mb-2">All Features</h5>
-                      <ul className="text-xs space-y-1">
+                      <h5 className="font-semibold text-sm mb-3 text-gray-800 dark:text-gray-200">All Features</h5>
+                      <ul className="text-xs space-y-2">
                         {loan.features.map((feature, idx) => (
-                          <li key={idx} className="flex items-start gap-1">
-                            <CheckCircle className="h-3 w-3 text-green-600 mt-0.5 flex-shrink-0" />
-                            <span>{feature}</span>
+                          <li key={idx} className="flex items-start gap-2">
+                            <CheckCircle className="h-3 w-3 text-green-600 mt-1 flex-shrink-0" />
+                            <span className="text-gray-700 dark:text-gray-300 leading-relaxed">{feature}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
                     
                     <div>
-                      <h5 className="font-semibold text-sm mb-2">Eligibility Criteria</h5>
-                      <ul className="text-xs space-y-1">
+                      <h5 className="font-semibold text-sm mb-3 text-gray-800 dark:text-gray-200">Eligibility Criteria</h5>
+                      <ul className="text-xs space-y-2">
                         {loan.eligibility.map((criteria, idx) => (
-                          <li key={idx} className="flex items-start gap-1">
-                            <CheckCircle className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
-                            <span>{criteria}</span>
+                          <li key={idx} className="flex items-start gap-2">
+                            <CheckCircle className="h-3 w-3 text-blue-600 mt-1 flex-shrink-0" />
+                            <span className="text-gray-700 dark:text-gray-300 leading-relaxed">{criteria}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
                     
                     <div>
-                      <h5 className="font-semibold text-sm mb-2">Required Documents</h5>
-                      <ul className="text-xs space-y-1">
+                      <h5 className="font-semibold text-sm mb-3 text-gray-800 dark:text-gray-200">Required Documents</h5>
+                      <ul className="text-xs space-y-2">
                         {loan.documents.map((doc, idx) => (
-                          <li key={idx} className="flex items-start gap-1">
-                            <FileText className="h-3 w-3 text-purple-600 mt-0.5 flex-shrink-0" />
-                            <span>{doc}</span>
+                          <li key={idx} className="flex items-start gap-2">
+                            <FileText className="h-3 w-3 text-purple-600 mt-1 flex-shrink-0" />
+                            <span className="text-gray-700 dark:text-gray-300 leading-relaxed">{doc}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
 
                     <div>
-                      <h5 className="font-semibold text-sm mb-2">Key Benefits</h5>
-                      <ul className="text-xs space-y-1">
+                      <h5 className="font-semibold text-sm mb-3 text-gray-800 dark:text-gray-200">Key Benefits</h5>
+                      <ul className="text-xs space-y-2">
                         {loan.benefits.map((benefit, idx) => (
-                          <li key={idx} className="flex items-start gap-1">
-                            <TrendingUp className="h-3 w-3 text-green-600 mt-0.5 flex-shrink-0" />
-                            <span>{benefit}</span>
+                          <li key={idx} className="flex items-start gap-2">
+                            <TrendingUp className="h-3 w-3 text-green-600 mt-1 flex-shrink-0" />
+                            <span className="text-gray-700 dark:text-gray-300 leading-relaxed">{benefit}</span>
                           </li>
                         ))}
                       </ul>
@@ -294,29 +294,29 @@ const Loans = () => {
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-blue-600 font-bold">1</span>
               </div>
-              <h4 className="font-semibold mb-2">Apply Online</h4>
-              <p className="text-sm text-muted-foreground">Fill out our simple online application form</p>
+              <h4 className="font-semibold mb-2 text-center">Apply Online</h4>
+              <p className="text-sm text-muted-foreground text-center">Fill out our simple online application form</p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-blue-600 font-bold">2</span>
               </div>
-              <h4 className="font-semibold mb-2">Document Upload</h4>
-              <p className="text-sm text-muted-foreground">Upload required documents securely</p>
+              <h4 className="font-semibold mb-2 text-center">Document Upload</h4>
+              <p className="text-sm text-muted-foreground text-center">Upload required documents securely</p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-blue-600 font-bold">3</span>
               </div>
-              <h4 className="font-semibold mb-2">Quick Verification</h4>
-              <p className="text-sm text-muted-foreground">Our team will verify your application</p>
+              <h4 className="font-semibold mb-2 text-center">Quick Verification</h4>
+              <p className="text-sm text-muted-foreground text-center">Our team will verify your application</p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-green-600 font-bold">4</span>
               </div>
-              <h4 className="font-semibold mb-2">Get Funded</h4>
-              <p className="text-sm text-muted-foreground">Receive funds directly in your account</p>
+              <h4 className="font-semibold mb-2 text-center">Get Funded</h4>
+              <p className="text-sm text-muted-foreground text-center">Receive funds directly in your account</p>
             </div>
           </div>
         </CardContent>

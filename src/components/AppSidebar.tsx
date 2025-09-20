@@ -22,9 +22,7 @@ import {
   ChevronRight,
   LineChart,
   Percent,
-  CreditCard,
   Brain,
-  Palette,
   Banknote,
   HandCoins
 } from "lucide-react";
@@ -58,7 +56,7 @@ const mainMenuItems = [
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Inventory", url: "/inventory", icon: Package },
   { title: "Banking", url: "#", icon: Banknote, special: "banking" },
-  { title: "Branding", url: "/branding", icon: Palette },
+  { title: "Loans", url: "/loans", icon: HandCoins },
   { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
@@ -71,6 +69,7 @@ const reportsMenuItems = [
 
 const caToolsMenuItems = [
   { title: "CA Dashboard", url: "/ca", icon: Calculator },
+  { title: "TDS Management", url: "/tds", icon: Percent },
   { title: "Manual Journals", url: "/accounting/manual-journals", icon: BookOpen },
   { title: "Ledgers", url: "/accounting/ledgers", icon: BookOpenText },
   { title: "Trial Balance", url: "/accounting/trial-balance", icon: Scale },
@@ -96,10 +95,10 @@ export function AppSidebar() {
 
   // Get the best logo URL, prioritizing new branding system over old base64 data
   const getLogoSrc = () => {
-    if (brandingAssets.logo_url) {
+    if (brandingAssets?.logo_url) {
       return brandingAssets.logo_url;
     }
-    if (businessAssets.logoBase64) {
+    if (businessAssets?.logoBase64) {
       return `data:image/png;base64,${businessAssets.logoBase64}`;
     }
     return null;
@@ -125,46 +124,11 @@ export function AppSidebar() {
 
   return (
     <Sidebar className={isCollapsed ? "w-14" : "w-60"} collapsible="icon">
-      {/* Compact Header with Trigger and Logo - positioned slightly down */}
+      {/* Compact Header with Trigger and Aczen Brand */}
       <div className="mt-4">
         <div className="flex items-center justify-between p-2 border-b border-sidebar-border">
-          {!isCollapsed ? (
-            <div className="flex items-center space-x-3">
-              {logoSrc ? (
-                <img 
-                  src={logoSrc}
-                  alt="Business Logo" 
-                  className="h-8 w-8 object-contain rounded"
-                />
-              ) : (
-                <div className="h-8 w-8 bg-gradient-to-r from-blue-600 to-orange-500 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">
-                    {businessInfo?.businessName ? businessInfo.businessName.charAt(0).toUpperCase() : 'B'}
-                  </span>
-                </div>
-              )}
-              <div>
-                <h1 className="text-lg font-bold text-sidebar-foreground tracking-tight">
-                  {businessInfo?.businessName || 'Business'}
-                </h1>
-              </div>
-            </div>
-          ) : (
-            <div className="flex justify-center w-full">
-              {logoSrc ? (
-                <img 
-                  src={logoSrc}
-                  alt="Business Logo" 
-                  className="h-8 w-8 object-contain rounded"
-                />
-              ) : (
-                <div className="h-8 w-8 bg-gradient-to-r from-blue-600 to-orange-500 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">
-                    {businessInfo?.businessName ? businessInfo.businessName.charAt(0).toUpperCase() : 'B'}
-                  </span>
-                </div>
-              )}
-            </div>
+          {!isCollapsed && (
+            <h2 className="text-lg font-bold text-primary">Aczen</h2>
           )}
           <SidebarTrigger className="h-6 w-6" />
         </div>
@@ -203,20 +167,12 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
-                {/* Compliance and Loans links immediately under Banking */}
+                {/* Compliance Calendar at main level */}
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
-                    <NavLink to="/compliance" className={`${getNavCls('/compliance')} ml-4 text-sm`} title="Compliance Calendar">
-                      <BookOpenText className="h-3 w-3" />
-                      {!isCollapsed && <span>Compliance</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink to="/loans" className={`${getNavCls('/loans')} ml-4 text-sm`} title="Business Loans">
-                      <HandCoins className="h-3 w-3" />
-                      {!isCollapsed && <span>Loans</span>}
+                    <NavLink to="/compliance" className={getNavCls('/compliance')} title="Compliance Calendar">
+                      <BookOpenText className="h-4 w-4" />
+                      {!isCollapsed && <span>Compliance Calendar</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
