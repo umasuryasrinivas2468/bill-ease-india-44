@@ -41,6 +41,13 @@ import Payments from "./pages/Payments";
 import PayLink from "./pages/PayLink";
 import GST3Filing from "./pages/reports/GST3Filing";
 
+// License pages
+import StarterPage from "./pages/StarterPage";
+import GrowthPage from "./pages/GrowthPage";
+import ScalePage from "./pages/ScalePage";
+import { LicenseVerificationHandler } from "./components/LicenseVerificationHandler";
+import { UnauthorizedAccessPage } from "./pages/UnauthorizedAccessPage";
+
 
 // Accounting pages
 import ChartOfAccounts from "./pages/accounting/ChartOfAccounts";
@@ -60,54 +67,68 @@ function App() {
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <AppLayout>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/clerk-login" element={<ClerkLogin />} />
-                  
-                  {/* Protected Routes */}
-                  <Route element={<ProtectedRoute />}>
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/invoices" element={<Invoices />} />
-                    <Route path="/create-invoice" element={<CreateInvoice />} />
-                    <Route path="/clients" element={<Clients />} />
-                    <Route path="/reports" element={<Reports />} />
-                    <Route path="/compliance" element={<ComplianceCalendar />} />
-                    <Route path="/loans" element={<Loans />} />
-                    <Route path="/reports/cash-flow-forecasting" element={<CashFlowForecasting />} />
-                    <Route path="/reports/ai-tax-advisor" element={<AIBusinessTaxAdvisor />} />
-                    <Route path="/reports/gst3-filing" element={<GST3Filing />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/onboarding" element={<Onboarding />} />
-                    <Route path="/time-tracking" element={<TimeTracking />} />
-                    <Route path="/inventory" element={<Inventory />} />
-                    <Route path="/banking" element={<Banking />} />
-                    <Route path="/upi-collections" element={<UPICollections />} />
-                    <Route path="/marketplace" element={<Marketplace />} />
-                    <Route path="/support" element={<Support />} />
-                    <Route path="/notifications" element={<Notifications />} />
-                    <Route path="/ca" element={<CA />} />
-                    <Route path="/payout" element={<Payout />} />
-                    <Route path="/quotations" element={<QuotationsInfo />} />
-                    <Route path="/quotations/create" element={<Quotations />} />
-                    <Route path="/branding" element={<Branding />} />
-                    <Route path="/payments" element={<Payments />} />
-                    
-                    {/* Accounting Routes */}
-                    <Route path="/accounting/chart-of-accounts" element={<ChartOfAccounts />} />
-                    <Route path="/accounting/ledgers" element={<Ledgers />} />
-                    <Route path="/accounting/trial-balance" element={<TrialBalance />} />
-                    <Route path="/accounting/profit-loss" element={<ProfitLoss />} />
-                    <Route path="/accounting/manual-journals" element={<ManualJournals />} />
-                  </Route>
+              <LicenseVerificationHandler />
+              <Routes>
+                {/* Public license pages without sidebar */}
+                <Route path="/starter.202512a" element={<StarterPage />} />
+                <Route path="/growth.202514b" element={<GrowthPage />} />
+                <Route path="/scale.202516c" element={<ScalePage />} />
+                
+                {/* Unauthorized access page */}
+                <Route path="/unauthorized-access" element={<UnauthorizedAccessPage />} />
+                
+                {/* Routes with AppLayout (sidebar) */}
+                <Route path="/*" element={
+                  <AppLayout>
+                    <Routes>
+                      <Route path="/" element={<Index />} />
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/clerk-login" element={<ClerkLogin />} />
+                      
+                      {/* Protected Routes */}
+                      <Route element={<ProtectedRoute />}>
+                        <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/invoices" element={<Invoices />} />
+                        <Route path="/create-invoice" element={<CreateInvoice />} />
+                        <Route path="/clients" element={<Clients />} />
+                        <Route path="/reports" element={<Reports />} />
+                        <Route path="/compliance" element={<ComplianceCalendar />} />
+                        <Route path="/loans" element={<Loans />} />
+                        <Route path="/reports/cash-flow-forecasting" element={<CashFlowForecasting />} />
+                        <Route path="/reports/ai-tax-advisor" element={<AIBusinessTaxAdvisor />} />
+                        <Route path="/reports/gst3-filing" element={<GST3Filing />} />
+                        <Route path="/settings" element={<Settings />} />
+                        <Route path="/onboarding" element={<Onboarding />} />
+                        <Route path="/time-tracking" element={<TimeTracking />} />
+                        <Route path="/inventory" element={<Inventory />} />
+                        <Route path="/banking" element={<Banking />} />
+                        <Route path="/upi-collections" element={<UPICollections />} />
+                        <Route path="/marketplace" element={<Marketplace />} />
+                        <Route path="/support" element={<Support />} />
+                        <Route path="/notifications" element={<Notifications />} />
+                        <Route path="/ca" element={<CA />} />
+                        <Route path="/payout" element={<Payout />} />
+                        <Route path="/quotations" element={<QuotationsInfo />} />
+                        <Route path="/quotations/create" element={<Quotations />} />
+                        <Route path="/branding" element={<Branding />} />
+                        <Route path="/payments" element={<Payments />} />
+                        
+                        {/* Accounting Routes */}
+                        <Route path="/accounting/chart-of-accounts" element={<ChartOfAccounts />} />
+                        <Route path="/accounting/ledgers" element={<Ledgers />} />
+                        <Route path="/accounting/trial-balance" element={<TrialBalance />} />
+                        <Route path="/accounting/profit-loss" element={<ProfitLoss />} />
+                        <Route path="/accounting/manual-journals" element={<ManualJournals />} />
+                      </Route>
 
-                  {/* Public payment landing (customers) */}
-                  <Route path="/pay" element={<PayLink />} />
-                  
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </AppLayout>
+                      {/* Public payment landing (customers) */}
+                      <Route path="/pay" element={<PayLink />} />
+                      
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </AppLayout>
+                } />
+              </Routes>
             </BrowserRouter>
           </TooltipProvider>
         </AuthProvider>

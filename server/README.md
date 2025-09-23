@@ -9,6 +9,7 @@ Minimal Express.js backend for UPI collections via Decentro API.
 ```bash
 cd server
 npm install
+npm run dev 
 ```
 
 2. Copy environment variables:

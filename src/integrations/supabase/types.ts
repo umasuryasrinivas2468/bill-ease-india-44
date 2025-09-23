@@ -524,6 +524,39 @@ export type Database = {
         }
         Relationships: []
       }
+      license: {
+        Row: {
+          id: string
+          email: string
+          license_key: string
+          plan_type: string
+          date_created: string
+          due_date: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          email: string
+          license_key: string
+          plan_type: string
+          date_created?: string
+          due_date: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          license_key?: string
+          plan_type?: string
+          date_created?: string
+          due_date?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       journal_lines: {
         Row: {
           account_id: string | null
