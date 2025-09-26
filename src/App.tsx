@@ -21,6 +21,10 @@ import ClerkLogin from "./pages/ClerkLogin";
 import Onboarding from "./pages/Onboarding";
 import TimeTracking from "./pages/TimeTracking";
 import Inventory from "./pages/Inventory";
+import SalesOrders from "./pages/SalesOrders";
+import PurchaseOrders from "./pages/PurchaseOrders";
+import Receivables from "./pages/Receivables";
+import Payables from "./pages/Payables";
 import Banking from "./pages/Banking";
 import UPICollections from "./pages/UPICollections";
 import Marketplace from "./pages/Marketplace";
@@ -101,6 +105,10 @@ function App() {
                         <Route path="/onboarding" element={<Onboarding />} />
                         <Route path="/time-tracking" element={<TimeTracking />} />
                         <Route path="/inventory" element={<Inventory />} />
+                        <Route path="/inventory/sales-orders" element={<SalesOrders />} />
+                        <Route path="/inventory/purchase-orders" element={<PurchaseOrders />} />
+                        <Route path="/reports/receivables" element={<Receivables />} />
+                        <Route path="/reports/payables" element={<Payables />} />
                         <Route path="/banking" element={<Banking />} />
                         <Route path="/upi-collections" element={<UPICollections />} />
                         <Route path="/marketplace" element={<Marketplace />} />
