@@ -38,10 +38,44 @@ const LicenseGenerator: React.FC<LicenseGeneratorProps> = ({
       const existingLicense = await getLicense(email);
       
       if (existingLicense) {
-        setLicenseData(existingLicense);
-        setHasGenerated(true);
+        // For existing email, extend the license by +1 month from current date
+        try {
+          const { createClient } = await import('@supabase/supabase-js');
+          const supabase = createClient(
+            import.meta.env.VITE_SUPABASE_URL,
+            import.meta.env.VITE_SUPABASE_ANON_KEY
+          );
+
+          // Calculate new expiry date: +1 month from current date
+          const currentDate = new Date();
+          const newExpiryDate = new Date(currentDate);
+          newExpiryDate.setMonth(currentDate.getMonth() + 1);
+
+          // Update the existing license with new expiry date
+          const { data: updatedLicense, error } = await supabase
+            .from('license')
+            .update({ 
+              due_date: newExpiryDate.toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('email', email)
+            .select()
+            .single();
+
+          if (error) {
+            throw error;
+          }
+
+          setLicenseData(updatedLicense);
+          setHasGenerated(true);
+        } catch (updateError) {
+          console.error('Error extending license:', updateError);
+          // If extension fails, show existing license
+          setLicenseData(existingLicense);
+          setHasGenerated(true);
+        }
       } else {
-        // Generate new license
+        // Generate new license for new email
         const newLicense = await generateLicense(email, planType);
         setLicenseData(newLicense);
         setHasGenerated(true);

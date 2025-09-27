@@ -11,6 +11,17 @@ export default function LicenseExpiryManager() {
     // Don't show popup while loading
     if (isLoading) return;
 
+    // Don't show popup on license generation pages
+    const currentPath = window.location.pathname;
+    const isLicensePage = currentPath.includes('starter.202512a') || 
+                         currentPath.includes('growth.202514b') || 
+                         currentPath.includes('scale.202516c');
+    
+    if (isLicensePage) {
+      setShowPopup(false);
+      return;
+    }
+
     // Show popup on expiry day and keep showing until license is renewed
     if (isExpiringSoon && userLicense) {
       setShowPopup(true);
