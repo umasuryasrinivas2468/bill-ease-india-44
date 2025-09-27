@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useLicense, LicenseData } from '@/hooks/useLicense';
+import ApplicationAccessGuide from './ApplicationAccessGuide';
 
 interface LicenseGeneratorProps {
   planType: 'starter' | 'growth' | 'scale';
@@ -133,19 +134,64 @@ const LicenseGenerator: React.FC<LicenseGeneratorProps> = ({
       doc.text(formatDate(data.due_date), rightCol, currentY);
       currentY += rowHeight + 20;
       
-      // Generate QR Code
+      // Generate QR Code for Application Access
       try {
-        const qrDataUrl = await QRCode.toDataURL(data.license_key, {
+        const qrDataUrl = await QRCode.toDataURL('https://app.aczen.com', {
           width: 100,
           margin: 1,
         });
         
         doc.addImage(qrDataUrl, 'PNG', 150, currentY, 30, 30);
-        doc.setFontSize(10);
-        doc.text('Scan QR Code', 155, currentY + 35);
+        doc.setFontSize(8);
+        doc.text('Scan to Access', 158, currentY + 35);
+        doc.text('Application', 162, currentY + 40);
       } catch (qrError) {
         console.error('Error generating QR code:', qrError);
       }
+      
+      // Application Access Information
+      currentY += 10;
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('APPLICATION ACCESS INFORMATION', 105, currentY, { align: 'center' });
+      
+      currentY += 15;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      
+      // Access details
+      const accessInfo = [
+        'Web Application: https://app.aczen.com',
+        'Mobile App: Download from Play Store / App Store',
+        'Login Credentials: Use your registered email and password',
+        'License Key: Enter the above license key during setup',
+        '',
+        'Getting Started:',
+        '1. Visit https://app.aczen.com',
+        '2. Sign in with your email: ' + data.email,
+        '3. Enter your license key when prompted',
+        '4. Complete the initial setup wizard',
+        '',
+        'Support:',
+        '• Email: support@aczen.com',
+        '• Phone: +91-XXXXXXXXXX',
+        '• Help Center: https://help.aczen.com',
+        '• Live Chat: Available 24/7 in the application'
+      ];
+      
+      accessInfo.forEach((line, index) => {
+        if (line === '') {
+          currentY += 5; // Add extra space for empty lines
+        } else if (line.startsWith('Getting Started:') || line.startsWith('Support:')) {
+          doc.setFont('helvetica', 'bold');
+          doc.text(line, 20, currentY);
+          doc.setFont('helvetica', 'normal');
+          currentY += 8;
+        } else {
+          doc.text(line, 20, currentY);
+          currentY += 8;
+        }
+      });
       
       // Footer
       doc.setFontSize(8);
@@ -267,10 +313,16 @@ support@aczen.com
                 <AlertDescription className="text-green-800">
                   <div>
                     <div className="font-semibold">License Generated Successfully!</div>
-                    <div className="text-sm mt-1">
-                      ✅ Your license key has been generated<br/>
-                      📧 Welcome email sent to: {licenseData.email}<br/>
-                      📄 Download your PDF certificate below
+                    <div className="text-sm mt-2 space-y-1">
+                      <div>✅ Your license key has been generated</div>
+                      <div>📧 Welcome email sent to: {licenseData.email}</div>
+                      <div>📄 Download your PDF certificate with access guide below</div>
+                      <div className="mt-2 pt-2 border-t border-green-200">
+                        <div className="font-medium">Next Steps:</div>
+                        <div>1. Download the PDF certificate</div>
+                        <div>2. Click "Access Application Now" to start using Aczen</div>
+                        <div>3. Sign in with your email and enter your license key</div>
+                      </div>
                     </div>
                   </div>
                 </AlertDescription>
@@ -291,21 +343,46 @@ support@aczen.com
                   <p><strong>Valid Until:</strong> {formatDate(licenseData.due_date)}</p>
                 </div>
 
-                {/* Download Button */}
-                <div className="flex justify-center mt-4">
+                {/* Download Buttons */}
+                <div className="flex flex-col gap-3 mt-4">
                   <Button 
                     onClick={() => downloadPDF(licenseData)}
+                    variant="default"
+                    size="sm"
+                    className="w-full"
+                  >
+                    📄 Download PDF Certificate & Access Guide
+                  </Button>
+                  
+                  <Button 
+                    onClick={() => window.open('https://app.aczen.com', '_blank')}
                     variant="outline"
                     size="sm"
+                    className="w-full"
                   >
-                    📄 Download PDF Certificate
+                    🚀 Access Application Now
                   </Button>
+                  
+                  <div className="text-xs text-gray-600 text-center mt-2">
+                    <p>Use your email <strong>{licenseData.email}</strong> and license key to sign in</p>
+                  </div>
                 </div>
               </div>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Show Application Access Guide after license generation */}
+      {licenseData && (
+        <div className="mt-8">
+          <ApplicationAccessGuide 
+            email={licenseData.email}
+            licenseKey={licenseData.license_key}
+            planType={licenseData.plan_type}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -140,7 +140,7 @@ export const useGST3Data = () => {
         importGoods: { integratedTax: 0, cessTax: 0 },
         importServices: { integratedTax: 0, cessTax: 0 },
         inwardLiableReverse: { integratedTax: 0, centralTax: 0, stateUTTax: 0, cessTax: 0 },
-        inwardFromISD: { message: "- - -We do not support in Zoho Books- - -" },
+        inwardFromISD: { message: "- - -We do not support in Aczen Bilz- - -" },
         allOtherITC: { integratedTax: 0, centralTax: 0, stateUTTax: 0, cessTax: 0 }
       },
       exemptSupplies: {

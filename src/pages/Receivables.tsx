@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, DollarSign, FileText, Calendar, TrendingUp, ExternalLink } from 'lucide-react';
+import { Search, DollarSign, FileText, Calendar, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,23 +23,22 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@clerk/clerk-react';
-import { formatIndianCurrency, calculateOverdueDays, determinePaymentStatus, calculateOutstanding } from '@/utils/currencyUtils';
 
 interface Receivable {
   id: string;
   customer_name: string;
   customer_email?: string;
-  customer_gst_number?: string;
-  invoice_number: string;
-  total_amount: number;
+  related_sales_order_id?: string;
+  related_sales_order_number?: string;
+  invoice_number?: string;
+  amount_due: number;
   amount_paid: number;
   amount_remaining: number;
   due_date: string;
-  invoice_date: string;
-  status: 'paid' | 'pending' | 'overdue' | 'partial';
+  status: 'pending' | 'overdue' | 'paid' | 'partial';
+  payment_date?: string;
   notes?: string;
-  related_sales_order_id?: string;
-  related_sales_order_number?: string;
+  is_from_sales_order?: boolean;
   created_at: string;
 }
 
@@ -52,7 +50,6 @@ const statusColors = {
 };
 
 export default function Receivables() {
-  const navigate = useNavigate();
   const [receivables, setReceivables] = useState<Receivable[]>([]);
   const [filteredReceivables, setFilteredReceivables] = useState<Receivable[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,52 +72,57 @@ export default function Receivables() {
     try {
       setLoading(true);
       
-      // Fetch unpaid and partially paid invoices
-      const { data: invoicesData, error: invoicesError } = await supabase
-        .from('invoices')
-        .select(`
-          id,
-          invoice_number,
-          client_name,
-          client_email,
-          client_gst_number,
-          total_amount,
-          status,
-          invoice_date,
-          due_date,
-          notes,
-          created_at
-        `)
+      // Fetch existing receivables
+      const { data: receivablesData, error: receivablesError } = await supabase
+        .from('receivables')
+        .select('*')
         .eq('user_id', user?.id)
-        .in('status', ['pending', 'overdue'])
         .order('due_date', { ascending: true });
 
-      if (invoicesError) throw invoicesError;
+      if (receivablesError) throw receivablesError;
 
-      // Transform invoices data to receivables format
-      const receivablesFromInvoices = (invoicesData || []).map(invoice => {
-        const amount_paid = 0; // For now, assuming no partial payments are tracked in invoices table
-        const amount_remaining = calculateOutstanding(invoice.total_amount, amount_paid);
-        const overdueDays = calculateOverdueDays(invoice.due_date);
-        
-        return {
-          id: invoice.id,
-          customer_name: invoice.client_name,
-          customer_email: invoice.client_email,
-          customer_gst_number: invoice.client_gst_number,
-          invoice_number: invoice.invoice_number,
-          total_amount: invoice.total_amount,
-          amount_paid,
-          amount_remaining,
-          due_date: invoice.due_date,
-          invoice_date: invoice.invoice_date,
-          status: overdueDays > 0 ? 'overdue' as const : invoice.status as 'pending' | 'overdue',
-          notes: invoice.notes,
-          created_at: invoice.created_at,
-        };
-      });
+      // Fetch confirmed sales orders that are not fully paid and don't have receivables yet
+      const { data: salesOrdersData, error: salesOrdersError } = await supabase
+        .from('sales_orders')
+        .select('*')
+        .eq('user_id', user?.id)
+        .eq('status', 'confirmed')
+        .neq('payment_status', 'paid')
+        .order('due_date', { ascending: true });
 
-      setReceivables(receivablesFromInvoices);
+      if (salesOrdersError) throw salesOrdersError;
+
+      // Convert sales orders to receivable format and filter out those that already have receivables
+      const existingOrderIds = (receivablesData || [])
+        .map(r => r.related_sales_order_id)
+        .filter(Boolean);
+
+      const salesOrdersAsReceivables = (salesOrdersData || [])
+        .filter(order => !existingOrderIds.includes(order.id))
+        .map(order => ({
+          id: `so-${order.id}`, // Prefix to distinguish from real receivables
+          user_id: order.user_id,
+          customer_name: order.client_name,
+          customer_email: order.client_email,
+          customer_phone: order.client_phone,
+          related_sales_order_id: order.id,
+          related_sales_order_number: order.order_number,
+          invoice_number: order.order_number,
+          amount_due: order.total_amount,
+          amount_paid: 0,
+          amount_remaining: order.total_amount,
+          due_date: order.due_date,
+          status: new Date(order.due_date) < new Date() ? 'overdue' : 'pending',
+          payment_date: null,
+          notes: order.notes,
+          created_at: order.created_at,
+          updated_at: order.updated_at,
+          is_from_sales_order: true // Flag to identify these
+        }));
+
+      // Combine both datasets
+      const allReceivables = [...(receivablesData || []), ...salesOrdersAsReceivables];
+      setReceivables(allReceivables);
     } catch (error) {
       console.error('Error fetching receivables:', error);
       toast({
@@ -140,6 +142,7 @@ export default function Receivables() {
       filtered = filtered.filter(
         (receivable) =>
           receivable.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          receivable.related_sales_order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           receivable.invoice_number?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
@@ -153,15 +156,40 @@ export default function Receivables() {
 
   const markAsPaid = async (receivableId: string, amount: number) => {
     try {
-      // Update the invoice status to 'paid'
-      const { error } = await supabase
-        .from('invoices')
-        .update({
-          status: 'paid',
-        })
-        .eq('id', receivableId);
+      const receivable = receivables.find(r => r.id === receivableId);
+      
+      // If this is from a sales order (not a real receivable yet), handle differently
+      if (receivable?.is_from_sales_order) {
+        // Update the sales order payment status directly
+        const actualOrderId = receivableId.replace('so-', '');
+        const { error } = await supabase
+          .from('sales_orders')
+          .update({ payment_status: 'paid' })
+          .eq('id', actualOrderId);
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        // Handle regular receivables
+        const { error } = await supabase
+          .from('receivables')
+          .update({
+            status: 'paid',
+            amount_paid: amount,
+            amount_remaining: 0,
+            payment_date: new Date().toISOString().split('T')[0],
+          })
+          .eq('id', receivableId);
+
+        if (error) throw error;
+
+        // Also update the related sales order payment status if exists
+        if (receivable?.related_sales_order_id) {
+          await supabase
+            .from('sales_orders')
+            .update({ payment_status: 'paid' })
+            .eq('id', receivable.related_sales_order_id);
+        }
+      }
 
       toast({
         title: 'Success',
@@ -179,7 +207,13 @@ export default function Receivables() {
     }
   };
 
-
+  const getOverdueDays = (dueDate: string) => {
+    const today = new Date();
+    const due = new Date(dueDate);
+    const diffTime = today.getTime() - due.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+  };
 
   const calculateSummary = () => {
     const total = filteredReceivables.reduce((sum, r) => sum + r.amount_remaining, 0);
@@ -219,7 +253,7 @@ export default function Receivables() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatIndianCurrency(summary.total)}</div>
+            <div className="text-2xl font-bold">₹{summary.total.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               Amount to be received
             </p>
@@ -231,7 +265,7 @@ export default function Receivables() {
             <Calendar className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{formatIndianCurrency(summary.overdue)}</div>
+            <div className="text-2xl font-bold text-red-600">₹{summary.overdue.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               Past due date
             </p>
@@ -243,7 +277,7 @@ export default function Receivables() {
             <FileText className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{formatIndianCurrency(summary.pending)}</div>
+            <div className="text-2xl font-bold text-yellow-600">₹{summary.pending.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               Not yet due
             </p>
@@ -255,7 +289,7 @@ export default function Receivables() {
             <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{formatIndianCurrency(summary.paid)}</div>
+            <div className="text-2xl font-bold text-green-600">₹{summary.paid.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               Already received
             </p>
@@ -309,9 +343,9 @@ export default function Receivables() {
             <TableHeader>
               <TableRow>
                 <TableHead>Customer</TableHead>
-                <TableHead>Invoice No.</TableHead>
-                <TableHead>Total Amount</TableHead>
-                <TableHead>Balance Amount</TableHead>
+                <TableHead>Related Order</TableHead>
+                <TableHead>Amount Due</TableHead>
+                <TableHead>Amount Remaining</TableHead>
                 <TableHead>Due Date</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
@@ -329,32 +363,42 @@ export default function Receivables() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="font-medium">{receivable.invoice_number}</span>
+                    <div>
+                      {receivable.related_sales_order_number && (
+                        <div className="font-medium">{receivable.related_sales_order_number}</div>
+                      )}
+                      {receivable.invoice_number && (
+                        <div className="text-sm text-muted-foreground">Invoice: {receivable.invoice_number}</div>
+                      )}
+                      {!receivable.related_sales_order_number && !receivable.invoice_number && (
+                        <div className="text-sm text-muted-foreground">Direct entry</div>
+                      )}
+                    </div>
                   </TableCell>
-                  <TableCell>{formatIndianCurrency(receivable.total_amount)}</TableCell>
+                  <TableCell>₹{receivable.amount_due.toFixed(2)}</TableCell>
                   <TableCell>
                     <div>
-                      <div className="font-medium text-orange-600">{formatIndianCurrency(receivable.amount_remaining)}</div>
+                      <div className="font-medium">₹{receivable.amount_remaining.toFixed(2)}</div>
                       {receivable.amount_paid > 0 && (
                         <div className="text-sm text-muted-foreground">
-                          Paid: {formatIndianCurrency(receivable.amount_paid)}
+                          Paid: ₹{receivable.amount_paid.toFixed(2)}
                         </div>
                       )}
                     </div>
                   </TableCell>
                   <TableCell>
                     <div>
-                      <div>{new Date(receivable.due_date).toLocaleDateString('en-IN')}</div>
+                      <div>{new Date(receivable.due_date).toLocaleDateString()}</div>
                       {receivable.status === 'overdue' && (
                         <div className="text-sm text-red-500">
-                          {calculateOverdueDays(receivable.due_date)} days overdue
+                          {getOverdueDays(receivable.due_date)} days overdue
                         </div>
                       )}
                     </div>
                   </TableCell>
                   <TableCell>
                     <Badge className={statusColors[receivable.status]}>
-                      {receivable.status.charAt(0).toUpperCase() + receivable.status.slice(1)}
+                      {receivable.status}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -362,14 +406,18 @@ export default function Receivables() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => markAsPaid(receivable.id, receivable.amount_remaining)}
+                        onClick={() => markAsPaid(receivable.id, receivable.amount_due)}
                         className="text-green-600 hover:text-green-700"
                       >
                         <DollarSign className="h-4 w-4 mr-1" />
                         Mark Paid
                       </Button>
                     )}
-
+                    {receivable.payment_date && (
+                      <div className="text-sm text-muted-foreground mt-1">
+                        Paid: {new Date(receivable.payment_date).toLocaleDateString()}
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

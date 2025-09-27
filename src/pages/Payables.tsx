@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Search, DollarSign, FileText, Calendar, TrendingDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,23 +23,23 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@clerk/clerk-react';
-import { formatIndianCurrency, calculateOverdueDays, determinePaymentStatus, calculateOutstanding } from '@/utils/currencyUtils';
 
 interface Payable {
   id: string;
   vendor_name: string;
   vendor_email?: string;
-  vendor_gst?: string;
-  order_number: string;
-  total_amount: number;
+  related_purchase_order_id?: string;
+  related_purchase_order_number?: string;
+  bill_number?: string;
+  amount_due: number;
   amount_paid: number;
   amount_remaining: number;
   due_date: string;
-  order_date: string;
-  payment_status: 'paid' | 'unpaid' | 'partial';
-  status: 'pending' | 'overdue' | 'paid';
+  status: 'pending' | 'overdue' | 'paid' | 'partial';
+  payment_date?: string;
   notes?: string;
   created_at: string;
+  is_from_purchase_order?: boolean;
 }
 
 const statusColors = {
@@ -51,7 +50,6 @@ const statusColors = {
 };
 
 export default function Payables() {
-  const navigate = useNavigate();
   const [payables, setPayables] = useState<Payable[]>([]);
   const [filteredPayables, setFilteredPayables] = useState<Payable[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,16 +72,57 @@ export default function Payables() {
     try {
       setLoading(true);
       
-      // For now, since there's no purchase_orders table in the current schema,
-      // we'll show an empty state with a message about setting up vendor management
-      // This can be expanded once the purchase_orders/vendors tables are created
-      
-      // TODO: Once purchase_orders table is available, implement:
-      // - Fetch from purchase_orders where payment_status is 'unpaid' or 'partial'
-      // - Transform data to show vendor name, PO number, due date, balance amount
-      // - Apply Indian currency formatting
-      
-      setPayables([]);
+      // Fetch existing payables
+      const { data: payablesData, error: payablesError } = await supabase
+        .from('payables')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('due_date', { ascending: true });
+
+      if (payablesError) throw payablesError;
+
+      // Fetch confirmed purchase orders that are not fully paid and don't have payables yet
+      const { data: purchaseOrdersData, error: purchaseOrdersError } = await supabase
+        .from('purchase_orders')
+        .select('*')
+        .eq('user_id', user?.id)
+        .eq('status', 'confirmed')
+        .neq('payment_status', 'paid')
+        .order('due_date', { ascending: true });
+
+      if (purchaseOrdersError) throw purchaseOrdersError;
+
+      // Convert purchase orders to payable format and filter out those that already have payables
+      const existingOrderIds = (payablesData || [])
+        .map(p => p.related_purchase_order_id)
+        .filter(Boolean);
+
+      const purchaseOrdersAsPayables = (purchaseOrdersData || [])
+        .filter(order => !existingOrderIds.includes(order.id))
+        .map(order => ({
+          id: `po-${order.id}`, // Prefix to distinguish from real payables
+          user_id: order.user_id,
+          vendor_name: order.vendor_name,
+          vendor_email: order.vendor_email,
+          vendor_phone: order.vendor_phone,
+          related_purchase_order_id: order.id,
+          related_purchase_order_number: order.order_number,
+          bill_number: order.order_number,
+          amount_due: order.total_amount,
+          amount_paid: 0,
+          amount_remaining: order.total_amount,
+          due_date: order.due_date,
+          status: new Date(order.due_date) < new Date() ? 'overdue' : 'pending',
+          payment_date: null,
+          notes: order.notes,
+          created_at: order.created_at,
+          updated_at: order.updated_at,
+          is_from_purchase_order: true // Flag to identify these
+        }));
+
+      // Combine both datasets
+      const allPayables = [...(payablesData || []), ...purchaseOrdersAsPayables];
+      setPayables(allPayables);
     } catch (error) {
       console.error('Error fetching payables:', error);
       toast({
@@ -103,7 +142,8 @@ export default function Payables() {
       filtered = filtered.filter(
         (payable) =>
           payable.vendor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          payable.order_number?.toLowerCase().includes(searchTerm.toLowerCase())
+          payable.related_purchase_order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          payable.bill_number?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -115,11 +155,56 @@ export default function Payables() {
   };
 
   const markAsPaid = async (payableId: string, amount: number) => {
-    // TODO: Implement when purchase_orders table is available
-    toast({
-      title: 'Feature Coming Soon',
-      description: 'Payables management will be available once vendor and purchase order tables are set up',
-    });
+    try {
+      const payable = payables.find(p => p.id === payableId);
+      
+      // If this is from a purchase order (not a real payable yet), handle differently
+      if (payable?.is_from_purchase_order) {
+        // Update the purchase order payment status directly
+        const actualOrderId = payableId.replace('po-', '');
+        const { error } = await supabase
+          .from('purchase_orders')
+          .update({ payment_status: 'paid' })
+          .eq('id', actualOrderId);
+
+        if (error) throw error;
+      } else {
+        // Handle regular payables
+        const { error } = await supabase
+          .from('payables')
+          .update({
+            status: 'paid',
+            amount_paid: amount,
+            amount_remaining: 0,
+            payment_date: new Date().toISOString().split('T')[0],
+          })
+          .eq('id', payableId);
+
+        if (error) throw error;
+
+        // Also update the related purchase order payment status if exists
+        if (payable?.related_purchase_order_id) {
+          await supabase
+            .from('purchase_orders')
+            .update({ payment_status: 'paid' })
+            .eq('id', payable.related_purchase_order_id);
+        }
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Payment marked as made',
+      });
+
+      fetchPayables();
+    } catch (error) {
+      console.error('Error marking as paid:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to mark as paid',
+        variant: 'destructive',
+      });
+    }
   };
 
   const getOverdueDays = (dueDate: string) => {
@@ -168,7 +253,7 @@ export default function Payables() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatIndianCurrency(summary.total)}</div>
+            <div className="text-2xl font-bold">₹{summary.total.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               Amount to be paid
             </p>
@@ -180,7 +265,7 @@ export default function Payables() {
             <Calendar className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{formatIndianCurrency(summary.overdue)}</div>
+            <div className="text-2xl font-bold text-red-600">₹{summary.overdue.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               Past due date
             </p>
@@ -192,7 +277,7 @@ export default function Payables() {
             <FileText className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{formatIndianCurrency(summary.pending)}</div>
+            <div className="text-2xl font-bold text-yellow-600">₹{summary.pending.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               Not yet due
             </p>
@@ -204,7 +289,7 @@ export default function Payables() {
             <TrendingDown className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{formatIndianCurrency(summary.paid)}</div>
+            <div className="text-2xl font-bold text-green-600">₹{summary.paid.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               Already paid
             </p>
@@ -267,22 +352,79 @@ export default function Payables() {
               </TableRow>
             </TableHeader>
             <TableBody>
-
+              {filteredPayables.map((payable) => (
+                <TableRow key={payable.id}>
+                  <TableCell>
+                    <div>
+                      <div className="font-medium">{payable.vendor_name}</div>
+                      {payable.vendor_email && (
+                        <div className="text-sm text-muted-foreground">{payable.vendor_email}</div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      {payable.related_purchase_order_number && (
+                        <div className="font-medium">{payable.related_purchase_order_number}</div>
+                      )}
+                      {payable.bill_number && (
+                        <div className="text-sm text-muted-foreground">Bill: {payable.bill_number}</div>
+                      )}
+                      {!payable.related_purchase_order_number && !payable.bill_number && (
+                        <div className="text-sm text-muted-foreground">Direct entry</div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>₹{payable.amount_due.toFixed(2)}</TableCell>
+                  <TableCell>
+                    <div>
+                      <div className="font-medium">₹{payable.amount_remaining.toFixed(2)}</div>
+                      {payable.amount_paid > 0 && (
+                        <div className="text-sm text-muted-foreground">
+                          Paid: ₹{payable.amount_paid.toFixed(2)}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <div>{new Date(payable.due_date).toLocaleDateString()}</div>
+                      {payable.status === 'overdue' && (
+                        <div className="text-sm text-red-500">
+                          {getOverdueDays(payable.due_date)} days overdue
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={statusColors[payable.status]}>
+                      {payable.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {payable.status !== 'paid' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => markAsPaid(payable.id, payable.amount_due)}
+                        className="text-green-600 hover:text-green-700"
+                      >
+                        <DollarSign className="h-4 w-4 mr-1" />
+                        Mark Paid
+                      </Button>
+                    )}
+                    {payable.payment_date && (
+                      <div className="text-sm text-muted-foreground mt-1">
+                        Paid: {new Date(payable.payment_date).toLocaleDateString()}
+                      </div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
               {filteredPayables.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12">
-                    <div className="flex flex-col items-center gap-4 text-muted-foreground">
-                      <FileText className="h-12 w-12" />
-                      <div className="text-center">
-                        <h3 className="font-medium text-foreground mb-2">No Payables Found</h3>
-                        <p className="text-sm">
-                          Payables functionality requires vendor and purchase order management.
-                        </p>
-                        <p className="text-sm">
-                          This feature will be available once the purchase orders system is set up.
-                        </p>
-                      </div>
-                    </div>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    No payables found
                   </TableCell>
                 </TableRow>
               )}

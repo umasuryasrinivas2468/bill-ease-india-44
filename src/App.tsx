@@ -51,6 +51,11 @@ import GrowthPage from "./pages/GrowthPage";
 import ScalePage from "./pages/ScalePage";
 import { LicenseVerificationHandler } from "./components/LicenseVerificationHandler";
 import { UnauthorizedAccessPage } from "./pages/UnauthorizedAccessPage";
+import PlanTestPage from "./pages/PlanTestPage";
+import LicenseExpiryManager from "./components/LicenseExpiryManager";
+
+// Plan-restricted components
+import { createPlanRestrictedRoute } from "./components/withPlanAccess";
 
 
 // Accounting pages
@@ -62,6 +67,44 @@ import ManualJournals from "./pages/accounting/ManualJournals";
 
 const queryClient = new QueryClient();
 
+// Create plan-restricted route components
+const PlanRestrictedLoans = createPlanRestrictedRoute(
+  Loans, 
+  'loans', 
+  'Loans',
+  'Access loan products and financing options for your business'
+);
+
+// Business Reports is now available for all plans - no restriction needed
+
+const PlanRestrictedAITaxAdvisor = createPlanRestrictedRoute(
+  AIBusinessTaxAdvisor, 
+  'virtualCFO', 
+  'AI Tax Advisor',
+  'Get AI-powered tax advice and CFO insights for your business'
+);
+
+const PlanRestrictedCashFlowForecasting = createPlanRestrictedRoute(
+  CashFlowForecasting, 
+  'cashFlowForecasting', 
+  'Cash Flow Forecasting',
+  'Predict and manage your business cash flow with advanced analytics'
+);
+
+const PlanRestrictedSalesOrders = createPlanRestrictedRoute(
+  SalesOrders, 
+  'salesOrders', 
+  'Sales Orders',
+  'Manage and track your sales orders efficiently'
+);
+
+const PlanRestrictedPurchaseOrders = createPlanRestrictedRoute(
+  PurchaseOrders, 
+  'purchaseOrders', 
+  'Purchase Orders',
+  'Create and manage purchase orders for your business'
+);
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -72,6 +115,7 @@ function App() {
             <Sonner />
             <BrowserRouter>
               <LicenseVerificationHandler />
+              <LicenseExpiryManager />
               <Routes>
                 {/* Public license pages without sidebar */}
                 <Route path="/starter.202512a" element={<StarterPage />} />
@@ -97,16 +141,16 @@ function App() {
                         <Route path="/clients" element={<Clients />} />
                         <Route path="/reports" element={<Reports />} />
                         <Route path="/compliance" element={<ComplianceCalendar />} />
-                        <Route path="/loans" element={<Loans />} />
-                        <Route path="/reports/cash-flow-forecasting" element={<CashFlowForecasting />} />
-                        <Route path="/reports/ai-tax-advisor" element={<AIBusinessTaxAdvisor />} />
+                        <Route path="/loans" element={<PlanRestrictedLoans />} />
+                        <Route path="/reports/cash-flow-forecasting" element={<PlanRestrictedCashFlowForecasting />} />
+                        <Route path="/reports/ai-tax-advisor" element={<PlanRestrictedAITaxAdvisor />} />
                         <Route path="/reports/gst3-filing" element={<GST3Filing />} />
                         <Route path="/settings" element={<Settings />} />
                         <Route path="/onboarding" element={<Onboarding />} />
                         <Route path="/time-tracking" element={<TimeTracking />} />
                         <Route path="/inventory" element={<Inventory />} />
-                        <Route path="/inventory/sales-orders" element={<SalesOrders />} />
-                        <Route path="/inventory/purchase-orders" element={<PurchaseOrders />} />
+                        <Route path="/inventory/sales-orders" element={<PlanRestrictedSalesOrders />} />
+                        <Route path="/inventory/purchase-orders" element={<PlanRestrictedPurchaseOrders />} />
                         <Route path="/reports/receivables" element={<Receivables />} />
                         <Route path="/reports/payables" element={<Payables />} />
                         <Route path="/banking" element={<Banking />} />
@@ -120,6 +164,9 @@ function App() {
                         <Route path="/quotations/create" element={<Quotations />} />
                         <Route path="/branding" element={<Branding />} />
                         <Route path="/payments" element={<Payments />} />
+                        
+                        {/* Plan Test Route - For development/testing */}
+                        <Route path="/plan-test" element={<PlanTestPage />} />
                         
                         {/* Accounting Routes */}
                         <Route path="/accounting/chart-of-accounts" element={<ChartOfAccounts />} />

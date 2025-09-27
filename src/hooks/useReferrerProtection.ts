@@ -1,33 +1,28 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-interface PlanInfo {
+interface AllowedReferrer {
+  url: string;
   planType: 'starter' | 'growth' | 'scale';
   price: string;
 }
 
-const PLAN_INFO: Record<string, PlanInfo> = {
-  'starter': {
+const ALLOWED_REFERRERS: AllowedReferrer[] = [
+  {
+    url: 'https://payments.cashfree.com/forms/aczenbilz_rate_599',
     planType: 'starter',
     price: '₹599'
   },
-  'growth': {
+  {
+    url: 'https://payments.cashfree.com/forms/aczenbilz_rate_1799',
     planType: 'growth',
     price: '₹1,799'
   },
-  'scale': {
+  {
+    url: 'https://payments.cashfree.com/forms/aczenbilz_rate_2799',
     planType: 'scale',
     price: '₹2,799'
   }
-};
-
-// Razorpay domains that are allowed to redirect to these pages
-const ALLOWED_RAZORPAY_DOMAINS = [
-  'razorpay.com',
-  'dashboard.razorpay.com',
-  'payments.razorpay.com',
-  'www.razorpay.com',
-  'api.razorpay.com'
 ];
 
 export const useReferrerProtection = (expectedPlanType: 'starter' | 'growth' | 'scale') => {
@@ -48,27 +43,20 @@ export const useReferrerProtection = (expectedPlanType: 'starter' | 'growth' | '
       console.log('Checking referrer:', effectiveReferrer);
       console.log('Expected plan type:', expectedPlanType);
 
-      // Check if the referrer is from any Razorpay domain
-      const isFromRazorpay = ALLOWED_RAZORPAY_DOMAINS.some(domain => {
-        try {
-          const referrerUrl = new URL(effectiveReferrer);
-          return referrerUrl.hostname === domain || referrerUrl.hostname.endsWith('.' + domain);
-        } catch (error) {
-          // If referrer is not a valid URL, check if it contains the domain
-          return effectiveReferrer.includes(domain);
-        }
-      });
+      // Check if the referrer is from an allowed Cashfree payment form
+      const allowedReferrer = ALLOWED_REFERRERS.find(
+        ref => effectiveReferrer.includes(ref.url) && ref.planType === expectedPlanType
+      );
 
-      if (isFromRazorpay && effectiveReferrer.trim() !== '') {
-        const planInfo = PLAN_INFO[expectedPlanType];
+      if (allowedReferrer) {
         setIsAuthorized(true);
         setPaymentInfo({
-          price: planInfo.price,
-          referrer: effectiveReferrer
+          price: allowedReferrer.price,
+          referrer: allowedReferrer.url
         });
-        console.log('Access authorized from Razorpay:', effectiveReferrer);
+        console.log('Access authorized from:', allowedReferrer.url);
       } else {
-        console.log('Access denied. Not from Razorpay domain or empty referrer.');
+        console.log('Access denied. Invalid referrer or plan type mismatch.');
         setIsAuthorized(false);
         
         // Redirect to unauthorized page after a short delay
@@ -84,24 +72,19 @@ export const useReferrerProtection = (expectedPlanType: 'starter' | 'growth' | '
     checkReferrer();
   }, [expectedPlanType, navigate]);
 
-  // Development helper function to simulate coming from Razorpay
-  const simulateRazorpayReferrer = (planType: 'starter' | 'growth' | 'scale') => {
-    // Simulate different Razorpay pages for testing
-    const mockRazorpayUrls = {
-      starter: 'https://dashboard.razorpay.com/app/payments',
-      growth: 'https://razorpay.com/payment-gateway/',
-      scale: 'https://dashboard.razorpay.com/app/subscriptions'
-    };
-    
-    const mockUrl = mockRazorpayUrls[planType];
-    sessionStorage.setItem('dev_referrer', mockUrl);
-    window.location.reload();
+  // Development helper function to simulate coming from Cashfree
+  const simulateCashfreeReferrer = (planType: 'starter' | 'growth' | 'scale') => {
+    const referrer = ALLOWED_REFERRERS.find(ref => ref.planType === planType);
+    if (referrer) {
+      sessionStorage.setItem('dev_referrer', referrer.url);
+      window.location.reload();
+    }
   };
 
   return {
     isAuthorized,
     isLoading,
     paymentInfo,
-    simulateRazorpayReferrer
+    simulateCashfreeReferrer
   };
 };

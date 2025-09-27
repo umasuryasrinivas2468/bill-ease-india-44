@@ -52,6 +52,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { BankingUnavailableModal } from "@/components/BankingUnavailableModal";
+import { PlanAwareMenuItem } from "@/components/PlanAwareMenuItem";
 
 const mainMenuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -60,21 +61,20 @@ const mainMenuItems = [
   { title: "Clients", url: "/clients", icon: Users },
 
   { title: "Banking", url: "#", icon: Banknote, special: "banking" },
-  { title: "Loans", url: "/loans", icon: HandCoins },
   { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 const inventoryMenuItems = [
   { title: "Manage Inventory", url: "/inventory", icon: Package },
-  { title: "Sales Orders", url: "/inventory/sales-orders", icon: ShoppingCart },
-  { title: "Purchase Orders", url: "/inventory/purchase-orders", icon: Truck },
+  { title: "Sales Orders", url: "/inventory/sales-orders", icon: ShoppingCart, feature: "salesOrders" as const },
+  { title: "Purchase Orders", url: "/inventory/purchase-orders", icon: Truck, feature: "purchaseOrders" as const },
 ];
 
 const reportsMenuItems = [
-  { title: "Business Reports", url: "/reports", icon: BarChart3 },
-  { title: "Cash Flow Forecasting", url: "/reports/cash-flow-forecasting", icon: LineChart },
-  { title: "AI Business Tax Advisor", url: "/reports/ai-tax-advisor", icon: Brain },
+  { title: "Business Reports", url: "/reports", icon: BarChart3 }, // Available for all plans
+  { title: "Cash Flow Forecasting", url: "/reports/cash-flow-forecasting", icon: LineChart, feature: "cashFlowForecasting" as const },
+  { title: "AI Business Tax Advisor", url: "/reports/ai-tax-advisor", icon: Brain, feature: "virtualCFO" as const },
   { title: "Receivables", url: "/reports/receivables", icon: CreditCard },
   { title: "Payables", url: "/reports/payables", icon: Receipt },
 ];
@@ -180,6 +180,17 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
+                
+                {/* Loans - Plan Restricted */}
+                {!isCollapsed && (
+                  <PlanAwareMenuItem
+                    title="Loans"
+                    url="/loans"
+                    icon={HandCoins}
+                    feature="loans"
+                    className={getNavCls('/loans')}
+                  />
+                )}
                 {/* Compliance Calendar at main level */}
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
@@ -226,15 +237,26 @@ export function AppSidebar() {
                           <SidebarMenuSub>
                             {inventoryMenuItems.map((item) => (
                               <SidebarMenuSubItem key={item.title}>
-                                <SidebarMenuSubButton asChild>
-                                  <NavLink
-                                    to={item.url}
-                                    className={`${getNavCls(item.url)} ml-4 text-sm`}
-                                    title={item.title}
-                                  >
-                                    <item.icon className="h-3 w-3" />
-                                    <span>{item.title}</span>
-                                  </NavLink>
+                                <SidebarMenuSubButton asChild={!(item as any).feature || true}>
+                                  {(item as any).feature ? (
+                                    <PlanAwareMenuItem
+                                      title={item.title}
+                                      url={item.url}
+                                      icon={item.icon}
+                                      feature={(item as any).feature}
+                                      className={`${getNavCls(item.url)} ml-4 text-sm`}
+                                      asChild={false}
+                                    />
+                                  ) : (
+                                    <NavLink
+                                      to={item.url}
+                                      className={`${getNavCls(item.url)} ml-4 text-sm`}
+                                      title={item.title}
+                                    >
+                                      <item.icon className="h-3 w-3" />
+                                      <span>{item.title}</span>
+                                    </NavLink>
+                                  )}
                                 </SidebarMenuSubButton>
                               </SidebarMenuSubItem>
                             ))}
@@ -281,15 +303,26 @@ export function AppSidebar() {
                           <SidebarMenuSub>
                             {reportsMenuItems.map((item) => (
                               <SidebarMenuSubItem key={item.title}>
-                                <SidebarMenuSubButton asChild>
-                                  <NavLink
-                                    to={item.url}
-                                    className={`${getNavCls(item.url)} ml-4 text-sm`}
-                                    title={item.title}
-                                  >
-                                    <item.icon className="h-3 w-3" />
-                                    <span>{item.title}</span>
-                                  </NavLink>
+                                <SidebarMenuSubButton asChild={!(item as any).feature || true}>
+                                  {(item as any).feature ? (
+                                    <PlanAwareMenuItem
+                                      title={item.title}
+                                      url={item.url}
+                                      icon={item.icon}
+                                      feature={(item as any).feature}
+                                      className={`${getNavCls(item.url)} ml-4 text-sm`}
+                                      asChild={false}
+                                    />
+                                  ) : (
+                                    <NavLink
+                                      to={item.url}
+                                      className={`${getNavCls(item.url)} ml-4 text-sm`}
+                                      title={item.title}
+                                    >
+                                      <item.icon className="h-3 w-3" />
+                                      <span>{item.title}</span>
+                                    </NavLink>
+                                  )}
                                 </SidebarMenuSubButton>
                               </SidebarMenuSubItem>
                             ))}

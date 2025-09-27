@@ -13,7 +13,7 @@ export const ProtectedLicensePage: React.FC<ProtectedLicensePageProps> = ({
   planType, 
   children 
 }) => {
-  const { isAuthorized, isLoading, paymentInfo, simulateRazorpayReferrer } = useReferrerProtection(planType);
+  const { isAuthorized, isLoading, paymentInfo, simulateCashfreeReferrer } = useReferrerProtection(planType);
 
   // Loading state
   if (isLoading) {
@@ -24,7 +24,7 @@ export const ProtectedLicensePage: React.FC<ProtectedLicensePageProps> = ({
             <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-4" />
             <h3 className="text-lg font-semibold mb-2">Verifying Access...</h3>
             <p className="text-gray-600 text-center text-sm">
-              Checking referrer authorization from Razorpay
+              Checking payment authorization from Cashfree
             </p>
           </CardContent>
         </Card>
@@ -41,7 +41,7 @@ export const ProtectedLicensePage: React.FC<ProtectedLicensePageProps> = ({
             <Shield className="h-8 w-8 text-red-600 mb-4" />
             <h3 className="text-lg font-semibold mb-2 text-red-800">Access Denied</h3>
             <p className="text-gray-600 text-center text-sm mb-4">
-              This page can only be accessed from Razorpay. Redirecting...
+              Redirecting to payment page...
             </p>
             <div className="w-full bg-red-100 h-2 rounded-full overflow-hidden">
               <div className="h-full bg-red-500 animate-pulse"></div>
@@ -59,7 +59,7 @@ export const ProtectedLicensePage: React.FC<ProtectedLicensePageProps> = ({
       <div className="bg-green-600 text-white py-2 px-4">
         <div className="max-w-4xl mx-auto flex items-center justify-center gap-2 text-sm">
           <CheckCircle className="w-4 h-4" />
-          <span>Access verified from Razorpay • {paymentInfo?.price} • {planType.charAt(0).toUpperCase() + planType.slice(1)} Plan</span>
+          <span>Payment verified from Cashfree • {paymentInfo?.price} • {planType.charAt(0).toUpperCase() + planType.slice(1)} Plan</span>
         </div>
       </div>
 
@@ -68,27 +68,27 @@ export const ProtectedLicensePage: React.FC<ProtectedLicensePageProps> = ({
         <div className="bg-yellow-100 border-b border-yellow-300 py-2 px-4">
           <div className="max-w-4xl mx-auto text-center">
             <p className="text-yellow-800 text-sm mb-2">
-              <strong>Development Mode:</strong> Simulate Razorpay referrer for testing
+              <strong>Development Mode:</strong> Simulate Cashfree referrer for testing
             </p>
             <div className="flex justify-center gap-2">
               <Button 
                 size="sm" 
                 variant="outline"
-                onClick={() => simulateRazorpayReferrer('starter')}
+                onClick={() => simulateCashfreeReferrer('starter')}
               >
                 Simulate Starter (₹599)
               </Button>
               <Button 
                 size="sm" 
                 variant="outline"
-                onClick={() => simulateRazorpayReferrer('growth')}
+                onClick={() => simulateCashfreeReferrer('growth')}
               >
                 Simulate Growth (₹1,799)
               </Button>
               <Button 
                 size="sm" 
                 variant="outline"
-                onClick={() => simulateRazorpayReferrer('scale')}
+                onClick={() => simulateCashfreeReferrer('scale')}
               >
                 Simulate Scale (₹2,799)
               </Button>
