@@ -28,7 +28,8 @@ import {
   ShoppingCart,
   Truck,
   CreditCard,
-  Receipt
+  Receipt,
+  UserCheck
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import { useBusinessData } from "@/hooks/useBusinessData";
@@ -52,6 +53,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { BankingUnavailableModal } from "@/components/BankingUnavailableModal";
+import { PayrollUnavailableModal } from "@/components/PayrollUnavailableModal";
 import { PlanAwareMenuItem } from "@/components/PlanAwareMenuItem";
 
 const mainMenuItems = [
@@ -101,6 +103,7 @@ export function AppSidebar() {
   const [isReportsOpen, setIsReportsOpen] = useState(false);
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const [isBankingModalOpen, setIsBankingModalOpen] = useState(false);
+  const [isPayrollModalOpen, setIsPayrollModalOpen] = useState(false);
   
   const businessInfo = getBusinessInfo();
   const businessAssets = getBusinessAssets();
@@ -180,6 +183,20 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
+                
+                {/* Payroll */}
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <button
+                      onClick={() => setIsPayrollModalOpen(true)}
+                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-accent hover:text-accent-foreground rounded-md text-left"
+                      title="Payroll"
+                    >
+                      <UserCheck className="h-4 w-4" />
+                      {!isCollapsed && <span>Payroll</span>}
+                    </button>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
                 
                 {/* Loans - Plan Restricted */}
                 {!isCollapsed && (
@@ -413,6 +430,10 @@ export function AppSidebar() {
       <BankingUnavailableModal 
         isOpen={isBankingModalOpen}
         onClose={() => setIsBankingModalOpen(false)}
+      />
+      <PayrollUnavailableModal 
+        isOpen={isPayrollModalOpen}
+        onClose={() => setIsPayrollModalOpen(false)}
       />
     </Sidebar>
   );

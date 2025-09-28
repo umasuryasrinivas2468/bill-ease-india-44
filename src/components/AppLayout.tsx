@@ -61,7 +61,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                   className="h-8 w-8 object-contain"
                 />
               )}
-              <div className="flex flex-col">
+              <div className="flex flex-col flex-1">
                 <h1 className="text-lg font-semibold leading-none">
                   {businessInfo?.businessName || 'Business Dashboard'}
                 </h1>
@@ -69,6 +69,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                   Powered by Aczen
                 </p>
               </div>
+              <a
+                href="https://nas.io/aczen-1"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+              >
+                📢 Announcements
+              </a>
             </div>
           </header>
           <main className="flex-1">
