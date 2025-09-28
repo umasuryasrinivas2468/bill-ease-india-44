@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Check, X } from 'lucide-react';
 
 export default function PlanTestPage() {
-  const { userLicense, features, isLoading, error, isExpired, isExpiringSoon } = useUserPlan();
+  const { userLicense, features, isLoading, error } = useUserPlan();
 
   if (isLoading) {
     return (
@@ -84,10 +84,8 @@ export default function PlanTestPage() {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Due Date</p>
-                <p className={`text-gray-900 ${isExpired ? 'text-red-600 font-semibold' : isExpiringSoon ? 'text-orange-600 font-semibold' : ''}`}>
+                <p className="text-gray-900">
                   {new Date(userLicense.due_date).toLocaleDateString()}
-                  {isExpired && ' (EXPIRED - ACCESS BLOCKED)'}
-                  {isExpiringSoon && !isExpired && ' (EXPIRES TODAY)'}
                 </p>
               </div>
             </div>

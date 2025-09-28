@@ -36,8 +36,6 @@ export interface UserPlan {
   features: PlanFeatures;
   isLoading: boolean;
   error: string | null;
-  isExpired: boolean;
-  isExpiringSoon: boolean; // expires within 7 days
 }
 
 const PLAN_FEATURES: Record<'starter' | 'growth' | 'scale', PlanFeatures> = {
@@ -93,8 +91,6 @@ export const useUserPlan = (): UserPlan => {
   const [userLicense, setUserLicense] = useState<UserLicense | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isExpired, setIsExpired] = useState(false);
-  const [isExpiringSoon, setIsExpiringSoon] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
@@ -124,25 +120,7 @@ export const useUserPlan = (): UserPlan => {
           return;
         }
 
-        // Check license expiry status
-        const dueDate = new Date(data.due_date);
-        const now = new Date();
-        
-        // Set time to start of day for accurate comparison
-        const dueDateStartOfDay = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
-        const nowStartOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        
-        const expired = dueDateStartOfDay < nowStartOfDay;
-        const isExpiryDay = dueDateStartOfDay.getTime() === nowStartOfDay.getTime();
-        
-        setIsExpired(expired);
-        setIsExpiringSoon(isExpiryDay); // Show popup on expiry day
-        
-        // Block access for expired users by setting error
-        if (expired) {
-          setError('Your license has expired. Please renew your subscription to continue using the application.');
-          return;
-        }
+        // License found and valid
         
         setPlanType(data.plan_type as 'starter' | 'growth' | 'scale');
         setUserLicense(data as UserLicense);
@@ -165,8 +143,6 @@ export const useUserPlan = (): UserPlan => {
     features,
     isLoading,
     error,
-    isExpired,
-    isExpiringSoon,
   };
 };
 

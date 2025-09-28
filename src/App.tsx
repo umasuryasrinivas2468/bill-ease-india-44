@@ -52,8 +52,6 @@ import ScalePage from "./pages/ScalePage";
 import { LicenseVerificationHandler } from "./components/LicenseVerificationHandler";
 import { UnauthorizedAccessPage } from "./pages/UnauthorizedAccessPage";
 import PlanTestPage from "./pages/PlanTestPage";
-import LicenseExpiryManager from "./components/LicenseExpiryManager";
-
 // Plan-restricted components
 import { createPlanRestrictedRoute } from "./components/withPlanAccess";
 
@@ -115,7 +113,6 @@ function App() {
             <Sonner />
             <BrowserRouter>
               <LicenseVerificationHandler />
-              <LicenseExpiryManager />
               <Routes>
                 {/* Public license pages without sidebar */}
                 <Route path="/starter.202512a" element={<StarterPage />} />
