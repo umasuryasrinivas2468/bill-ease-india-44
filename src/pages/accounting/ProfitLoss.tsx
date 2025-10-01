@@ -3,12 +3,14 @@
  * Profit & Loss Report Component
  * 
  * Data Sources:
- * 1. Invoices table: total_amount where status = 'paid' for revenue
- * 2. Journal Lines: 
- *    - Credits with account_type = 'income' as Revenue
- *    - Debits with account_type = 'expense' as Expenses
+ * 1. Sales Invoices: total_amount where status = 'paid' for revenue (Income)
+ * 2. Purchase Bills: total_amount where status = 'paid' or 'partial' for expenses (Expenses)
+ * 3. Journal Lines: 
+ *    - Credits to Income accounts as Revenue
+ *    - Debits to Expense accounts as Expenses
  * 
  * Features:
+ * - Aggregates data from invoices, purchase bills, and journal entries
  * - Monthly breakdown with visual charts
  * - Drill-down to individual transactions
  * - Period comparison (previous year/period)
@@ -55,6 +57,13 @@ interface InvoiceData {
   id: string;
   total_amount: number;
   invoice_date: string;
+  status: string;
+}
+
+interface PurchaseBillData {
+  id: string;
+  total_amount: number;
+  bill_date: string;
   status: string;
 }
 
@@ -147,6 +156,32 @@ const ProfitLoss = () => {
     enabled: !!user?.id,
   });
 
+  // Fetch paid purchase bills for expenses
+  const { data: purchaseBillData = [], isLoading: isLoadingPurchaseBills } = useQuery({
+    queryKey: ['profit-loss-purchase-bills', user?.id, startDate, endDate],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      
+      const { data, error } = await (supabase as any)
+        .from('purchase_bills')
+        .select('id, total_amount, bill_date, status')
+        .eq('user_id', user.id)
+        .in('status', ['paid', 'partial'])
+        .gte('bill_date', startDate)
+        .lte('bill_date', endDate);
+      
+      if (error) throw error;
+      
+      return data.map(item => ({
+        id: item.id,
+        total_amount: Number(item.total_amount),
+        bill_date: item.bill_date,
+        status: item.status
+      })) as PurchaseBillData[];
+    },
+    enabled: !!user?.id,
+  });
+
   // Fetch current period journal lines with account information
   const { data: journalData = [], isLoading } = useQuery({
     queryKey: ['profit-loss-data', user?.id, startDate, endDate],
@@ -223,6 +258,32 @@ const ProfitLoss = () => {
     enabled: !!user?.id && enableComparison,
   });
 
+  // Fetch paid purchase bills for comparison period
+  const { data: comparisonPurchaseBillData = [], isLoading: isLoadingComparisonPurchaseBills } = useQuery({
+    queryKey: ['profit-loss-comparison-purchase-bills', user?.id, comparisonStartDate, comparisonEndDate, enableComparison],
+    queryFn: async () => {
+      if (!user?.id || !enableComparison) return [];
+      
+      const { data, error } = await (supabase as any)
+        .from('purchase_bills')
+        .select('id, total_amount, bill_date, status')
+        .eq('user_id', user.id)
+        .in('status', ['paid', 'partial'])
+        .gte('bill_date', comparisonStartDate)
+        .lte('bill_date', comparisonEndDate);
+      
+      if (error) throw error;
+      
+      return data.map(item => ({
+        id: item.id,
+        total_amount: Number(item.total_amount),
+        bill_date: item.bill_date,
+        status: item.status
+      })) as PurchaseBillData[];
+    },
+    enabled: !!user?.id && enableComparison,
+  });
+
   // Fetch comparison period data if comparison is enabled
   const { data: comparisonJournalData = [], isLoading: isLoadingComparison } = useQuery({
     queryKey: ['profit-loss-comparison-data', user?.id, comparisonStartDate, comparisonEndDate, enableComparison],
@@ -273,11 +334,12 @@ const ProfitLoss = () => {
     enabled: !!user?.id && enableComparison,
   });
 
-  // Helper function to process journal data and invoice data into monthly data
-  const processMonthlyData = (journalData: JournalLineWithAccount[], invoiceData: InvoiceData[]): MonthlyData[] => {
+  // Helper function to process journal data, invoice data, and purchase bill data into monthly data
+  const processMonthlyData = (journalData: JournalLineWithAccount[], invoiceData: InvoiceData[], purchaseBillData: PurchaseBillData[]): MonthlyData[] => {
     console.log('🔍 Processing monthly data:', {
       journalCount: journalData.length,
       invoiceCount: invoiceData.length,
+      purchaseBillCount: purchaseBillData.length,
       dateRange: `${startDate} to ${endDate}`
     });
     
@@ -301,6 +363,26 @@ const ProfitLoss = () => {
       
       const monthData = monthMap.get(monthKey)!;
       monthData.income += invoice.total_amount;
+    });
+
+    // Process paid purchase bills as expenses
+    purchaseBillData.forEach(bill => {
+      const date = new Date(bill.bill_date);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      
+      console.log('📋 Processing purchase bill:', {
+        id: bill.id,
+        bill_date: bill.bill_date,
+        amount: bill.total_amount,
+        monthKey: monthKey
+      });
+      
+      if (!monthMap.has(monthKey)) {
+        monthMap.set(monthKey, { income: 0, expenses: 0 });
+      }
+      
+      const monthData = monthMap.get(monthKey)!;
+      monthData.expenses += bill.total_amount;
     });
     
     // Process journal entries
@@ -363,20 +445,22 @@ const ProfitLoss = () => {
     console.log('Debug - Processing data:', {
       journalDataCount: journalData.length,
       invoiceDataCount: invoiceData.length,
+      purchaseBillDataCount: purchaseBillData.length,
       dateRange: { startDate, endDate },
       invoiceData: invoiceData.slice(0, 3), // First 3 invoices for debugging
+      purchaseBillData: purchaseBillData.slice(0, 3), // First 3 purchase bills for debugging
       journalData: journalData.slice(0, 3) // First 3 journal entries for debugging
     });
     
-    const result = processMonthlyData(journalData, invoiceData);
+    const result = processMonthlyData(journalData, invoiceData, purchaseBillData);
     console.log('Debug - Monthly data result:', result);
     return result;
-  }, [journalData, invoiceData, startDate, endDate]);
+  }, [journalData, invoiceData, purchaseBillData, startDate, endDate]);
   
   // Process comparison data
   const comparisonMonthlyData = useMemo(() => 
-    enableComparison ? processMonthlyData(comparisonJournalData, comparisonInvoiceData) : [], 
-    [comparisonJournalData, comparisonInvoiceData, enableComparison]
+    enableComparison ? processMonthlyData(comparisonJournalData, comparisonInvoiceData, comparisonPurchaseBillData) : [], 
+    [comparisonJournalData, comparisonInvoiceData, comparisonPurchaseBillData, enableComparison]
   );
 
   // Create account summaries for drill-down
@@ -392,6 +476,18 @@ const ProfitLoss = () => {
         account_type: 'income',
         total_amount: invoiceRevenue,
         transactions_count: invoiceData.length
+      });
+    }
+
+    // Add purchase bill expenses as a separate account
+    if (purchaseBillData.length > 0) {
+      const purchaseExpenses = purchaseBillData.reduce((sum, bill) => sum + bill.total_amount, 0);
+      accountMap.set('purchase-bills-expense', {
+        account_id: 'purchase-bills',
+        account_name: 'Purchase Bills',
+        account_type: 'expense',
+        total_amount: purchaseExpenses,
+        transactions_count: purchaseBillData.length
       });
     }
     
@@ -798,19 +894,37 @@ const ProfitLoss = () => {
         }))
         .sort((a, b) => new Date(b.journal_date).getTime() - new Date(a.journal_date).getTime());
     }
+
+    if (accountId === 'purchase-bills') {
+      // For purchase bill expenses, return purchase bill transactions
+      return purchaseBillData
+        .map(bill => ({
+          id: bill.id,
+          journal_date: bill.bill_date,
+          debit: bill.total_amount,
+          credit: 0,
+          account_name: 'Purchase Bills',
+          account_type: 'expense',
+          journal_number: `BILL-${bill.id.slice(-6)}`,
+          narration: `Purchase bill payment - ₹${bill.total_amount.toLocaleString()}`,
+          journal_id: bill.id,
+          account_id: 'purchase-bills'
+        }))
+        .sort((a, b) => new Date(b.journal_date).getTime() - new Date(a.journal_date).getTime());
+    }
     
     return journalData
       .filter(line => line.account_id === accountId)
       .sort((a, b) => new Date(b.journal_date).getTime() - new Date(a.journal_date).getTime());
   };
 
-  if (isLoading || isLoadingInvoices || (enableComparison && (isLoadingComparison || isLoadingComparisonInvoices))) {
+  if (isLoading || isLoadingInvoices || isLoadingPurchaseBills || (enableComparison && (isLoadingComparison || isLoadingComparisonInvoices || isLoadingComparisonPurchaseBills))) {
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-lg">
             Loading Profit & Loss data...
-            {enableComparison && (isLoadingComparison || isLoadingComparisonInvoices) && " (including comparison data)"}
+            {enableComparison && (isLoadingComparison || isLoadingComparisonInvoices || isLoadingComparisonPurchaseBills) && " (including comparison data)"}
           </div>
         </div>
       </div>
