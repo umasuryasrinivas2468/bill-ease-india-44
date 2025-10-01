@@ -72,7 +72,7 @@ export default function Payables() {
     try {
       setLoading(true);
       
-      // Fetch existing payables
+      // Fetch payables only (no purchase_orders or apps table)
       const { data: payablesData, error: payablesError } = await supabase
         .from('payables')
         .select('*')
@@ -81,48 +81,7 @@ export default function Payables() {
 
       if (payablesError) throw payablesError;
 
-      // Fetch confirmed purchase orders that are not fully paid and don't have payables yet
-      const { data: purchaseOrdersData, error: purchaseOrdersError } = await supabase
-        .from('purchase_orders')
-        .select('*')
-        .eq('user_id', user?.id)
-        .eq('status', 'confirmed')
-        .neq('payment_status', 'paid')
-        .order('due_date', { ascending: true });
-
-      if (purchaseOrdersError) throw purchaseOrdersError;
-
-      // Convert purchase orders to payable format and filter out those that already have payables
-      const existingOrderIds = (payablesData || [])
-        .map(p => p.related_purchase_order_id)
-        .filter(Boolean);
-
-      const purchaseOrdersAsPayables = (purchaseOrdersData || [])
-        .filter(order => !existingOrderIds.includes(order.id))
-        .map(order => ({
-          id: `po-${order.id}`, // Prefix to distinguish from real payables
-          user_id: order.user_id,
-          vendor_name: order.vendor_name,
-          vendor_email: order.vendor_email,
-          vendor_phone: order.vendor_phone,
-          related_purchase_order_id: order.id,
-          related_purchase_order_number: order.order_number,
-          bill_number: order.order_number,
-          amount_due: order.total_amount,
-          amount_paid: 0,
-          amount_remaining: order.total_amount,
-          due_date: order.due_date,
-          status: new Date(order.due_date) < new Date() ? 'overdue' : 'pending',
-          payment_date: null,
-          notes: order.notes,
-          created_at: order.created_at,
-          updated_at: order.updated_at,
-          is_from_purchase_order: true // Flag to identify these
-        }));
-
-      // Combine both datasets
-      const allPayables = [...(payablesData || []), ...purchaseOrdersAsPayables];
-      setPayables(allPayables);
+      setPayables(payablesData || []);
     } catch (error) {
       console.error('Error fetching payables:', error);
       toast({
