@@ -74,14 +74,14 @@ export default function Payables() {
       
       // Fetch payables only (no purchase_orders or apps table)
       const { data: payablesData, error: payablesError } = await supabase
-        .from('payables')
+        .from('payables' as any)
         .select('*')
         .eq('user_id', user?.id)
         .order('due_date', { ascending: true });
 
       if (payablesError) throw payablesError;
 
-      setPayables(payablesData || []);
+      setPayables((payablesData || []) as any);
     } catch (error) {
       console.error('Error fetching payables:', error);
       toast({
@@ -122,15 +122,15 @@ export default function Payables() {
         // Update the purchase order payment status directly
         const actualOrderId = payableId.replace('po-', '');
         const { error } = await supabase
-          .from('purchase_orders')
-          .update({ payment_status: 'paid' })
+          .from('purchase_orders' as any)
+          .update({ payment_status: 'paid' } as any)
           .eq('id', actualOrderId);
 
         if (error) throw error;
       } else {
         // Handle regular payables
         const { error } = await supabase
-          .from('payables')
+          .from('payables' as any)
           .update({
             status: 'paid',
             amount_paid: amount,
@@ -144,8 +144,8 @@ export default function Payables() {
         // Also update the related purchase order payment status if exists
         if (payable?.related_purchase_order_id) {
           await supabase
-            .from('purchase_orders')
-            .update({ payment_status: 'paid' })
+            .from('purchase_orders' as any)
+            .update({ payment_status: 'paid' } as any)
             .eq('id', payable.related_purchase_order_id);
         }
       }

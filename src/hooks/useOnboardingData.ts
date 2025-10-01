@@ -169,7 +169,7 @@ export const useOnboardingData = (sessionId: string) => {
 
       // Save both logo and signature in one record
       const { error } = await supabase
-        .from('user_branding')
+        .from('user_branding' as any)
         .upsert({
           user_id: user.id,
           logo_url: assets.logoUrl || null,

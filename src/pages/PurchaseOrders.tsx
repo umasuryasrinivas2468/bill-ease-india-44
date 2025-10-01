@@ -119,13 +119,13 @@ export default function PurchaseOrders() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('purchase_orders')
+        .from('purchase_orders' as any)
         .select('*')
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setOrders(data || []);
+      setOrders((data || []) as any);
     } catch (error) {
       console.error('Error fetching purchase orders:', error);
       toast({
@@ -144,11 +144,10 @@ export default function PurchaseOrders() {
         .from('vendors')
         .select('*')
         .eq('user_id', user?.id)
-        .eq('status', 'active')
-        .order('vendor_name');
+        .order('name');
 
       if (error) throw error;
-      setVendors(data || []);
+      setVendors((data || []).map((v: any) => ({ ...v, vendor_name: v.name })) as any);
     } catch (error) {
       console.error('Error fetching vendors:', error);
     }
@@ -273,12 +272,12 @@ export default function PurchaseOrders() {
       let error;
       if (editingOrder) {
         ({ error } = await supabase
-          .from('purchase_orders')
+          .from('purchase_orders' as any)
           .update(orderData)
           .eq('id', editingOrder.id));
       } else {
         ({ error } = await supabase
-          .from('purchase_orders')
+          .from('purchase_orders' as any)
           .insert([orderData]));
       }
 
@@ -305,7 +304,7 @@ export default function PurchaseOrders() {
   const updateOrderStatus = async (orderId: string, status: string) => {
     try {
       const { error } = await supabase
-        .from('purchase_orders')
+        .from('purchase_orders' as any)
         .update({ status })
         .eq('id', orderId);
 
@@ -330,8 +329,8 @@ export default function PurchaseOrders() {
   const markAsPaid = async (orderId: string) => {
     try {
       const { error } = await supabase
-        .from('purchase_orders')
-        .update({ payment_status: 'paid' })
+        .from('purchase_orders' as any)
+        .update({ payment_status: 'paid' } as any)
         .eq('id', orderId);
 
       if (error) throw error;

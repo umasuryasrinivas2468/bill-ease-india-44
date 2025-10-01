@@ -110,13 +110,13 @@ export default function SalesOrders() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('sales_orders')
+        .from('sales_orders' as any)
         .select('*')
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setOrders(data || []);
+      setOrders((data || []) as any);
     } catch (error) {
       console.error('Error fetching sales orders:', error);
       toast({
@@ -235,12 +235,12 @@ export default function SalesOrders() {
       let error;
       if (editingOrder) {
         ({ error } = await supabase
-          .from('sales_orders')
+          .from('sales_orders' as any)
           .update(orderData)
           .eq('id', editingOrder.id));
       } else {
         ({ error } = await supabase
-          .from('sales_orders')
+          .from('sales_orders' as any)
           .insert([orderData]));
       }
 
@@ -267,7 +267,7 @@ export default function SalesOrders() {
   const updateOrderStatus = async (orderId: string, status: string) => {
     try {
       const { error } = await supabase
-        .from('sales_orders')
+        .from('sales_orders' as any)
         .update({ status })
         .eq('id', orderId);
 
@@ -292,8 +292,8 @@ export default function SalesOrders() {
   const markAsPaid = async (orderId: string) => {
     try {
       const { error } = await supabase
-        .from('sales_orders')
-        .update({ payment_status: 'paid' })
+        .from('sales_orders' as any)
+        .update({ payment_status: 'paid' } as any)
         .eq('id', orderId);
 
       if (error) throw error;

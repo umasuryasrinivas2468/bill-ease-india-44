@@ -74,7 +74,7 @@ export default function Receivables() {
       
       // Fetch existing receivables
       const { data: receivablesData, error: receivablesError } = await supabase
-        .from('receivables')
+        .from('receivables' as any)
         .select('*')
         .eq('user_id', user?.id)
         .order('due_date', { ascending: true });
@@ -83,7 +83,7 @@ export default function Receivables() {
 
       // Fetch confirmed sales orders that are not fully paid and don't have receivables yet
       const { data: salesOrdersData, error: salesOrdersError } = await supabase
-        .from('sales_orders')
+        .from('sales_orders' as any)
         .select('*')
         .eq('user_id', user?.id)
         .eq('status', 'confirmed')
@@ -94,12 +94,12 @@ export default function Receivables() {
 
       // Convert sales orders to receivable format and filter out those that already have receivables
       const existingOrderIds = (receivablesData || [])
-        .map(r => r.related_sales_order_id)
+        .map((r: any) => r.related_sales_order_id)
         .filter(Boolean);
 
       const salesOrdersAsReceivables = (salesOrdersData || [])
-        .filter(order => !existingOrderIds.includes(order.id))
-        .map(order => ({
+        .filter((order: any) => !existingOrderIds.includes(order.id))
+        .map((order: any) => ({
           id: `so-${order.id}`, // Prefix to distinguish from real receivables
           user_id: order.user_id,
           customer_name: order.client_name,
@@ -121,7 +121,7 @@ export default function Receivables() {
         }));
 
       // Combine both datasets
-      const allReceivables = [...(receivablesData || []), ...salesOrdersAsReceivables];
+      const allReceivables = [...(receivablesData || []), ...salesOrdersAsReceivables] as Receivable[];
       setReceivables(allReceivables);
     } catch (error) {
       console.error('Error fetching receivables:', error);
@@ -163,7 +163,7 @@ export default function Receivables() {
         // Update the sales order payment status directly
         const actualOrderId = receivableId.replace('so-', '');
         const { error } = await supabase
-          .from('sales_orders')
+          .from('sales_orders' as any)
           .update({ payment_status: 'paid' })
           .eq('id', actualOrderId);
 
@@ -171,7 +171,7 @@ export default function Receivables() {
       } else {
         // Handle regular receivables
         const { error } = await supabase
-          .from('receivables')
+          .from('receivables' as any)
           .update({
             status: 'paid',
             amount_paid: amount,
@@ -185,7 +185,7 @@ export default function Receivables() {
         // Also update the related sales order payment status if exists
         if (receivable?.related_sales_order_id) {
           await supabase
-            .from('sales_orders')
+            .from('sales_orders' as any)
             .update({ payment_status: 'paid' })
             .eq('id', receivable.related_sales_order_id);
         }

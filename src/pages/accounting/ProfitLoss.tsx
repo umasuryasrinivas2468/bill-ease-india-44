@@ -54,7 +54,7 @@ interface JournalLineWithAccount {
 interface InvoiceData {
   id: string;
   total_amount: number;
-  issue_date: string;
+  invoice_date: string;
   status: string;
 }
 
@@ -129,18 +129,18 @@ const ProfitLoss = () => {
       
       const { data, error } = await supabase
         .from('invoices')
-        .select('id, total_amount, issue_date, status')
+        .select('id, total_amount, invoice_date, status')
         .eq('user_id', user.id)
         .eq('status', 'paid')
-        .gte('issue_date', startDate)
-        .lte('issue_date', endDate);
+        .gte('invoice_date', startDate)
+        .lte('invoice_date', endDate);
       
       if (error) throw error;
       
       return data.map(item => ({
         id: item.id,
         total_amount: Number(item.total_amount),
-        issue_date: item.issue_date,
+        invoice_date: item.invoice_date,
         status: item.status
       })) as InvoiceData[];
     },
@@ -205,18 +205,18 @@ const ProfitLoss = () => {
       
       const { data, error } = await supabase
         .from('invoices')
-        .select('id, total_amount, issue_date, status')
+        .select('id, total_amount, invoice_date, status')
         .eq('user_id', user.id)
         .eq('status', 'paid')
-        .gte('issue_date', comparisonStartDate)
-        .lte('issue_date', comparisonEndDate);
+        .gte('invoice_date', comparisonStartDate)
+        .lte('invoice_date', comparisonEndDate);
       
       if (error) throw error;
       
       return data.map(item => ({
         id: item.id,
         total_amount: Number(item.total_amount),
-        issue_date: item.issue_date,
+        invoice_date: item.invoice_date,
         status: item.status
       })) as InvoiceData[];
     },
@@ -285,12 +285,12 @@ const ProfitLoss = () => {
     
     // Process paid invoices as revenue
     invoiceData.forEach(invoice => {
-      const date = new Date(invoice.issue_date);
+      const date = new Date(invoice.invoice_date);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       
       console.log('📄 Processing invoice:', {
         id: invoice.id,
-        issue_date: invoice.issue_date,
+        invoice_date: invoice.invoice_date,
         amount: invoice.total_amount,
         monthKey: monthKey
       });
@@ -786,7 +786,7 @@ const ProfitLoss = () => {
       return invoiceData
         .map(invoice => ({
           id: invoice.id,
-          journal_date: invoice.issue_date,
+          journal_date: invoice.invoice_date,
           debit: 0,
           credit: invoice.total_amount,
           account_name: 'Invoice Revenue',
