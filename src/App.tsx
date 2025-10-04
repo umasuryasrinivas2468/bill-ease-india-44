@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/components/ClerkAuthProvider";
+import { Aiva } from "@/components/Aiva";
 import ProtectedRoute from './components/ProtectedRoute';
 import AppLayout from "./components/AppLayout";
 import Index from "./pages/Index";
@@ -111,6 +112,7 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            <Aiva />
             <BrowserRouter>
               <LicenseVerificationHandler />
               <Routes>
