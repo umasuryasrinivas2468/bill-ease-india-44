@@ -8,6 +8,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { useAuth } from '@/components/ClerkAuthProvider';
 import { useSupabaseUser } from '@/hooks/useSupabaseUser';
+import { FinancialAdvisorChat } from '@/components/FinancialAdvisorChat';
 
 const Dashboard = () => {
   const { data: dashboardData, isLoading } = useDashboardStats();
@@ -144,6 +145,9 @@ const Dashboard = () => {
           </Card>
         ))}
       </div>
+
+      {/* AI Financial Advisor */}
+      <FinancialAdvisorChat />
 
       {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
