@@ -169,8 +169,9 @@ const CA = () => {
       </div>
 
       <Tabs defaultValue="reports" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="reports">Reports & Stats</TabsTrigger>
+          <TabsTrigger value="expenses">Expenses</TabsTrigger>
           <TabsTrigger value="bulk-processing">Bulk Processing</TabsTrigger>
           <TabsTrigger value="virtual-cfo">Virtual CFO</TabsTrigger>
         </TabsList>
@@ -278,6 +279,41 @@ const CA = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="expenses" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Expense Management</CardTitle>
+              <CardDescription>Record and track business expenses with automatic ledger posting</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span>Link to vendor database</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span>Categorize by expense type</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span>Auto-post to ledger accounts</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span>Attach bills and receipts</span>
+              </div>
+              
+              <Button 
+                onClick={() => window.location.href = '/expenses'} 
+                className="w-full"
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Open Expense Management
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="bulk-processing">

@@ -43,8 +43,11 @@ import Branding from "./pages/Branding";
 import ComplianceCalendar from "./pages/ComplianceCalendar";
 import Loans from "./pages/Loans";
 import Payments from "./pages/Payments";
+import Vendors from "./pages/Vendors";
 import PayLink from "./pages/PayLink";
 import GST3Filing from "./pages/reports/GST3Filing";
+import Expenses from "./pages/Expenses";
+import TDS from "./pages/TDS";
 
 // License pages
 import StarterPage from "./pages/StarterPage";
@@ -163,6 +166,7 @@ function App() {
                         <Route path="/quotations/create" element={<Quotations />} />
                         <Route path="/branding" element={<Branding />} />
                         <Route path="/payments" element={<Payments />} />
+                        <Route path="/vendors" element={<Vendors />} />
                         
                         {/* Plan Test Route - For development/testing */}
                         <Route path="/plan-test" element={<PlanTestPage />} />
@@ -173,6 +177,8 @@ function App() {
                         <Route path="/accounting/trial-balance" element={<TrialBalance />} />
                         <Route path="/accounting/profit-loss" element={<ProfitLoss />} />
                         <Route path="/accounting/manual-journals" element={<ManualJournals />} />
+                        <Route path="/expenses" element={<Expenses />} />
+                        <Route path="/reports/tds" element={<TDS />} />
                       </Route>
 
                       {/* Public payment landing (customers) */}

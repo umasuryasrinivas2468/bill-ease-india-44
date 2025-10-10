@@ -79,11 +79,14 @@ const reportsMenuItems = [
   { title: "AI Business Tax Advisor", url: "/reports/ai-tax-advisor", icon: Brain, feature: "virtualCFO" as const },
   { title: "Receivables", url: "/reports/receivables", icon: CreditCard },
   { title: "Payables", url: "/reports/payables", icon: Receipt },
+  { title: "Vendor TDS", url: "/reports/tds", icon: Percent },
 ];
 
 const caToolsMenuItems = [
   { title: "CA Dashboard", url: "/ca", icon: Calculator },
-  { title: "TDS Management", url: "/tds", icon: Percent },
+  { title: "Expenses", url: "/expenses", icon: Receipt },
+  { title: "Vendors", url: "/vendors", icon: Users },
+  { title: "TDS Management", url: "/reports/tds", icon: Percent },
   { title: "Manual Journals", url: "/accounting/manual-journals", icon: BookOpen },
   { title: "Ledgers", url: "/accounting/ledgers", icon: BookOpenText },
   { title: "Trial Balance", url: "/accounting/trial-balance", icon: Scale },
