@@ -50,45 +50,6 @@ export type Database = {
         }
         Relationships: []
       }
-      apps: {
-        Row: {
-          category: string
-          created_at: string | null
-          description: string | null
-          developer: string | null
-          icon_url: string | null
-          id: string
-          is_active: boolean | null
-          name: string
-          updated_at: string | null
-          version: string | null
-        }
-        Insert: {
-          category?: string
-          created_at?: string | null
-          description?: string | null
-          developer?: string | null
-          icon_url?: string | null
-          id?: string
-          is_active?: boolean | null
-          name: string
-          updated_at?: string | null
-          version?: string | null
-        }
-        Update: {
-          category?: string
-          created_at?: string | null
-          description?: string | null
-          developer?: string | null
-          icon_url?: string | null
-          id?: string
-          is_active?: boolean | null
-          name?: string
-          updated_at?: string | null
-          version?: string | null
-        }
-        Relationships: []
-      }
       bank_details: {
         Row: {
           account_holder_name: string | null
@@ -524,39 +485,6 @@ export type Database = {
         }
         Relationships: []
       }
-      license: {
-        Row: {
-          id: string
-          email: string
-          license_key: string
-          plan_type: string
-          date_created: string
-          due_date: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          email: string
-          license_key: string
-          plan_type: string
-          date_created?: string
-          due_date: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          email?: string
-          license_key?: string
-          plan_type?: string
-          date_created?: string
-          due_date?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       journal_lines: {
         Row: {
           account_id: string | null
@@ -641,83 +569,106 @@ export type Database = {
         }
         Relationships: []
       }
-      payment_reminders: {
+      license: {
         Row: {
           created_at: string | null
-          email_sent_to: string
+          date_created: string | null
+          due_date: string
+          email: string
           id: string
-          invoice_id: string
-          reminder_type: string
-          response_token: string | null
-          scheduled_date: string
-          sent_at: string | null
-          status: string | null
+          license_key: string
+          plan_type: string
           updated_at: string | null
-          user_id: string
         }
         Insert: {
           created_at?: string | null
-          email_sent_to: string
+          date_created?: string | null
+          due_date: string
+          email: string
           id?: string
-          invoice_id: string
-          reminder_type: string
-          response_token?: string | null
-          scheduled_date: string
-          sent_at?: string | null
-          status?: string | null
+          license_key: string
+          plan_type: string
           updated_at?: string | null
-          user_id: string
         }
         Update: {
           created_at?: string | null
-          email_sent_to?: string
+          date_created?: string | null
+          due_date?: string
+          email?: string
           id?: string
-          invoice_id?: string
-          reminder_type?: string
-          response_token?: string | null
-          scheduled_date?: string
-          sent_at?: string | null
-          status?: string | null
+          license_key?: string
+          plan_type?: string
           updated_at?: string | null
-          user_id?: string
         }
         Relationships: []
       }
-      processed_documents: {
+      payables: {
         Row: {
+          amount_due: number
+          amount_paid: number | null
+          amount_remaining: number
+          bill_number: string | null
           created_at: string | null
-          file_name: string
+          due_date: string
           id: string
-          original_file_url: string | null
-          processed_file_url: string | null
-          records_count: number | null
+          notes: string | null
+          payment_date: string | null
+          related_purchase_order_id: string | null
+          related_purchase_order_number: string | null
           status: string | null
           updated_at: string | null
           user_id: string
+          vendor_email: string | null
+          vendor_name: string
+          vendor_phone: string | null
         }
         Insert: {
+          amount_due: number
+          amount_paid?: number | null
+          amount_remaining: number
+          bill_number?: string | null
           created_at?: string | null
-          file_name: string
+          due_date: string
           id?: string
-          original_file_url?: string | null
-          processed_file_url?: string | null
-          records_count?: number | null
+          notes?: string | null
+          payment_date?: string | null
+          related_purchase_order_id?: string | null
+          related_purchase_order_number?: string | null
           status?: string | null
           updated_at?: string | null
           user_id: string
+          vendor_email?: string | null
+          vendor_name: string
+          vendor_phone?: string | null
         }
         Update: {
+          amount_due?: number
+          amount_paid?: number | null
+          amount_remaining?: number
+          bill_number?: string | null
           created_at?: string | null
-          file_name?: string
+          due_date?: string
           id?: string
-          original_file_url?: string | null
-          processed_file_url?: string | null
-          records_count?: number | null
+          notes?: string | null
+          payment_date?: string | null
+          related_purchase_order_id?: string | null
+          related_purchase_order_number?: string | null
           status?: string | null
           updated_at?: string | null
           user_id?: string
+          vendor_email?: string | null
+          vendor_name?: string
+          vendor_phone?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "payables_related_purchase_order_id_fkey"
+            columns: ["related_purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       purchase_bills: {
         Row: {
@@ -793,6 +744,86 @@ export type Database = {
           },
         ]
       }
+      purchase_orders: {
+        Row: {
+          created_at: string | null
+          discount: number | null
+          due_date: string
+          id: string
+          items: Json
+          notes: string | null
+          order_date: string
+          order_number: string
+          payment_status: string | null
+          status: string | null
+          subtotal: number
+          tax_amount: number
+          total_amount: number
+          updated_at: string | null
+          user_id: string
+          vendor_address: string | null
+          vendor_email: string | null
+          vendor_gst: string | null
+          vendor_id: string | null
+          vendor_name: string
+          vendor_phone: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          discount?: number | null
+          due_date: string
+          id?: string
+          items?: Json
+          notes?: string | null
+          order_date: string
+          order_number: string
+          payment_status?: string | null
+          status?: string | null
+          subtotal?: number
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string | null
+          user_id: string
+          vendor_address?: string | null
+          vendor_email?: string | null
+          vendor_gst?: string | null
+          vendor_id?: string | null
+          vendor_name: string
+          vendor_phone?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          discount?: number | null
+          due_date?: string
+          id?: string
+          items?: Json
+          notes?: string | null
+          order_date?: string
+          order_number?: string
+          payment_status?: string | null
+          status?: string | null
+          subtotal?: number
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string | null
+          user_id?: string
+          vendor_address?: string | null
+          vendor_email?: string | null
+          vendor_gst?: string | null
+          vendor_id?: string | null
+          vendor_name?: string
+          vendor_phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotations: {
         Row: {
           client_address: string | null
@@ -859,6 +890,74 @@ export type Database = {
         }
         Relationships: []
       }
+      receivables: {
+        Row: {
+          amount_due: number
+          amount_paid: number | null
+          amount_remaining: number
+          created_at: string | null
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string | null
+          due_date: string
+          id: string
+          invoice_number: string | null
+          notes: string | null
+          payment_date: string | null
+          related_sales_order_id: string | null
+          related_sales_order_number: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_due: number
+          amount_paid?: number | null
+          amount_remaining: number
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name: string
+          customer_phone?: string | null
+          due_date: string
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          payment_date?: string | null
+          related_sales_order_id?: string | null
+          related_sales_order_number?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_due?: number
+          amount_paid?: number | null
+          amount_remaining?: number
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          due_date?: string
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          payment_date?: string | null
+          related_sales_order_id?: string | null
+          related_sales_order_number?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receivables_related_sales_order_id_fkey"
+            columns: ["related_sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reminder_responses: {
         Row: {
           id: string
@@ -884,15 +983,7 @@ export type Database = {
           response_type?: string
           user_agent?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "reminder_responses_reminder_id_fkey"
-            columns: ["reminder_id"]
-            isOneToOne: false
-            referencedRelation: "payment_reminders"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       reports: {
         Row: {
@@ -941,6 +1032,253 @@ export type Database = {
           year?: number
         }
         Relationships: []
+      }
+      sales_orders: {
+        Row: {
+          client_address: string | null
+          client_email: string | null
+          client_gst: string | null
+          client_name: string
+          client_phone: string | null
+          created_at: string | null
+          discount: number | null
+          due_date: string
+          id: string
+          items: Json
+          notes: string | null
+          order_date: string
+          order_number: string
+          payment_status: string | null
+          status: string | null
+          subtotal: number
+          tax_amount: number
+          total_amount: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          client_address?: string | null
+          client_email?: string | null
+          client_gst?: string | null
+          client_name: string
+          client_phone?: string | null
+          created_at?: string | null
+          discount?: number | null
+          due_date: string
+          id?: string
+          items?: Json
+          notes?: string | null
+          order_date: string
+          order_number: string
+          payment_status?: string | null
+          status?: string | null
+          subtotal?: number
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          client_address?: string | null
+          client_email?: string | null
+          client_gst?: string | null
+          client_name?: string
+          client_phone?: string | null
+          created_at?: string | null
+          discount?: number | null
+          due_date?: string
+          id?: string
+          items?: Json
+          notes?: string | null
+          order_date?: string
+          order_number?: string
+          payment_status?: string | null
+          status?: string | null
+          subtotal?: number
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tds_deposits: {
+        Row: {
+          amount: number
+          created_at: string | null
+          deposit_date: string
+          id: string
+          reference: string | null
+          tds_transaction_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          deposit_date: string
+          id?: string
+          reference?: string | null
+          tds_transaction_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          deposit_date?: string
+          id?: string
+          reference?: string | null
+          tds_transaction_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tds_deposits_tds_transaction_id_fkey"
+            columns: ["tds_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "tds_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tds_master: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          payee_type: string
+          rate: number
+          section_code: string
+          threshold_amount: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          payee_type: string
+          rate: number
+          section_code: string
+          threshold_amount?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          payee_type?: string
+          rate?: number
+          section_code?: string
+          threshold_amount?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tds_rules: {
+        Row: {
+          category: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          rate_percentage: number
+          threshold_amount: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          rate_percentage: number
+          threshold_amount?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          rate_percentage?: number
+          threshold_amount?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tds_transactions: {
+        Row: {
+          certificate_number: string | null
+          client_id: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          invoice_id: string | null
+          net_payable: number
+          tds_amount: number
+          tds_rate: number
+          tds_rule_id: string | null
+          transaction_amount: number
+          transaction_date: string
+          updated_at: string | null
+          user_id: string
+          vendor_name: string
+          vendor_pan: string | null
+        }
+        Insert: {
+          certificate_number?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          invoice_id?: string | null
+          net_payable: number
+          tds_amount: number
+          tds_rate: number
+          tds_rule_id?: string | null
+          transaction_amount: number
+          transaction_date: string
+          updated_at?: string | null
+          user_id: string
+          vendor_name: string
+          vendor_pan?: string | null
+        }
+        Update: {
+          certificate_number?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          invoice_id?: string | null
+          net_payable?: number
+          tds_amount?: number
+          tds_rate?: number
+          tds_rule_id?: string | null
+          transaction_amount?: number
+          transaction_date?: string
+          updated_at?: string | null
+          user_id?: string
+          vendor_name?: string
+          vendor_pan?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tds_transactions_tds_rule_id_fkey"
+            columns: ["tds_rule_id"]
+            isOneToOne: false
+            referencedRelation: "tds_rules"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       time_tracking: {
         Row: {
@@ -1012,44 +1350,69 @@ export type Database = {
           is_active?: boolean | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_apps_app_id_fkey"
-            columns: ["app_id"]
-            isOneToOne: false
-            referencedRelation: "apps"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      user_branding: {
+        Row: {
+          created_at: string | null
+          id: string
+          logo_url: string | null
+          signature_url: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          signature_url?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          signature_url?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       users: {
         Row: {
-          clerk_id: string
+          clerk_id: string | null
           created_at: string | null
           email: string
           full_name: string | null
           id: string
           is_pro: boolean | null
+          licenseKey: string | null
+          onboarding_completed: boolean | null
           phone_number: string | null
           updated_at: string | null
         }
         Insert: {
-          clerk_id: string
+          clerk_id?: string | null
           created_at?: string | null
           email: string
           full_name?: string | null
           id?: string
           is_pro?: boolean | null
+          licenseKey?: string | null
+          onboarding_completed?: boolean | null
           phone_number?: string | null
           updated_at?: string | null
         }
         Update: {
-          clerk_id?: string
+          clerk_id?: string | null
           created_at?: string | null
           email?: string
           full_name?: string | null
           id?: string
           is_pro?: boolean | null
+          licenseKey?: string | null
+          onboarding_completed?: boolean | null
           phone_number?: string | null
           updated_at?: string | null
         }
@@ -1062,9 +1425,12 @@ export type Database = {
           email: string | null
           gst_number: string | null
           id: string
+          linked_tds_section_id: string | null
           name: string
+          pan: string | null
           payment_terms: number | null
           phone: string | null
+          tds_enabled: boolean | null
           updated_at: string | null
           user_id: string
         }
@@ -1074,9 +1440,12 @@ export type Database = {
           email?: string | null
           gst_number?: string | null
           id?: string
+          linked_tds_section_id?: string | null
           name: string
+          pan?: string | null
           payment_terms?: number | null
           phone?: string | null
+          tds_enabled?: boolean | null
           updated_at?: string | null
           user_id: string
         }
@@ -1086,9 +1455,12 @@ export type Database = {
           email?: string | null
           gst_number?: string | null
           id?: string
+          linked_tds_section_id?: string | null
           name?: string
+          pan?: string | null
           payment_terms?: number | null
           phone?: string | null
+          tds_enabled?: boolean | null
           updated_at?: string | null
           user_id?: string
         }
@@ -1099,7 +1471,46 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      approve_journal_from_bank_statement: {
+        Args: {
+          p_approval_id: string
+          p_approved_by: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      auto_match_bank_statements: {
+        Args: { p_user_id: string }
+        Returns: {
+          matched_count: number
+          partially_matched_count: number
+        }[]
+      }
+      can_user_generate_license: {
+        Args: { user_email: string }
+        Returns: boolean
+      }
+      create_journal_from_bank_statement: {
+        Args: {
+          p_account_id: string
+          p_amount: number
+          p_bank_statement_id: string
+          p_contra_account_id?: string
+          p_is_debit: boolean
+          p_journal_date: string
+          p_narration: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      create_sample_data_for_testing: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      setup_basic_accounts_for_user: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
