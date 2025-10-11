@@ -197,12 +197,11 @@ export default function Vendors() {
 
             <div>
               <Label>TDS Rule</Label>
-              <Select onValueChange={(value) => setForm({ ...form, linked_tds_section_id: value || null })}>
+              <Select value={form.linked_tds_section_id || undefined} onValueChange={(value) => setForm({ ...form, linked_tds_section_id: value })}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a TDS section" />
+                  <SelectValue placeholder="Select a TDS section (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
                   {tdsRules.map((r) => (
                     <SelectItem key={r.id} value={r.id}>{`${r.section_code} — ${r.description || r.category || ''}`}</SelectItem>
                   ))}
