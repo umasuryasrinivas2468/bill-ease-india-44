@@ -50,6 +50,45 @@ export type Database = {
         }
         Relationships: []
       }
+      apps: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          developer: string
+          icon_url: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+          version: string
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          developer: string
+          icon_url?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+          version?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          developer?: string
+          icon_url?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+          version?: string
+        }
+        Relationships: []
+      }
       bank_details: {
         Row: {
           account_holder_name: string | null
@@ -1350,7 +1389,15 @@ export type Database = {
           is_active?: boolean | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_apps_app_id_fkey"
+            columns: ["app_id"]
+            isOneToOne: false
+            referencedRelation: "apps"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_branding: {
         Row: {
