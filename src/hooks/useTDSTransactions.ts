@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useUser } from '@clerk/clerk-react';
 import { supabase } from '@/lib/supabase';
-import { useSupabaseUser } from './useSupabaseUser';
 import { toast } from '@/hooks/use-toast';
+import { normalizeUserId, isValidUserId } from '@/lib/userUtils';
 export interface TDSTransaction {
   id: string;
   user_id: string;
@@ -46,13 +47,16 @@ export const useTDSTransactions = (filters?: {
   endDate?: string;
   period?: 'monthly' | 'quarterly' | 'yearly';
 }) => {
-  const { supabaseUser } = useSupabaseUser();
+  const { user } = useUser();
 
   return useQuery({
-    queryKey: ['tds-transactions', filters],
+    queryKey: ['tds-transactions', user?.id, filters],
     queryFn: async () => {
-      if (!supabaseUser?.id) throw new Error('User not authenticated');
+      if (!user || !isValidUserId(user.id)) {
+        throw new Error('User not authenticated or invalid user ID');
+      }
       
+      const normalizedUserId = normalizeUserId(user.id);
       let query = supabase
         .from('tds_transactions')
         .select(`
@@ -60,7 +64,7 @@ export const useTDSTransactions = (filters?: {
           clients(name, gst_number),
           tds_rules(category)
         `)
-        .eq('user_id', supabaseUser.id);
+        .eq('user_id', normalizedUserId);
 
       if (filters?.startDate) {
         query = query.gte('transaction_date', filters.startDate);
@@ -96,18 +100,21 @@ export const useTDSTransactions = (filters?: {
       if (error) throw error;
       return data as TDSTransaction[];
     },
-    enabled: !!supabaseUser?.id,
+    enabled: !!user && isValidUserId(user?.id),
   });
 };
 
 export const useCreateTDSTransaction = () => {
-  const { supabaseUser } = useSupabaseUser();
+  const { user } = useUser();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (transactionData: CreateTDSTransactionData) => {
-      if (!supabaseUser?.id) throw new Error('User not authenticated');
+      if (!user || !isValidUserId(user.id)) {
+        throw new Error('User not authenticated');
+      }
 
+      const normalizedUserId = normalizeUserId(user.id);
       // Calculate TDS amount and net payable
       const tdsAmount = Math.round(transactionData.transaction_amount * transactionData.tds_rate / 100 * 100) / 100;
       const netPayable = Math.round((transactionData.transaction_amount - tdsAmount) * 100) / 100;
@@ -116,7 +123,7 @@ export const useCreateTDSTransaction = () => {
         .from('tds_transactions')
         .insert([{
           ...transactionData,
-          user_id: supabaseUser.id,
+          user_id: normalizedUserId,
           tds_amount: tdsAmount,
           net_payable: netPayable,
         }])
@@ -149,17 +156,20 @@ export const useTDSSummary = (filters?: {
   endDate?: string;
   period?: 'monthly' | 'quarterly' | 'yearly';
 }) => {
-  const { supabaseUser } = useSupabaseUser();
+  const { user } = useUser();
 
   return useQuery({
-    queryKey: ['tds-summary', filters],
+    queryKey: ['tds-summary', user?.id, filters],
     queryFn: async () => {
-      if (!supabaseUser?.id) throw new Error('User not authenticated');
+      if (!user || !isValidUserId(user.id)) {
+        throw new Error('User not authenticated or invalid user ID');
+      }
       
+      const normalizedUserId = normalizeUserId(user.id);
       let query = supabase
         .from('tds_transactions')
         .select('transaction_amount, tds_amount, tds_rate, transaction_date, tds_rules(category)')
-        .eq('user_id', supabaseUser.id);
+        .eq('user_id', normalizedUserId);
 
       if (filters?.startDate) {
         query = query.gte('transaction_date', filters.startDate);
@@ -224,6 +234,6 @@ export const useTDSSummary = (filters?: {
         categoryBreakdown: Object.values(categoryBreakdown),
       };
     },
-    enabled: !!supabaseUser?.id,
+    enabled: !!user && isValidUserId(user?.id),
   });
 };

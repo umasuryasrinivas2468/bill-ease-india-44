@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useUser } from '@clerk/clerk-react';
 import { supabase } from '@/lib/supabase';
-import { useSupabaseUser } from './useSupabaseUser';
 import { toast } from '@/hooks/use-toast';
+import { normalizeUserId, isValidUserId } from '@/lib/userUtils';
 
 export interface TDSMaster {
   id: string;
@@ -17,35 +18,43 @@ export interface TDSMaster {
 }
 
 export const useTDSMasters = () => {
-  const { supabaseUser } = useSupabaseUser();
+  const { user } = useUser();
 
   return useQuery({
-    queryKey: ['tds-masters', supabaseUser?.id],
+    queryKey: ['tds-masters', user?.id],
     queryFn: async () => {
-      if (!supabaseUser?.id) throw new Error('User not authenticated');
+      if (!user || !isValidUserId(user.id)) {
+        throw new Error('User not authenticated or invalid user ID');
+      }
+      
+      const normalizedUserId = normalizeUserId(user.id);
       const { data, error } = await supabase
         .from('tds_master')
         .select('*')
-        .eq('user_id', supabaseUser.id)
-        .or('user_id.eq.system,user_id.eq.' + supabaseUser.id)
+        .eq('user_id', normalizedUserId)
+        .or('user_id.eq.system,user_id.eq.' + normalizedUserId)
         .order('section_code');
       if (error) throw error;
       return data as TDSMaster[];
     },
-    enabled: !!supabaseUser?.id,
+    enabled: !!user && isValidUserId(user?.id),
   });
 };
 
 export const useCreateTDSMaster = () => {
-  const { supabaseUser } = useSupabaseUser();
+  const { user } = useUser();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (payload: Partial<TDSMaster>) => {
-      if (!supabaseUser?.id) throw new Error('User not authenticated');
+      if (!user || !isValidUserId(user.id)) {
+        throw new Error('User not authenticated');
+      }
+      
+      const normalizedUserId = normalizeUserId(user.id);
       const { data, error } = await supabase
         .from('tds_master')
-        .insert({ ...payload, user_id: supabaseUser.id })
+        .insert({ ...payload, user_id: normalizedUserId })
         .select()
         .single();
       if (error) throw error;
@@ -60,11 +69,13 @@ export const useCreateTDSMaster = () => {
 
 export const useUpdateTDSMaster = () => {
   const queryClient = useQueryClient();
-  const { supabaseUser } = useSupabaseUser();
+  const { user } = useUser();
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<TDSMaster> }) => {
-      if (!supabaseUser?.id) throw new Error('User not authenticated');
+      if (!user || !isValidUserId(user.id)) {
+        throw new Error('User not authenticated');
+      }
       const { data: updated, error } = await supabase
         .from('tds_master')
         .update(data)
@@ -82,33 +93,41 @@ export const useUpdateTDSMaster = () => {
 };
 
 export const useTDSDeposits = (filters?: { startDate?: string; endDate?: string }) => {
-  const { supabaseUser } = useSupabaseUser();
+  const { user } = useUser();
 
   return useQuery({
-    queryKey: ['tds-deposits', filters],
+    queryKey: ['tds-deposits', user?.id, filters],
     queryFn: async () => {
-      if (!supabaseUser?.id) throw new Error('User not authenticated');
-      let query = supabase.from('tds_deposits').select('*').eq('user_id', supabaseUser.id);
+      if (!user || !isValidUserId(user.id)) {
+        throw new Error('User not authenticated or invalid user ID');
+      }
+      
+      const normalizedUserId = normalizeUserId(user.id);
+      let query = supabase.from('tds_deposits').select('*').eq('user_id', normalizedUserId);
       if (filters?.startDate) query = query.gte('deposit_date', filters.startDate);
       if (filters?.endDate) query = query.lte('deposit_date', filters.endDate);
       const { data, error } = await query.order('deposit_date', { ascending: false });
       if (error) throw error;
       return data;
     },
-    enabled: !!supabaseUser?.id,
+    enabled: !!user && isValidUserId(user?.id),
   });
 };
 
 export const useCreateTDSDeposit = () => {
-  const { supabaseUser } = useSupabaseUser();
+  const { user } = useUser();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (payload: { tds_transaction_id: string; deposit_date: string; amount: number; reference?: string }) => {
-      if (!supabaseUser?.id) throw new Error('User not authenticated');
+      if (!user || !isValidUserId(user.id)) {
+        throw new Error('User not authenticated');
+      }
+      
+      const normalizedUserId = normalizeUserId(user.id);
       const { data, error } = await supabase
         .from('tds_deposits')
-        .insert({ ...payload, user_id: supabaseUser.id })
+        .insert({ ...payload, user_id: normalizedUserId })
         .select()
         .single();
       if (error) throw error;

@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useUser } from '@clerk/clerk-react';
 import { supabase } from '@/lib/supabase';
-import { useSupabaseUser } from './useSupabaseUser';
 import { toast } from '@/hooks/use-toast';
+import { normalizeUserId, isValidUserId } from '@/lib/userUtils';
 import type { TDSRule, CreateTDSRuleData } from '@/types/tds';
 
 export interface UpdateTDSRuleData extends Partial<CreateTDSRuleData> {
@@ -9,41 +10,46 @@ export interface UpdateTDSRuleData extends Partial<CreateTDSRuleData> {
 }
 
 export const useTDSRules = () => {
-  const { supabaseUser } = useSupabaseUser();
-  const queryClient = useQueryClient();
+  const { user } = useUser();
 
   return useQuery({
-    queryKey: ['tds-rules'],
+    queryKey: ['tds-rules', user?.id],
     queryFn: async () => {
-      if (!supabaseUser?.id) throw new Error('User not authenticated');
+      if (!user || !isValidUserId(user.id)) {
+        throw new Error('User not authenticated or invalid user ID');
+      }
       
+      const normalizedUserId = normalizeUserId(user.id);
       const { data, error } = await supabase
         .from('tds_rules')
         .select('*')
-        .eq('user_id', supabaseUser.id)
+        .eq('user_id', normalizedUserId)
         .eq('is_active', true)
         .order('category');
 
       if (error) throw error;
       return data as TDSRule[];
     },
-    enabled: !!supabaseUser?.id,
+    enabled: !!user && isValidUserId(user?.id),
   });
 };
 
 export const useCreateTDSRule = () => {
-  const { supabaseUser } = useSupabaseUser();
+  const { user } = useUser();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (ruleData: CreateTDSRuleData) => {
-      if (!supabaseUser?.id) throw new Error('User not authenticated');
+      if (!user || !isValidUserId(user.id)) {
+        throw new Error('User not authenticated');
+      }
 
+      const normalizedUserId = normalizeUserId(user.id);
       const { data, error } = await supabase
         .from('tds_rules')
         .insert([{
           ...ruleData,
-          user_id: supabaseUser.id,
+          user_id: normalizedUserId,
         }])
         .select()
         .single();
