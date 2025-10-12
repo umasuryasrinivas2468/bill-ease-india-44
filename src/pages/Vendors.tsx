@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
+import { useTDSMasters } from '@/hooks/useTDSMaster';
 
 interface VendorRecord {
   id: string;
@@ -29,13 +30,12 @@ export default function Vendors() {
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [editing, setEditing] = useState<VendorRecord | null>(null);
-  const [tdsRules, setTdsRules] = useState<any[]>([]);
+  const { data: tdsRules = [] } = useTDSMasters();
 
   const [form, setForm] = useState<Partial<VendorRecord>>({ name: '', email: '', phone: '', address: '', pan: '', linked_tds_section_id: null, tds_enabled: false });
 
   useEffect(() => {
     if (user) fetchVendors();
-    fetchTdsRules();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -55,15 +55,6 @@ export default function Vendors() {
       toast({ title: 'Error', description: 'Unable to load vendors', variant: 'destructive' });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchTdsRules = async () => {
-    try {
-  const res: any = await (supabase as any).from('tds_master').select('*').eq('user_id', user?.id).order('section_code');
-      setTdsRules(res?.data || []);
-    } catch (err) {
-      console.error('fetch tds rules error', err);
     }
   };
 
@@ -195,24 +186,26 @@ export default function Vendors() {
               <Input value={form.pan || ''} onChange={(e) => setForm({ ...form, pan: e.target.value })} />
             </div>
 
-            <div>
-              <Label>TDS Rule</Label>
-              <Select value={form.linked_tds_section_id || undefined} onValueChange={(value) => setForm({ ...form, linked_tds_section_id: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a TDS section (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {tdsRules.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>{`${r.section_code} — ${r.description || r.category || ''}`}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
             <div className="flex items-center gap-2 md:col-span-2">
               <Checkbox checked={!!form.tds_enabled} onCheckedChange={(v) => setForm({ ...form, tds_enabled: !!v })} />
               <Label>Enable TDS for this vendor</Label>
             </div>
+
+            {form.tds_enabled && (
+              <div className="md:col-span-2">
+                <Label>TDS Rule</Label>
+                <Select value={form.linked_tds_section_id || undefined} onValueChange={(value) => setForm({ ...form, linked_tds_section_id: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a TDS section" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tdsRules.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>{`${r.section_code} - ${r.description || ''} (${r.rate}%)`}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 mt-4">

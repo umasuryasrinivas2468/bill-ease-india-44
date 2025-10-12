@@ -13,8 +13,12 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useCreateExpense, useUpdateExpense, useExpenseCategories, useVendors } from '@/hooks/useExpenses';
+import { useCreateExpense, useUpdateExpense, useExpenseCategories } from '@/hooks/useExpenses';
 import { CreateExpenseData, Expense } from '@/types/expenses';
+import { useVendors } from '@/hooks/useVendors';
+import { useTDSMasters } from '@/hooks/useTDSMaster';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
 
 const expenseSchema = z.object({
   vendor_name: z.string().min(1, 'Vendor name is required'),
@@ -45,10 +49,12 @@ interface ExpenseFormProps {
 const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess }) => {
   const [expenseDate, setExpenseDate] = useState<Date>();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [selectedVendorTDS, setSelectedVendorTDS] = useState<any>(null);
   const isEditing = !!expense;
   
   const { data: categories = [] } = useExpenseCategories();
   const { data: vendors = [] } = useVendors();
+  const { data: tdsRules = [] } = useTDSMasters();
   const createExpense = useCreateExpense();
   const updateExpense = useUpdateExpense();
 
@@ -146,6 +152,14 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess }) => {
     const vendor = vendors.find(v => v.id === vendorId);
     if (vendor) {
       setValue('vendor_name', vendor.name);
+      
+      // Auto-populate TDS if vendor has TDS enabled
+      if (vendor.tds_enabled && vendor.linked_tds_section_id) {
+        const tdsRule = tdsRules.find(r => r.id === vendor.linked_tds_section_id);
+        setSelectedVendorTDS(tdsRule || null);
+      } else {
+        setSelectedVendorTDS(null);
+      }
     }
   };
 
@@ -201,7 +215,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess }) => {
         </div>
 
         {/* Vendor Selection */}
-        <div className="space-y-2">
+        <div className="space-y-2 md:col-span-2">
           <Label htmlFor="vendor">Vendor *</Label>
           <Select value={selectedVendorId} onValueChange={handleVendorChange}>
             <SelectTrigger>
@@ -210,7 +224,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess }) => {
             <SelectContent>
               {vendors.map((vendor) => (
                 <SelectItem key={vendor.id} value={vendor.id}>
-                  {vendor.name}
+                  {vendor.name} {vendor.tds_enabled && '(TDS Applicable)'}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -224,6 +238,26 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess }) => {
             <p className="text-sm text-red-500">{errors.vendor_name.message}</p>
           )}
         </div>
+
+        {/* TDS Information Alert */}
+        {selectedVendorTDS && (
+          <div className="md:col-span-2">
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <strong>TDS Applicable:</strong> {selectedVendorTDS.section_code} - {selectedVendorTDS.description || ''} 
+                <br />
+                <strong>Rate:</strong> {selectedVendorTDS.rate}% 
+                <br />
+                <strong>Threshold:</strong> ₹{selectedVendorTDS.threshold_amount?.toLocaleString() || 0}
+                <br />
+                <span className="text-xs text-muted-foreground mt-1 block">
+                  TDS will be calculated and recorded when this expense is posted to ledger.
+                </span>
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
 
         {/* Category Selection */}
         <div className="space-y-2">
