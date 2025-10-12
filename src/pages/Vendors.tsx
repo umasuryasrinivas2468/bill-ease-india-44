@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
-import { useTDSMasters } from '@/hooks/useTDSMaster';
+import { useTDSRules } from '@/hooks/useTDSRules';
 
 interface VendorRecord {
   id: string;
@@ -30,7 +30,7 @@ export default function Vendors() {
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [editing, setEditing] = useState<VendorRecord | null>(null);
-  const { data: tdsRules = [] } = useTDSMasters();
+  const { data: tdsRules = [] } = useTDSRules();
 
   const [form, setForm] = useState<Partial<VendorRecord>>({ name: '', email: '', phone: '', address: '', pan: '', linked_tds_section_id: null, tds_enabled: false });
 
@@ -196,11 +196,11 @@ export default function Vendors() {
                 <Label>TDS Rule</Label>
                 <Select value={form.linked_tds_section_id || undefined} onValueChange={(value) => setForm({ ...form, linked_tds_section_id: value })}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a TDS section" />
+                    <SelectValue placeholder="Select a TDS rule" />
                   </SelectTrigger>
                   <SelectContent>
                     {tdsRules.map((r) => (
-                      <SelectItem key={r.id} value={r.id}>{`${r.section_code} - ${r.description || ''} (${r.rate}%)`}</SelectItem>
+                      <SelectItem key={r.id} value={r.id}>{`${r.category} - ${r.description || ''} (${r.rate_percentage}%)`}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
