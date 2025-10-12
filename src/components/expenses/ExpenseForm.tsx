@@ -16,9 +16,9 @@ import { cn } from '@/lib/utils';
 import { useCreateExpense, useUpdateExpense, useExpenseCategories } from '@/hooks/useExpenses';
 import { CreateExpenseData, Expense } from '@/types/expenses';
 import { useVendors } from '@/hooks/useVendors';
-import { useTDSMasters } from '@/hooks/useTDSMaster';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Info } from 'lucide-react';
+import { useTDSRules } from '@/hooks/useTDSRules';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Info, AlertCircle } from 'lucide-react';
 
 const expenseSchema = z.object({
   vendor_name: z.string().min(1, 'Vendor name is required'),
@@ -33,6 +33,8 @@ const expenseSchema = z.object({
   tax_amount: z.string().refine((val) => val === '' || (!isNaN(Number(val)) && Number(val) >= 0), {
     message: 'Tax amount must be a non-negative number',
   }).optional(),
+  tds_amount: z.string().optional(),
+  tds_rule_id: z.string().optional(),
   payment_mode: z.enum(['cash', 'bank', 'credit_card', 'debit_card', 'upi', 'cheque']),
   reference_number: z.string().optional(),
   bill_number: z.string().optional(),
@@ -54,7 +56,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess }) => {
   
   const { data: categories = [] } = useExpenseCategories();
   const { data: vendors = [] } = useVendors();
-  const { data: tdsRules = [] } = useTDSMasters();
+  const { data: tdsRules = [] } = useTDSRules();
   const createExpense = useCreateExpense();
   const updateExpense = useUpdateExpense();
 
@@ -76,6 +78,22 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess }) => {
 
   const selectedVendorId = watch('vendor_id');
   const selectedCategoryId = watch('category_id');
+  const amount = watch('amount');
+
+  // Auto-calculate TDS when amount changes
+  useEffect(() => {
+    if (selectedVendorTDS && amount) {
+      const amountNum = Number(amount);
+      if (amountNum > 0) {
+        const tdsAmount = (amountNum * selectedVendorTDS.rate_percentage) / 100;
+        setValue('tds_amount', tdsAmount.toFixed(2));
+        setValue('tds_rule_id', selectedVendorTDS.id);
+      }
+    } else {
+      setValue('tds_amount', '0');
+      setValue('tds_rule_id', undefined);
+    }
+  }, [amount, selectedVendorTDS, setValue]);
 
   // Set form values when editing
   useEffect(() => {
@@ -88,6 +106,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess }) => {
       setValue('description', expense.description);
       setValue('amount', expense.amount.toString());
       setValue('tax_amount', expense.tax_amount.toString());
+      setValue('tds_amount', expense.tds_amount?.toString() || '0');
+      setValue('tds_rule_id', expense.tds_rule_id || '');
       setValue('payment_mode', expense.payment_mode);
       setValue('reference_number', expense.reference_number || '');
       setValue('bill_number', expense.bill_number || '');
@@ -109,6 +129,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess }) => {
           description: data.description,
           amount: Number(data.amount),
           tax_amount: Number(data.tax_amount) || 0,
+          tds_amount: Number(data.tds_amount) || 0,
+          tds_rule_id: data.tds_rule_id || undefined,
           total_amount: Number(data.amount) + (Number(data.tax_amount) || 0),
           payment_mode: data.payment_mode,
           reference_number: data.reference_number || undefined,
@@ -128,6 +150,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess }) => {
           description: data.description,
           amount: Number(data.amount),
           tax_amount: Number(data.tax_amount) || 0,
+          tds_amount: Number(data.tds_amount) || 0,
+          tds_rule_id: data.tds_rule_id || undefined,
           payment_mode: data.payment_mode,
           reference_number: data.reference_number || undefined,
           bill_number: data.bill_number || undefined,
@@ -243,17 +267,19 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess }) => {
         {selectedVendorTDS && (
           <div className="md:col-span-2">
             <Alert>
-              <Info className="h-4 w-4" />
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>TDS Applicable</AlertTitle>
               <AlertDescription>
-                <strong>TDS Applicable:</strong> {selectedVendorTDS.section_code} - {selectedVendorTDS.description || ''} 
-                <br />
-                <strong>Rate:</strong> {selectedVendorTDS.rate}% 
-                <br />
-                <strong>Threshold:</strong> ₹{selectedVendorTDS.threshold_amount?.toLocaleString() || 0}
-                <br />
-                <span className="text-xs text-muted-foreground mt-1 block">
-                  TDS will be calculated and recorded when this expense is posted to ledger.
-                </span>
+                <p><strong>Category:</strong> {selectedVendorTDS.category}</p>
+                <p><strong>Rate:</strong> {selectedVendorTDS.rate_percentage}%</p>
+                {selectedVendorTDS.description && (
+                  <p><strong>Description:</strong> {selectedVendorTDS.description}</p>
+                )}
+                {amount && Number(amount) > 0 && (
+                  <p className="mt-2 font-semibold">
+                    TDS Amount: ₹{((Number(amount) * selectedVendorTDS.rate_percentage) / 100).toFixed(2)}
+                  </p>
+                )}
               </AlertDescription>
             </Alert>
           </div>
@@ -332,6 +358,21 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess }) => {
             <p className="text-sm text-red-500">{errors.tax_amount.message}</p>
           )}
         </div>
+
+        {/* TDS Amount - Only show if TDS is applicable */}
+        {selectedVendorTDS && (
+          <div className="space-y-2">
+            <Label htmlFor="tds_amount">TDS Amount (Auto-calculated)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              placeholder="0.00"
+              {...register('tds_amount')}
+              disabled
+              className="bg-muted"
+            />
+          </div>
+        )}
 
         {/* Reference Number */}
         <div className="space-y-2">

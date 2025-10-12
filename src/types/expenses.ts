@@ -21,6 +21,8 @@ export interface Expense {
   description: string;
   amount: number;
   tax_amount: number;
+  tds_amount?: number;
+  tds_rule_id?: string;
   total_amount: number;
   payment_mode: 'cash' | 'bank' | 'credit_card' | 'debit_card' | 'upi' | 'cheque';
   reference_number?: string;
@@ -54,6 +56,8 @@ export interface CreateExpenseData {
   description: string;
   amount: number;
   tax_amount?: number;
+  tds_amount?: number;
+  tds_rule_id?: string;
   payment_mode: 'cash' | 'bank' | 'credit_card' | 'debit_card' | 'upi' | 'cheque';
   reference_number?: string;
   bill_number?: string;

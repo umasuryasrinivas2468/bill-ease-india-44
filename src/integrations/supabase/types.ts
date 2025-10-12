@@ -392,6 +392,165 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_attachments: {
+        Row: {
+          content_type: string | null
+          created_at: string | null
+          expense_id: string | null
+          file_name: string | null
+          file_url: string | null
+          id: string
+          size_bytes: number | null
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string | null
+          expense_id?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          size_bytes?: number | null
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string | null
+          expense_id?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          size_bytes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_attachments_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expense_categories: {
+        Row: {
+          category_name: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category_name: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category_name?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      expenses: {
+        Row: {
+          amount: number
+          category_id: string | null
+          category_name: string | null
+          created_at: string | null
+          description: string | null
+          expense_date: string
+          expense_number: string | null
+          id: string
+          journal_id: string | null
+          payment_mode: string | null
+          posted_to_ledger: boolean | null
+          status: string | null
+          tax_amount: number | null
+          tds_amount: number | null
+          tds_rule_id: string | null
+          total_amount: number | null
+          updated_at: string | null
+          user_id: string
+          vendor_id: string | null
+          vendor_name: string | null
+        }
+        Insert: {
+          amount?: number
+          category_id?: string | null
+          category_name?: string | null
+          created_at?: string | null
+          description?: string | null
+          expense_date: string
+          expense_number?: string | null
+          id?: string
+          journal_id?: string | null
+          payment_mode?: string | null
+          posted_to_ledger?: boolean | null
+          status?: string | null
+          tax_amount?: number | null
+          tds_amount?: number | null
+          tds_rule_id?: string | null
+          total_amount?: number | null
+          updated_at?: string | null
+          user_id: string
+          vendor_id?: string | null
+          vendor_name?: string | null
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          category_name?: string | null
+          created_at?: string | null
+          description?: string | null
+          expense_date?: string
+          expense_number?: string | null
+          id?: string
+          journal_id?: string | null
+          payment_mode?: string | null
+          posted_to_ledger?: boolean | null
+          status?: string | null
+          tax_amount?: number | null
+          tds_amount?: number | null
+          tds_rule_id?: string | null
+          total_amount?: number | null
+          updated_at?: string | null
+          user_id?: string
+          vendor_id?: string | null
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_tds_rule_id_fkey"
+            columns: ["tds_rule_id"]
+            isOneToOne: false
+            referencedRelation: "tds_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory: {
         Row: {
           category: string
@@ -1225,6 +1384,7 @@ export type Database = {
         Row: {
           category: string
           created_at: string | null
+          description: string | null
           id: string
           is_active: boolean | null
           rate_percentage: number
@@ -1235,6 +1395,7 @@ export type Database = {
         Insert: {
           category: string
           created_at?: string | null
+          description?: string | null
           id?: string
           is_active?: boolean | null
           rate_percentage: number
@@ -1245,6 +1406,7 @@ export type Database = {
         Update: {
           category?: string
           created_at?: string | null
+          description?: string | null
           id?: string
           is_active?: boolean | null
           rate_percentage?: number
@@ -1426,6 +1588,21 @@ export type Database = {
         }
         Relationships: []
       }
+      user_mapping: {
+        Row: {
+          clerk_id: string
+          id: string
+        }
+        Insert: {
+          clerk_id: string
+          id?: string
+        }
+        Update: {
+          clerk_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           clerk_id: string | null
@@ -1553,6 +1730,10 @@ export type Database = {
       create_sample_data_for_testing: {
         Args: { p_user_id: string }
         Returns: undefined
+      }
+      generate_expense_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       setup_basic_accounts_for_user: {
         Args: { p_user_id: string }
