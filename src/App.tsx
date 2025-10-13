@@ -48,6 +48,7 @@ import PayLink from "./pages/PayLink";
 import GST3Filing from "./pages/reports/GST3Filing";
 import Expenses from "./pages/Expenses";
 import TDS from "./pages/TDS";
+import DeliveryChallans from "./pages/DeliveryChallans";
 
 // License pages
 import StarterPage from "./pages/StarterPage";
@@ -151,6 +152,7 @@ function App() {
                         <Route path="/onboarding" element={<Onboarding />} />
                         <Route path="/time-tracking" element={<TimeTracking />} />
                         <Route path="/inventory" element={<Inventory />} />
+                        <Route path="/inventory/delivery-challans" element={<DeliveryChallans />} />
                         <Route path="/inventory/sales-orders" element={<PlanRestrictedSalesOrders />} />
                         <Route path="/inventory/purchase-orders" element={<PlanRestrictedPurchaseOrders />} />
                         <Route path="/reports/receivables" element={<Receivables />} />

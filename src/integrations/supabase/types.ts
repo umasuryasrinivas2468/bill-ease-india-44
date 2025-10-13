@@ -392,6 +392,57 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_challans: {
+        Row: {
+          challan_date: string
+          challan_number: string
+          created_at: string | null
+          customer_address: string | null
+          customer_email: string | null
+          customer_gst_number: string | null
+          customer_name: string
+          customer_phone: string | null
+          delivery_status: string
+          id: string
+          items: Json
+          notes: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          challan_date: string
+          challan_number: string
+          created_at?: string | null
+          customer_address?: string | null
+          customer_email?: string | null
+          customer_gst_number?: string | null
+          customer_name: string
+          customer_phone?: string | null
+          delivery_status?: string
+          id?: string
+          items?: Json
+          notes?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          challan_date?: string
+          challan_number?: string
+          created_at?: string | null
+          customer_address?: string | null
+          customer_email?: string | null
+          customer_gst_number?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          delivery_status?: string
+          id?: string
+          items?: Json
+          notes?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       expense_attachments: {
         Row: {
           content_type: string | null
