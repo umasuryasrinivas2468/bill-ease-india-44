@@ -69,6 +69,7 @@ const mainMenuItems = [
 
 const inventoryMenuItems = [
   { title: "Manage Inventory", url: "/inventory", icon: Package },
+  { title: "Delivery Challans", url: "/inventory/delivery-challans", icon: Truck },
   { title: "Sales Orders", url: "/inventory/sales-orders", icon: ShoppingCart, feature: "salesOrders" as const },
   { title: "Purchase Orders", url: "/inventory/purchase-orders", icon: Truck, feature: "purchaseOrders" as const },
 ];
@@ -228,11 +229,7 @@ export function AppSidebar() {
                     onOpenChange={setIsInventoryOpen}
                     className="w-full"
                   >
-                    <div
-                      onMouseEnter={() => !isCollapsed && setIsInventoryOpen(true)}
-                      onMouseLeave={() => !isCollapsed && setIsInventoryOpen(false)}
-                      className="w-full"
-                    >
+                    <div className="w-full">
                       <SidebarMenuButton 
                         asChild
                         className={`w-full ${currentPath.startsWith('/inventory') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
@@ -294,11 +291,7 @@ export function AppSidebar() {
                     onOpenChange={setIsReportsOpen}
                     className="w-full"
                   >
-                    <div
-                      onMouseEnter={() => !isCollapsed && setIsReportsOpen(true)}
-                      onMouseLeave={() => !isCollapsed && setIsReportsOpen(false)}
-                      className="w-full"
-                    >
+                    <div className="w-full">
                       <SidebarMenuButton 
                         asChild
                         className={`w-full ${currentPath.startsWith('/reports') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
@@ -360,11 +353,7 @@ export function AppSidebar() {
                     onOpenChange={setIsCAToolsOpen}
                     className="w-full"
                   >
-                    <div
-                      onMouseEnter={() => !isCollapsed && setIsCAToolsOpen(true)}
-                      onMouseLeave={() => !isCollapsed && setIsCAToolsOpen(false)}
-                      className="w-full"
-                    >
+                    <div className="w-full">
                       <SidebarMenuButton 
                         asChild
                         className={`w-full ${(currentPath.startsWith('/ca') || currentPath.startsWith('/accounting')) ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}

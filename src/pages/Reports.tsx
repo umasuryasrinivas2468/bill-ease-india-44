@@ -16,6 +16,7 @@ import CustomerAging from '@/components/reports/CustomerAging';
 import VendorAging from '@/components/reports/VendorAging';
 import AccountReceivables from '@/components/reports/AccountReceivables';
 import AccountPayables from '@/components/reports/AccountPayables';
+import PayablesReport from '@/components/reports/PayablesReport';
 import CashFlowAnalysis from '@/components/reports/CashFlowAnalysis';
 
 import { createSampleBusinessData } from '@/utils/createSampleBusinessData';
@@ -447,6 +448,34 @@ const Reports = () => {
         </CardHeader>
         <CardContent>
           <AccountReceivables />
+        </CardContent>
+      </Card>
+
+      {/* Payables Report */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg text-orange-700 flex items-center gap-2">
+            <Receipt className="h-5 w-5" />
+            Payables Report
+          </CardTitle>
+          <CardDescription>Pending vendor payments and bills</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PayablesReport />
+        </CardContent>
+      </Card>
+
+      {/* Vendor Aging */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg text-red-700 flex items-center gap-2">
+            <Building className="h-5 w-5" />
+            Vendor Aging Analysis
+          </CardTitle>
+          <CardDescription>Aging analysis of vendor payables by due date</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <VendorAging />
         </CardContent>
       </Card>
 
