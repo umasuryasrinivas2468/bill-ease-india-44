@@ -6,6 +6,7 @@ import { useJournalsWithLines } from '@/hooks/useJournals';
 import { useInventory } from '@/hooks/useInventory';
 import { useTDSTransactions } from '@/hooks/useTDSTransactions';
 import { useBusinessData } from '@/hooks/useBusinessData';
+import { usePayables } from '@/hooks/usePayables';
 import { format } from 'date-fns';
 
 export const usePerformanceData = () => {
@@ -18,6 +19,7 @@ export const usePerformanceData = () => {
   const accounts = journalData?.accounts || [];
   const { data: inventories = [] } = useInventory();
   const { data: tdsTransactions = [] } = useTDSTransactions();
+  const { data: payables = [] } = usePayables();
   const { getBusinessInfo, getBusinessAssets } = useBusinessData();
   
   const businessInfo = getBusinessInfo();
@@ -79,13 +81,14 @@ export const usePerformanceData = () => {
       cashOut,
   inventories,
     businessAssets,
+      payables,
       // Derived quick metrics
       paidInvoices: paidInvoices.length,
       pendingInvoices: invoices.filter(inv => inv.status === 'pending').length,
       overDueInvoices: invoices.filter(inv => inv.status === 'overdue').length,
       totalGstCollected: paidInvoices.reduce((sum, inv) => sum + Number(inv.gst_amount || 0), 0)
     } as const;
-  }, [invoices, quotations, clients, journalData, tdsTransactions, businessInfo]);
+  }, [invoices, quotations, clients, journalData, tdsTransactions, payables, businessInfo]);
 
   return performanceData;
 };

@@ -33,6 +33,7 @@ interface PerformanceData {
   cashOut?: number;
   inventories?: any[];
   businessAssets?: { logoBase64?: string; logoUrl?: string };
+  payables?: any[];
 }
 
 interface BusinessSuggestion {
@@ -368,6 +369,67 @@ export const generatePerformancePDF = async (data: PerformanceData) => {
       styles: { fontSize: 9 }
     });
         currentY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 20 : currentY + 140;
+  }
+
+  // Payables (Account Payables)
+  if (data.payables && data.payables.length > 0) {
+    if (currentY > doc.internal.pageSize.height - 100) {
+      doc.addPage();
+      currentY = 20;
+    }
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Account Payables (${data.payables.length})`, margin, currentY);
+    currentY += 10;
+    const payableRows = data.payables.slice(0, 30).map((p: any) => [
+      p.vendor_name || '-', 
+      p.bill_number || p.related_purchase_order_number || '-', 
+      new Date(p.due_date).toLocaleDateString(), 
+      `₹${Number(p.amount_remaining || 0).toLocaleString()}`,
+      p.status || '-'
+    ]);
+    autoTable(doc, {
+      startY: currentY,
+      head: [['Vendor', 'Bill No', 'Due Date', 'Amount Remaining', 'Status']],
+      body: payableRows,
+      theme: 'grid',
+      margin: { left: margin, right: margin },
+      styles: { fontSize: 9 }
+    });
+    currentY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 20 : currentY + 140;
+  }
+
+  // Day Book (Journal Entries)
+  if (data.journals && data.journals.length > 0) {
+    if (currentY > doc.internal.pageSize.height - 100) {
+      doc.addPage();
+      currentY = 20;
+    }
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Day Book - Journal Entries (${data.journals.length})`, margin, currentY);
+    currentY += 10;
+    const journalRows = data.journals
+      .slice()
+      .sort((a: any, b: any) => new Date(b.journal_date || 0).getTime() - new Date(a.journal_date || 0).getTime())
+      .slice(0, 30)
+      .map((j: any) => [
+        j.journal_number || '-', 
+        new Date(j.journal_date).toLocaleDateString(), 
+        j.narration || '-', 
+        `₹${Number(j.total_debit || 0).toLocaleString()}`,
+        `₹${Number(j.total_credit || 0).toLocaleString()}`,
+        j.status || '-'
+      ]);
+    autoTable(doc, {
+      startY: currentY,
+      head: [['Journal #', 'Date', 'Narration', 'Debit', 'Credit', 'Status']],
+      body: journalRows,
+      theme: 'grid',
+      margin: { left: margin, right: margin },
+      styles: { fontSize: 9 }
+    });
+    currentY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 20 : currentY + 140;
   }
 
   // Check if we need a new page

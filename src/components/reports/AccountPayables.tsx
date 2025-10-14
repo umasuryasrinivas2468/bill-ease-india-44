@@ -1,72 +1,62 @@
 import React from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { usePurchaseBills, useMarkBillPaid } from '@/hooks/usePurchaseBills';
+import { usePayables, useMarkPayablePaid } from '@/hooks/usePayables';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
 const AccountPayables: React.FC = () => {
-  const { data: bills = [] } = usePurchaseBills();
-  const { mutateAsync: markPaid, isPending } = useMarkBillPaid();
+  const { data: payables = [] } = usePayables();
+  const { mutateAsync: markPaid, isPending } = useMarkPayablePaid();
   const { toast } = useToast();
 
-  const pending = bills.filter(b => b.status !== 'paid');
+  const pending = payables.filter(p => p.status !== 'paid');
 
-  const onMarkPaid = async (billId: string) => {
-    await markPaid({ billId });
+  const onMarkPaid = async (payableId: string) => {
+    await markPaid({ payableId });
     toast({
       title: 'Payment Recorded',
-      description: 'Bill has been marked as paid.',
+      description: 'Payable has been marked as paid.',
     });
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Accounts Payable</CardTitle>
-        <CardDescription>Pending vendor payments</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="w-full overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Vendor</TableHead>
-                <TableHead>Bill No</TableHead>
-                <TableHead>Bill Date</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead className="text-right">Amount Due</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pending.map((b, idx) => {
-                const amountDue = Number(b.total_amount) - Number(b.paid_amount || 0);
-                return (
-                  <TableRow key={idx}>
-                    <TableCell>{b.vendor_name}</TableCell>
-                    <TableCell>{b.bill_number}</TableCell>
-                    <TableCell>{b.bill_date}</TableCell>
-                    <TableCell>{b.due_date}</TableCell>
-                    <TableCell className="text-right">₹{amountDue.toLocaleString()}</TableCell>
-                    <TableCell className="capitalize">{b.status}</TableCell>
-                    <TableCell>
-                      <Button size="sm" variant="outline" disabled={isPending} onClick={() => onMarkPaid(b.id)}>
-                        Mark Paid
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-              {pending.length === 0 && (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">No pending payables</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="w-full overflow-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Vendor</TableHead>
+            <TableHead>Bill No</TableHead>
+            <TableHead>Due Date</TableHead>
+            <TableHead className="text-right">Amount Due</TableHead>
+            <TableHead className="text-right">Amount Paid</TableHead>
+            <TableHead className="text-right">Remaining</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {pending.map((p) => (
+            <TableRow key={p.id}>
+              <TableCell>{p.vendor_name}</TableCell>
+              <TableCell>{p.bill_number || p.related_purchase_order_number || '-'}</TableCell>
+              <TableCell>{new Date(p.due_date).toLocaleDateString()}</TableCell>
+              <TableCell className="text-right">₹{Number(p.amount_due).toLocaleString()}</TableCell>
+              <TableCell className="text-right">₹{Number(p.amount_paid).toLocaleString()}</TableCell>
+              <TableCell className="text-right">₹{Number(p.amount_remaining).toLocaleString()}</TableCell>
+              <TableCell className="capitalize">{p.status}</TableCell>
+              <TableCell>
+                <Button size="sm" variant="outline" disabled={isPending} onClick={() => onMarkPaid(p.id)}>
+                  Mark Paid
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+          {pending.length === 0 && (
+            <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">No pending payables</TableCell></TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 };
 
