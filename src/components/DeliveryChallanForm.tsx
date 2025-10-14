@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { DeliveryChallanItem } from '@/hooks/useDeliveryChallans';
 import { useInventory } from '@/hooks/useInventory';
+import { useClients } from '@/hooks/useClients';
 
 interface DeliveryChallanFormProps {
   open: boolean;
@@ -24,7 +25,9 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
   isSubmitting = false,
 }) => {
   const { data: inventoryItems = [] } = useInventory();
+  const { data: clients = [] } = useClients();
   const [challanDate, setChallanDate] = useState<Date>(new Date());
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [formData, setFormData] = useState({
     challan_number: '',
     customer_name: '',
@@ -35,6 +38,32 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
     delivery_status: 'pending' as const,
     notes: '',
   });
+
+  // Auto-generate challan number on mount
+  useEffect(() => {
+    if (open && !formData.challan_number) {
+      const date = new Date();
+      const dateStr = date.toISOString().split('T')[0].replace(/-/g, '');
+      const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      setFormData(prev => ({ ...prev, challan_number: `DC-${dateStr}-${randomNum}` }));
+    }
+  }, [open]);
+
+  // Auto-fill customer details when client is selected
+  const handleClientSelect = (clientId: string) => {
+    setSelectedClientId(clientId);
+    const client = clients.find(c => c.id === clientId);
+    if (client) {
+      setFormData(prev => ({
+        ...prev,
+        customer_name: client.name,
+        customer_email: client.email || '',
+        customer_phone: client.phone || '',
+        customer_address: client.address || '',
+        customer_gst_number: client.gst_number || '',
+      }));
+    }
+  };
 
   const [items, setItems] = useState<DeliveryChallanItem[]>([
     { product_name: '', quantity: 0, unit: 'pcs', description: '' }
@@ -62,6 +91,7 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
     };
     onSubmit(data);
     // Reset form
+    setSelectedClientId('');
     setFormData({
       challan_number: '',
       customer_name: '',
@@ -91,8 +121,8 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
               <Input
                 id="challan_number"
                 value={formData.challan_number}
-                onChange={(e) => setFormData({ ...formData, challan_number: e.target.value })}
-                placeholder="DC-001"
+                disabled
+                placeholder="Auto-generated"
               />
             </div>
             
@@ -100,6 +130,23 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
               <Label>Challan Date *</Label>
               <DatePicker date={challanDate} setDate={setChallanDate} />
             </div>
+          </div>
+
+          {/* Client Selection */}
+          <div className="space-y-2">
+            <Label>Select Client (Optional)</Label>
+            <Select value={selectedClientId} onValueChange={handleClientSelect}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a client to auto-fill details" />
+              </SelectTrigger>
+              <SelectContent>
+                {clients.map((client) => (
+                  <SelectItem key={client.id} value={client.id}>
+                    {client.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Customer Details */}
