@@ -1,4 +1,3 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '@/lib/supabase';
 import type {
   FinancialSummary,
@@ -10,10 +9,10 @@ import type {
   TaxCalculation
 } from '@/types/aiTaxAdvisor';
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(
-  import.meta.env.VITE_GOOGLE_GEMINI_API_KEY || ''
-);
+// Mistral API configuration
+const MISTRAL_API_KEY = import.meta.env.VITE_MISTRAL_API_KEY || '';
+const MISTRAL_API_URL = 'https://api.mistral.ai/v1/chat/completions';
+const MISTRAL_MODEL = 'mistral-medium';
 
 const TAX_ANALYSIS_PROMPT = `
 You are a senior tax consultant expert in Indian Income Tax Act, 1961. Analyze the provided business financial data and provide comprehensive tax deduction recommendations.
@@ -97,7 +96,10 @@ export class AITaxAdvisorService {
     financialSummary: FinancialSummary
   ): Promise<AITaxResponse> {
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+      if (!MISTRAL_API_KEY) {
+        console.warn('Mistral API key not configured. Using fallback response.');
+        return this.generateFallbackResponse(financialSummary);
+      }
 
       const prompt = `${TAX_ANALYSIS_PROMPT}
 
@@ -106,9 +108,30 @@ ${JSON.stringify(financialSummary, null, 2)}
 
 Please analyze this financial data and provide tax deduction recommendations in the exact JSON format specified above.`;
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      const response = await fetch(MISTRAL_API_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${MISTRAL_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: MISTRAL_MODEL,
+          messages: [
+            { role: 'system', content: 'You are a senior tax consultant expert in Indian Income Tax Act, 1961.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 2048,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Mistral API error:', response.status);
+        return this.generateFallbackResponse(financialSummary);
+      }
+
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content || '';
 
       // Clean and parse the response
       let cleanedResponse = text.trim();
