@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { useAuth } from '@/components/ClerkAuthProvider';
 import { useBusinessData } from '@/hooks/useBusinessData';
@@ -54,6 +54,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           {/* Header with business name and logo */}
           <header className="sticky top-0 z-10 border-b border-sidebar-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="flex h-14 items-center gap-2 sm:gap-3 px-2 sm:px-4">
+              <SidebarTrigger className="h-8 w-8 flex-shrink-0" />
               {logoSrc && (
                 <img 
                   src={logoSrc} 
