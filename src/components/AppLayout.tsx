@@ -50,22 +50,22 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
         <AppSidebar />
-        <SidebarInset className="flex-1">
+        <SidebarInset className="flex-1 w-full overflow-x-hidden">
           {/* Header with business name and logo */}
-          <header className="border-b border-sidebar-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex h-14 items-center gap-3 px-4">
+          <header className="sticky top-0 z-10 border-b border-sidebar-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="flex h-14 items-center gap-2 sm:gap-3 px-2 sm:px-4">
               {logoSrc && (
                 <img 
                   src={logoSrc} 
                   alt="Business Logo" 
-                  className="h-8 w-8 object-contain"
+                  className="h-6 w-6 sm:h-8 sm:w-8 object-contain flex-shrink-0"
                 />
               )}
-              <div className="flex flex-col flex-1">
-                <h1 className="text-lg font-semibold leading-none">
+              <div className="flex flex-col flex-1 min-w-0">
+                <h1 className="text-sm sm:text-lg font-semibold leading-none truncate">
                   {businessInfo?.businessName || 'Business Dashboard'}
                 </h1>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground hidden sm:block">
                   Powered by Aczen
                 </p>
               </div>
@@ -73,13 +73,22 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 href="https://nas.io/aczen-1"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                className="hidden sm:flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors flex-shrink-0"
               >
                 📢 Announcements
               </a>
+              <a
+                href="https://nas.io/aczen-1"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="sm:hidden flex items-center justify-center p-2 text-primary flex-shrink-0"
+                aria-label="Announcements"
+              >
+                📢
+              </a>
             </div>
           </header>
-          <main className="flex-1">
+          <main className="flex-1 w-full">
             {children}
           </main>
         </SidebarInset>

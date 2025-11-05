@@ -98,6 +98,7 @@
 
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
   }
 
   /* Page headings alignment */
@@ -113,6 +114,13 @@
   /* Override any center alignment for page titles */
   .page-title {
     @apply text-left;
+  }
+
+  /* Responsive utilities */
+  @media (max-width: 640px) {
+    .container {
+      @apply px-4;
+    }
   }
 }
 

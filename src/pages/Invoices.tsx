@@ -174,10 +174,10 @@ const Invoices = () => {
         </Card>
       ) : (
         <>
-          <Card>
+          {/* Desktop Table */}
+          <Card className="hidden sm:block">
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
+              <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Invoice ID</TableHead>
@@ -230,12 +230,11 @@ const Invoices = () => {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
             </CardContent>
           </Card>
 
           {/* Mobile Cards for smaller screens */}
-          <div className="block sm:hidden space-y-4">
+          <div className="sm:hidden space-y-4">
             {filteredInvoices.map((invoice) => (
               <Card key={invoice.id}>
                 <CardContent className="p-4">

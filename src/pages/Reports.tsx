@@ -260,19 +260,19 @@ const Reports = () => {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Monthly Revenue</CardTitle>
-            <CardDescription>Invoice count and revenue by month</CardDescription>
+            <CardTitle className="text-base sm:text-lg">Monthly Revenue</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Invoice count and revenue by month</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-2 sm:px-6">
             {monthlyData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={monthlyData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip formatter={(value: any, name: any) => [
                     name === 'amount' ? `₹${Number(value).toLocaleString()}` : value,
                     name === 'amount' ? 'Revenue' : 'Invoices'
@@ -281,7 +281,7 @@ const Reports = () => {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm text-center px-4">
                 No data available. Create some invoices to see the chart.
               </div>
             )}
@@ -290,20 +290,23 @@ const Reports = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>GST Breakdown</CardTitle>
-            <CardDescription>GST collection by type</CardDescription>
+            <CardTitle className="text-base sm:text-lg">GST Breakdown</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">GST collection by type</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-2 sm:px-6">
             {totalGst > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
                   <Pie
                     data={gstData}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, value }: any) => `${name}: ₹${Number(value).toLocaleString()}`}
-                    outerRadius={80}
+                    label={({ name, value }: any) => {
+                      const shortName = name.split(' ')[0];
+                      return `${shortName}: ₹${Number(value).toLocaleString()}`;
+                    }}
+                    outerRadius={60}
                     fill="#8884d8"
                     dataKey="value"
                   >
@@ -315,7 +318,7 @@ const Reports = () => {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm text-center px-4">
                 No GST data available. Create some paid invoices to see the breakdown.
               </div>
             )}
@@ -358,30 +361,30 @@ const Reports = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+              <div className="text-center p-3 sm:p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-blue-600">
                   ₹{gstSummary.totalSales.toLocaleString()}
                 </div>
-                <div className="text-sm text-muted-foreground">Total Sales</div>
+                <div className="text-xs sm:text-sm text-muted-foreground">Total Sales</div>
               </div>
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">
+              <div className="text-center p-3 sm:p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-green-600">
                   ₹{gstSummary.cgst.toLocaleString()}
                 </div>
-                <div className="text-sm text-muted-foreground">CGST (9%)</div>
+                <div className="text-xs sm:text-sm text-muted-foreground">CGST (9%)</div>
               </div>
-              <div className="text-center p-4 bg-purple-50 rounded-lg">
-                <div className="text-2xl font-bold text-purple-600">
+              <div className="text-center p-3 sm:p-4 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-purple-600">
                   ₹{gstSummary.sgst.toLocaleString()}
                 </div>
-                <div className="text-sm text-muted-foreground">SGST (9%)</div>
+                <div className="text-xs sm:text-sm text-muted-foreground">SGST (9%)</div>
               </div>
-              <div className="text-center p-4 bg-orange-50 rounded-lg">
-                <div className="text-2xl font-bold text-orange-600">
+              <div className="text-center p-3 sm:p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-orange-600">
                   ₹{gstSummary.totalGst.toLocaleString()}
                 </div>
-                <div className="text-sm text-muted-foreground">Total GST</div>
+                <div className="text-xs sm:text-sm text-muted-foreground">Total GST</div>
               </div>
             </div>
 
