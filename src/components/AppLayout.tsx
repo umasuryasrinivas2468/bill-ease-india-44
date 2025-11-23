@@ -2,6 +2,7 @@ import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
+import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { useAuth } from '@/components/ClerkAuthProvider';
 import { useBusinessData } from '@/hooks/useBusinessData';
 import useSimpleBranding from '@/hooks/useSimpleBranding';
@@ -48,13 +49,18 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   // Return content with sidebar for authenticated pages
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
+      <div className="flex min-h-screen w-full pb-0 md:pb-0">
+        {/* Desktop Sidebar - Hidden on mobile */}
+        <div className="hidden md:block">
+          <AppSidebar />
+        </div>
+        
         <SidebarInset className="flex-1 w-full overflow-x-hidden">
           {/* Header with business name and logo */}
           <header className="sticky top-0 z-10 border-b border-sidebar-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="flex h-14 items-center gap-2 sm:gap-3 px-2 sm:px-4">
-              <SidebarTrigger className="h-8 w-8 flex-shrink-0" />
+              {/* Desktop trigger only */}
+              <SidebarTrigger className="hidden md:flex h-8 w-8 flex-shrink-0" />
               {logoSrc && (
                 <img 
                   src={logoSrc} 
@@ -89,10 +95,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               </a>
             </div>
           </header>
-          <main className="flex-1 w-full">
+          <main className="flex-1 w-full pb-16 md:pb-0">
             {children}
           </main>
         </SidebarInset>
+        
+        {/* Mobile Bottom Navigation */}
+        <MobileBottomNav />
       </div>
     </SidebarProvider>
   );
