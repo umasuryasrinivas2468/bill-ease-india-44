@@ -1782,10 +1782,7 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: undefined
       }
-      generate_expense_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_expense_number: { Args: never; Returns: string }
       setup_basic_accounts_for_user: {
         Args: { p_user_id: string }
         Returns: undefined
