@@ -6,6 +6,8 @@ import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { useAuth } from '@/components/ClerkAuthProvider';
 import { useBusinessData } from '@/hooks/useBusinessData';
 import useSimpleBranding from '@/hooks/useSimpleBranding';
+import { Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -58,9 +60,31 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <SidebarInset className="flex-1 w-full overflow-x-hidden">
           {/* Header with business name and logo */}
           <header className="sticky top-0 z-10 border-b border-sidebar-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex h-14 items-center gap-2 sm:gap-3 px-2 sm:px-4">
+            {/* Mobile Header with Search */}
+            <div className="md:hidden flex h-14 items-center gap-2 px-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  type="search"
+                  placeholder="Search..."
+                  className="pl-10 rounded-full bg-muted/50 border-muted h-9"
+                />
+              </div>
+              <a
+                href="https://nas.io/aczen-1"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center p-2 text-primary flex-shrink-0"
+                aria-label="Announcements"
+              >
+                📢
+              </a>
+            </div>
+            
+            {/* Desktop Header */}
+            <div className="hidden md:flex h-14 items-center gap-2 sm:gap-3 px-2 sm:px-4">
               {/* Desktop trigger only */}
-              <SidebarTrigger className="hidden md:flex h-8 w-8 flex-shrink-0" />
+              <SidebarTrigger className="flex h-8 w-8 flex-shrink-0" />
               {logoSrc && (
                 <img 
                   src={logoSrc} 
@@ -72,7 +96,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 <h1 className="text-sm sm:text-lg font-semibold leading-none truncate">
                   {businessInfo?.businessName || 'Business Dashboard'}
                 </h1>
-                <p className="text-xs text-muted-foreground hidden sm:block">
+                <p className="text-xs text-muted-foreground">
                   Powered by Aczen
                 </p>
               </div>
@@ -80,18 +104,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 href="https://nas.io/aczen-1"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hidden sm:flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors flex-shrink-0"
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors flex-shrink-0"
               >
                 📢 Announcements
-              </a>
-              <a
-                href="https://nas.io/aczen-1"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="sm:hidden flex items-center justify-center p-2 text-primary flex-shrink-0"
-                aria-label="Announcements"
-              >
-                📢
               </a>
             </div>
           </header>
