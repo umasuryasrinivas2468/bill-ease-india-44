@@ -6,8 +6,6 @@ import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { useAuth } from '@/components/ClerkAuthProvider';
 import { useBusinessData } from '@/hooks/useBusinessData';
 import useSimpleBranding from '@/hooks/useSimpleBranding';
-import { Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -60,16 +58,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <SidebarInset className="flex-1 w-full overflow-x-hidden">
           {/* Header with business name and logo */}
           <header className="sticky top-0 z-10 border-b border-sidebar-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            {/* Mobile Header with Search */}
-            <div className="md:hidden flex h-14 items-center gap-2 px-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  type="search"
-                  placeholder="Search..."
-                  className="pl-10 rounded-full bg-muted/50 border-muted h-9"
-                />
-              </div>
+            {/* Mobile Header */}
+            <div className="md:hidden flex h-14 items-center justify-end gap-2 px-2">
               <a
                 href="https://nas.io/aczen-1"
                 target="_blank"
