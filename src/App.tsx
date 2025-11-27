@@ -130,7 +130,9 @@ function App() {
                 {/* Routes with AppLayout (sidebar) */}
                 <Route path="/*" element={
                   <AppLayout>
-                    <Aiva />
+                    <div className="hidden md:block">
+                      <Aiva />
+                    </div>
                     <Routes>
                       <Route path="/" element={<Index />} />
                       <Route path="/login" element={<Login />} />

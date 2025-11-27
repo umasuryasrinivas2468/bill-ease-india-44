@@ -49,7 +49,6 @@ const moreItems = [
   { label: 'Branding', path: '/branding' },
   { label: 'Support', path: '/support' },
   { label: 'UPI Collections', path: '/upi-collections' },
-  { label: 'Marketplace', path: '/marketplace' },
 ];
 
 export function MobileBottomNav() {
