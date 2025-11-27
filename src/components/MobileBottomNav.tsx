@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FileText, Users, Calculator, BookOpen, MoreHorizontal, X } from 'lucide-react';
+import { FileText, Users, Calculator, BookOpen, MoreHorizontal, X, Search } from 'lucide-react';
+import { MobileSearch } from '@/components/MobileSearch';
 import {
   Drawer,
   DrawerClose,
@@ -55,6 +56,7 @@ export function MobileBottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const isActive = (path: string) => {
     if (path === '/dashboard' && (location.pathname === '/' || location.pathname === '/dashboard')) {
@@ -119,7 +121,22 @@ export function MobileBottomNav() {
                 </DrawerDescription>
               </DrawerHeader>
               
-              <ScrollArea className="h-[60vh] px-4">
+              {/* Search Button */}
+              <div className="px-4 pt-4">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-2"
+                  onClick={() => {
+                    setSearchOpen(true);
+                    setDrawerOpen(false);
+                  }}
+                >
+                  <Search className="h-4 w-4" />
+                  Search everything...
+                </Button>
+              </div>
+              
+              <ScrollArea className="h-[55vh] px-4">
                 <div className="py-4 space-y-1">
                   {moreItems.map((item) => (
                     <Button
@@ -148,6 +165,9 @@ export function MobileBottomNav() {
       
       {/* Bottom Spacer - Prevents content from being hidden behind bottom nav */}
       <div className="md:hidden h-16" />
+      
+      {/* Mobile Search Dialog */}
+      <MobileSearch open={searchOpen} onOpenChange={setSearchOpen} />
     </>
   );
 }
