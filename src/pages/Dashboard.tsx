@@ -1,18 +1,220 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, Users, IndianRupee, TrendingUp, Plus, Clock, CheckCircle, AlertCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Input } from '@/components/ui/input';
+import { FileText, Users, IndianRupee, TrendingUp, Plus, CheckCircle, Search, Building2, Package, BookOpen, FileSpreadsheet } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { useAuth } from '@/components/ClerkAuthProvider';
 import { useSupabaseUser } from '@/hooks/useSupabaseUser';
+import { supabase } from '@/integrations/supabase/client';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+interface SearchResult {
+  id: string;
+  type: 'invoice' | 'client' | 'vendor' | 'product' | 'journal' | 'account';
+  title: string;
+  subtitle: string;
+  amount?: number;
+  route: string;
+}
 
 const Dashboard = () => {
   const { data: dashboardData, isLoading } = useDashboardStats();
   const { user: clerkUser } = useAuth();
   const { supabaseUser, loading: userLoading } = useSupabaseUser();
+  const navigate = useNavigate();
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setSearchResults([]);
+      setShowResults(false);
+      return;
+    }
+
+    const searchData = async () => {
+      if (!clerkUser) return;
+      
+      setSearching(true);
+      setShowResults(true);
+      const results: SearchResult[] = [];
+      const query = searchQuery.toLowerCase();
+
+      try {
+        // Search Invoices
+        const { data: invoices } = await supabase
+          .from('invoices')
+          .select('id, invoice_number, client_name, total_amount, status')
+          .eq('user_id', clerkUser.id)
+          .or(`invoice_number.ilike.%${query}%,client_name.ilike.%${query}%`)
+          .limit(5);
+
+        invoices?.forEach(invoice => {
+          results.push({
+            id: invoice.id,
+            type: 'invoice',
+            title: invoice.invoice_number,
+            subtitle: invoice.client_name,
+            amount: invoice.total_amount,
+            route: '/invoices',
+          });
+        });
+
+        // Search Clients
+        const { data: clients } = await supabase
+          .from('clients')
+          .select('id, name, email, phone')
+          .eq('user_id', clerkUser.id)
+          .or(`name.ilike.%${query}%,email.ilike.%${query}%`)
+          .limit(5);
+
+        clients?.forEach(client => {
+          results.push({
+            id: client.id,
+            type: 'client',
+            title: client.name,
+            subtitle: client.email || client.phone || 'No contact info',
+            route: '/clients',
+          });
+        });
+
+        // Search Vendors
+        const { data: vendors } = await supabase
+          .from('vendors')
+          .select('id, name, email, phone')
+          .eq('user_id', clerkUser.id)
+          .or(`name.ilike.%${query}%,email.ilike.%${query}%`)
+          .limit(5);
+
+        vendors?.forEach(vendor => {
+          results.push({
+            id: vendor.id,
+            type: 'vendor',
+            title: vendor.name,
+            subtitle: vendor.email || vendor.phone || 'No contact info',
+            route: '/vendors',
+          });
+        });
+
+        // Search Products
+        const { data: products } = await supabase
+          .from('inventory')
+          .select('id, product_name, sku, selling_price')
+          .eq('user_id', clerkUser.id)
+          .or(`product_name.ilike.%${query}%,sku.ilike.%${query}%`)
+          .limit(5);
+
+        products?.forEach(product => {
+          results.push({
+            id: product.id,
+            type: 'product',
+            title: product.product_name,
+            subtitle: `SKU: ${product.sku}`,
+            amount: product.selling_price,
+            route: '/inventory',
+          });
+        });
+
+        // Search Journals
+        const { data: journals } = await supabase
+          .from('journals')
+          .select('id, journal_number, narration, total_debit')
+          .eq('user_id', clerkUser.id)
+          .or(`journal_number.ilike.%${query}%,narration.ilike.%${query}%`)
+          .limit(5);
+
+        journals?.forEach(journal => {
+          results.push({
+            id: journal.id,
+            type: 'journal',
+            title: journal.journal_number,
+            subtitle: journal.narration,
+            amount: journal.total_debit,
+            route: '/accounting/journals',
+          });
+        });
+
+        // Search Accounts (Ledgers)
+        const { data: accounts } = await supabase
+          .from('accounts')
+          .select('id, account_name, account_code, opening_balance')
+          .eq('user_id', clerkUser.id)
+          .or(`account_name.ilike.%${query}%,account_code.ilike.%${query}%`)
+          .limit(5);
+
+        accounts?.forEach(account => {
+          results.push({
+            id: account.id,
+            type: 'account',
+            title: account.account_name,
+            subtitle: `Code: ${account.account_code}`,
+            amount: account.opening_balance,
+            route: '/accounting/ledgers',
+          });
+        });
+
+        setSearchResults(results);
+      } catch (error) {
+        console.error('Search error:', error);
+      } finally {
+        setSearching(false);
+      }
+    };
+
+    const debounce = setTimeout(() => {
+      searchData();
+    }, 300);
+
+    return () => clearTimeout(debounce);
+  }, [searchQuery, clerkUser]);
+
+  const getIcon = (type: SearchResult['type']) => {
+    switch (type) {
+      case 'invoice':
+        return <FileText className="h-4 w-4" />;
+      case 'client':
+        return <Users className="h-4 w-4" />;
+      case 'vendor':
+        return <Building2 className="h-4 w-4" />;
+      case 'product':
+        return <Package className="h-4 w-4" />;
+      case 'journal':
+        return <BookOpen className="h-4 w-4" />;
+      case 'account':
+        return <FileSpreadsheet className="h-4 w-4" />;
+    }
+  };
+
+  const getTypeBadgeColor = (type: SearchResult['type']) => {
+    switch (type) {
+      case 'invoice':
+        return 'bg-blue-500/10 text-blue-600';
+      case 'client':
+        return 'bg-green-500/10 text-green-600';
+      case 'vendor':
+        return 'bg-purple-500/10 text-purple-600';
+      case 'product':
+        return 'bg-orange-500/10 text-orange-600';
+      case 'journal':
+        return 'bg-pink-500/10 text-pink-600';
+      case 'account':
+        return 'bg-cyan-500/10 text-cyan-600';
+    }
+  };
+
+  const handleResultClick = (result: SearchResult) => {
+    navigate(result.route);
+    setSearchQuery('');
+    setShowResults(false);
+  };
 
   if (isLoading) {
     return (
@@ -84,20 +286,90 @@ const Dashboard = () => {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <SidebarTrigger className="md:hidden" />
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">Welcome to your Aczen Bilz dashboard</p>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <SidebarTrigger className="md:hidden" />
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
+              <p className="text-muted-foreground">Welcome to your Aczen Bilz dashboard</p>
+            </div>
           </div>
+          <Button asChild className="hidden sm:flex" variant="orange">
+            <Link to="/create-invoice">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Invoice
+            </Link>
+          </Button>
         </div>
-        <Button asChild className="hidden sm:flex" variant="orange">
-          <Link to="/create-invoice">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Invoice
-          </Link>
-        </Button>
+
+        {/* Search Bar */}
+        <div className="relative w-full max-w-2xl">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search invoices, clients, vendors, products, journals, ledgers..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => searchQuery && setShowResults(true)}
+            className="pl-10 rounded-full"
+          />
+          
+          {/* Search Results Dropdown */}
+          {showResults && (
+            <Card className="absolute top-full mt-2 w-full z-50 shadow-lg max-h-[400px] overflow-hidden">
+              <ScrollArea className="h-full max-h-[400px]">
+                <CardContent className="p-4">
+                  {searching && (
+                    <div className="text-center py-4 text-muted-foreground">
+                      Searching...
+                    </div>
+                  )}
+                  
+                  {!searching && searchResults.length === 0 && searchQuery && (
+                    <div className="text-center py-4 text-muted-foreground">
+                      No results found for "{searchQuery}"
+                    </div>
+                  )}
+                  
+                  {!searching && searchResults.length > 0 && (
+                    <div className="space-y-2">
+                      {searchResults.map((result) => (
+                        <button
+                          key={`${result.type}-${result.id}`}
+                          onClick={() => handleResultClick(result)}
+                          className="w-full text-left p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5 text-muted-foreground">
+                              {getIcon(result.type)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium truncate">{result.title}</span>
+                                <Badge className={`text-xs ${getTypeBadgeColor(result.type)}`}>
+                                  {result.type}
+                                </Badge>
+                              </div>
+                              <div className="text-sm text-muted-foreground truncate">
+                                {result.subtitle}
+                              </div>
+                              {result.amount !== undefined && (
+                                <div className="text-sm font-medium text-primary mt-1">
+                                  ₹{result.amount.toFixed(2)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </ScrollArea>
+            </Card>
+          )}
+        </div>
       </div>
 
       {/* Updates Section */}
