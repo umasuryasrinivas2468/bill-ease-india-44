@@ -59,7 +59,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           {/* Header with business name and logo */}
           <header className="sticky top-0 z-10 border-b border-sidebar-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             {/* Mobile Header */}
-            <div className="md:hidden flex h-14 items-center justify-end gap-2 px-2">
+            <div className="md:hidden flex h-14 items-center justify-between gap-2 px-2">
+              {logoSrc && (
+                <img 
+                  src={logoSrc} 
+                  alt="Business Logo" 
+                  className="h-8 w-8 object-contain flex-shrink-0"
+                />
+              )}
               <a
                 href="https://nas.io/aczen-1"
                 target="_blank"
