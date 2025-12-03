@@ -93,6 +93,7 @@ const caToolsMenuItems = [
   { title: "Trial Balance", url: "/accounting/trial-balance", icon: Scale },
   { title: "Chart of Accounts", url: "/accounting/chart-of-accounts", icon: ListTree },
   { title: "Profit & Loss", url: "/accounting/profit-loss", icon: TrendingUp },
+  { title: "Financial Statements", url: "/accounting/financial-statements", icon: FileText },
 ];
 
 export function AppSidebar() {

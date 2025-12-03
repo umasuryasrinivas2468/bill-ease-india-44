@@ -67,6 +67,7 @@ import Ledgers from "./pages/accounting/Ledgers";
 import TrialBalance from "./pages/accounting/TrialBalance";
 import ProfitLoss from "./pages/accounting/ProfitLoss";
 import ManualJournals from "./pages/accounting/ManualJournals";
+import FinancialStatements from "./pages/FinancialStatements";
 
 const queryClient = new QueryClient();
 
@@ -181,6 +182,7 @@ function App() {
                         <Route path="/accounting/trial-balance" element={<TrialBalance />} />
                         <Route path="/accounting/profit-loss" element={<ProfitLoss />} />
                         <Route path="/accounting/manual-journals" element={<ManualJournals />} />
+                        <Route path="/accounting/financial-statements" element={<FinancialStatements />} />
                         <Route path="/expenses" element={<Expenses />} />
                         <Route path="/reports/tds" element={<TDS />} />
                       </Route>
