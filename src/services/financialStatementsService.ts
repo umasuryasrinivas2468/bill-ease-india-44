@@ -5,6 +5,7 @@ export interface CompanyDetails {
   cin: string;
   pan: string;
   address: string;
+  place: string;
   dateOfIncorporation: string;
   ownerName: string;
   directorDIN: string;
