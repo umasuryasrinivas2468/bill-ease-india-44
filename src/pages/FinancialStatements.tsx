@@ -32,6 +32,7 @@ const FinancialStatements = () => {
     cin: '',
     pan: '',
     address: businessInfo ? `${businessInfo.address || ''}, ${businessInfo.city || ''}, ${businessInfo.state || ''}, ${businessInfo.pincode || ''}` : '',
+    place: businessInfo?.city || '',
     dateOfIncorporation: '',
     ownerName: businessInfo?.ownerName || '',
     directorDIN: '',

@@ -8,10 +8,18 @@ import { useInvoices } from '@/hooks/useInvoices';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import BulkInvoiceProcessor from '@/components/BulkInvoiceProcessor';
 import VirtualCFO from '@/components/VirtualCFO';
+import { fetchFinancialData, CompanyDetails } from '@/services/financialStatementsService';
+import { generateProfitAndLossStatement, generateBalanceSheet, generateNotesToAccounts, generateComputationOfIncome } from '@/utils/financialStatementsPDF';
+import { useBusinessData } from '@/hooks/useBusinessData';
+import { useSupabaseUser } from '@/hooks/useSupabaseUser';
+import jsPDF from 'jspdf';
 
 const CA = () => {
   const { toast } = useToast();
   const { data: invoices = [] } = useInvoices();
+  const { getBusinessInfo } = useBusinessData();
+  const { supabaseUser } = useSupabaseUser();
+  const businessProfile = getBusinessInfo();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
@@ -160,27 +168,50 @@ const CA = () => {
   };
 
   const downloadAnnualReport = async () => {
+    if (!supabaseUser?.id) {
+      toast({ title: 'Error', description: 'User not authenticated', variant: 'destructive' });
+      return;
+    }
+
     setIsGeneratingReport(true);
     try {
-      const year = new Date().getFullYear() - 1 + '-' + new Date().getFullYear().toString().slice(-2); // e.g. 2023-24
-      const ownerName = encodeURIComponent('BODAPATI UMA SURYA SRINIVAS');
-      const resp = await fetch(`/reports/annual?year=${encodeURIComponent(year)}&ownerName=${ownerName}`);
-      if (!resp.ok) throw new Error('Server error: ' + resp.statusText);
-      const buf = await resp.arrayBuffer();
-      const blob = new Blob([buf], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Annual_Report_${year}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth();
+      const fyStart = currentMonth >= 3 ? currentYear : currentYear - 1;
+      const fy = `${fyStart}-${(fyStart + 1).toString().slice(-2)}`;
 
-      toast({ title: 'Annual Report', description: 'Annual report downloaded.' });
+      // Fetch financial data
+      const financialData = await fetchFinancialData(supabaseUser.id, fy);
+
+      // Build company details from business profile
+      const company: CompanyDetails = {
+        companyName: businessProfile?.businessName || 'Your Company Name',
+        cin: '',
+        pan: '',
+        address: [businessProfile?.address, businessProfile?.city, businessProfile?.state, businessProfile?.pincode]
+          .filter(Boolean).join(', ') || 'Address',
+        place: businessProfile?.city || 'Hyderabad',
+        dateOfIncorporation: '',
+        ownerName: businessProfile?.ownerName || 'Director',
+        directorDIN: '',
+      };
+
+      // Generate PDF
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      
+      // Generate all sections
+      generateProfitAndLossStatement(doc, company, financialData, fy);
+      generateBalanceSheet(doc, company, financialData, fy);
+      generateNotesToAccounts(doc, company, financialData, fy);
+      generateComputationOfIncome(doc, company, financialData, fy);
+
+      // Download the PDF
+      doc.save(`Annual_Report_${fy}.pdf`);
+
+      toast({ title: 'Annual Report', description: 'Annual report downloaded successfully.' });
     } catch (err) {
-      console.error('Failed to download annual report', err);
-      toast({ title: 'Error', description: 'Failed to download annual report', variant: 'destructive' });
+      console.error('Failed to generate annual report', err);
+      toast({ title: 'Error', description: 'Failed to generate annual report. Please try again.', variant: 'destructive' });
     } finally {
       setIsGeneratingReport(false);
     }
