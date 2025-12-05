@@ -2,6 +2,32 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { CompanyDetails, FinancialData } from '@/services/financialStatementsService';
 
+// Layout constants (values provided by user converted from px -> mm using 1px = 0.264583 mm)
+const pxToMm = (px: number) => px * 0.264583;
+const MARGIN_TOP = pxToMm(40); // ~10.58mm
+const MARGIN_BOTTOM = pxToMm(40);
+const MARGIN_SIDE = pxToMm(35);
+const SECTION_SPACING = pxToMm(25); // ~25px gap between sections
+const HEADER_FONT_SIZE = 15; // 14-16 as requested
+const TABLE_FONT_SIZE = 10; // 10-11 for table content
+const TABLE_CELL_PADDING = 2.2; // creates healthy line spacing
+
+const getPageWidth = (doc: jsPDF) => doc.internal.pageSize.getWidth();
+const getPageHeight = (doc: jsPDF) => doc.internal.pageSize.getHeight();
+
+const computeEqualColumnStyles = (doc: jsPDF, cols: number, amountColumnIndexes: number[] = []) => {
+  const pageWidth = getPageWidth(doc);
+  const available = pageWidth - MARGIN_SIDE * 2;
+  const colWidth = available / cols;
+  const styles: any = {};
+  for (let i = 0; i < cols; i++) {
+    styles[i] = { cellWidth: colWidth };
+    if (amountColumnIndexes.includes(i)) styles[i].halign = 'right';
+    else styles[i].halign = 'left';
+  }
+  return styles;
+};
+
 const formatCurrency = (amount: number): string => {
   if (amount === 0) return '-';
   const formatted = Math.abs(amount).toLocaleString('en-IN', {
@@ -12,87 +38,89 @@ const formatCurrency = (amount: number): string => {
 };
 
 const addCompanyHeader = (doc: jsPDF, company: CompanyDetails, yPos: number): number => {
-  const pageWidth = doc.internal.pageSize.getWidth();
-  
-  doc.setFontSize(14);
+  const pageWidth = getPageWidth(doc);
+  const centerX = pageWidth / 2;
+
+  doc.setFontSize(HEADER_FONT_SIZE);
   doc.setFont('helvetica', 'bold');
-  doc.text(company.companyName.toUpperCase(), pageWidth / 2, yPos, { align: 'center' });
-  
-  doc.setFontSize(9);
+  // Company name (wrap if necessary)
+  const availableWidth = pageWidth - MARGIN_SIDE * 2;
+  const nameLines = doc.splitTextToSize(company.companyName.toUpperCase(), availableWidth);
+  doc.text(nameLines, centerX, yPos, { align: 'center' });
+
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  yPos += 5;
-  doc.text(company.cin, pageWidth / 2, yPos, { align: 'center' });
-  
-  yPos += 4;
-  doc.text(company.address, pageWidth / 2, yPos, { align: 'center' });
-  
-  return yPos + 8;
+  yPos += nameLines.length * 6; // move down depending on name lines
+
+  if (company.cin) {
+    const cinLines = doc.splitTextToSize(company.cin, availableWidth);
+    doc.text(cinLines, centerX, yPos + 4, { align: 'center' });
+    yPos += cinLines.length * 5;
+  }
+
+  if (company.address) {
+    const addrLines = doc.splitTextToSize(company.address, availableWidth);
+    doc.text(addrLines, centerX, yPos + 4, { align: 'center' });
+    yPos += addrLines.length * 5;
+  }
+
+  // leave a larger gap between header and document title to avoid overlap
+  return yPos + SECTION_SPACING;
 };
 
 const addDocumentTitle = (doc: jsPDF, title: string, subtitle: string, yPos: number): number => {
-  const pageWidth = doc.internal.pageSize.getWidth();
-  
-  doc.setFontSize(11);
+  const pageWidth = getPageWidth(doc);
+  const centerX = pageWidth / 2;
+
+  // ensure a little breathing room before title
+  yPos += 4;
+  doc.setFontSize(HEADER_FONT_SIZE - 1);
   doc.setFont('helvetica', 'bold');
-  doc.text(title.toUpperCase(), pageWidth / 2, yPos, { align: 'center' });
-  
+  const titleLines = doc.splitTextToSize(title.toUpperCase(), getPageWidth(doc) - MARGIN_SIDE * 2);
+  doc.text(titleLines, centerX, yPos, { align: 'center' });
+  yPos += titleLines.length * 7;
+
   if (subtitle) {
-    yPos += 5;
-    doc.setFontSize(10);
-    doc.text(subtitle, pageWidth / 2, yPos, { align: 'center' });
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    const subLines = doc.splitTextToSize(subtitle, getPageWidth(doc) - MARGIN_SIDE * 2);
+    doc.text(subLines, centerX, yPos + 4, { align: 'center' });
+    yPos += subLines.length * 6;
   }
-  
-  return yPos + 8;
+
+  return yPos + SECTION_SPACING / 2;
 };
 
 const addSignatureBlock = (doc: jsPDF, company: CompanyDetails, yPos: number): number => {
-  const pageWidth = doc.internal.pageSize.getWidth();
-  
-  // Left side - CA signature
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text('For V S P & Associates', 14, yPos);
-  doc.text('Chartered Accountants', 14, yPos + 4);
-  doc.text('FRN: 0289596', 14, yPos + 8);
-  
-  // Right side - Company signature
-  doc.text(`For ${company.companyName.toUpperCase()}`, pageWidth - 14, yPos, { align: 'right' });
-  
-  yPos += 20;
-  
-  // Director signature
-  doc.setFont('helvetica', 'bold');
-  doc.text(company.ownerName.toUpperCase(), pageWidth - 14, yPos, { align: 'right' });
-  doc.setFont('helvetica', 'normal');
-  doc.text('Director', pageWidth - 14, yPos + 4, { align: 'right' });
-  doc.text(`DIN: ${company.directorDIN}`, pageWidth - 14, yPos + 8, { align: 'right' });
-  
-  // CA signature
-  doc.text('CA Hemanth Vuppala', 14, yPos);
-  doc.text('Partner', 14, yPos + 4);
-  doc.text('M No 280956', 14, yPos + 8);
-  doc.text('UDIN:', 14, yPos + 12);
-  
-  yPos += 20;
-  
-  // Second director if exists
-  if (company.secondDirectorName) {
-    doc.setFont('helvetica', 'bold');
-    doc.text(company.secondDirectorName.toUpperCase(), pageWidth - 14, yPos, { align: 'right' });
-    doc.setFont('helvetica', 'normal');
-    doc.text('Director', pageWidth - 14, yPos + 4, { align: 'right' });
-    if (company.secondDirectorDIN) {
-      doc.text(`DIN: ${company.secondDirectorDIN}`, pageWidth - 14, yPos + 8, { align: 'right' });
-    }
+  const pageWidth = getPageWidth(doc);
+  const leftX = MARGIN_SIDE;
+  const rightX = pageWidth - MARGIN_SIDE;
+  // Ensure there's space for signature block; if not, start a new page
+  const estimatedHeight = 60; // approximate block height in mm
+  if (yPos + estimatedHeight > getPageHeight(doc) - MARGIN_BOTTOM) {
+    doc.addPage();
+    yPos = MARGIN_TOP;
   }
-  
-  yPos += 15;
-  
-  // Place and date
-  doc.text('Place: Hyderabad', 14, yPos);
-  doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 14, yPos + 4);
-  
-  return yPos + 10;
+  // CA area on the left
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Chartered Accountant', leftX, yPos);
+  doc.text('', leftX, yPos + 4); // blank line for signature
+  doc.text('__________________________', leftX, yPos + 16);
+  doc.text('Chartered Accountant', leftX, yPos + 20);
+
+  // Company area on the right
+  doc.setFont('helvetica', 'bold');
+  doc.text(company.ownerName ? `Director: ${company.ownerName}` : 'Director:', rightX, yPos + 20, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.text('', rightX, yPos + 24, { align: 'right' });
+
+  // Place and date below signatures (move to right side to avoid colliding with tables)
+  doc.setFontSize(9);
+  doc.text(`Place: ${company.place || 'Hyderabad'}`, rightX, yPos + 34, { align: 'right' });
+  doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, rightX, yPos + 38, { align: 'right' });
+
+  return yPos + 44;
 };
 
 export const generateProfitAndLossStatement = (
@@ -101,7 +129,7 @@ export const generateProfitAndLossStatement = (
   data: FinancialData,
   fy: string
 ): void => {
-  let yPos = 15;
+  let yPos = MARGIN_TOP;
   
   yPos = addCompanyHeader(doc, company, yPos);
   yPos = addDocumentTitle(doc, 'PROFIT AND LOSS ACCOUNT FOR THE YEAR ENDED 31ST MARCH ' + (parseInt(fy.split('-')[0]) + 1), '', yPos);
@@ -148,29 +176,30 @@ export const generateProfitAndLossStatement = (
   ];
   
   autoTable(doc, {
-    startY: yPos,
+    startY: Math.max(yPos, MARGIN_TOP),
     head: [['Sr.No', 'Particulars', 'Note No', `FY ${fy}`]],
     body: tableData,
     theme: 'plain',
-    styles: { fontSize: 9, cellPadding: 1 },
+    styles: { fontSize: TABLE_FONT_SIZE, cellPadding: TABLE_CELL_PADDING },
     headStyles: { fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-    columnStyles: {
-      0: { cellWidth: 15 },
-      1: { cellWidth: 100 },
-      2: { cellWidth: 20, halign: 'center' },
-      3: { cellWidth: 35, halign: 'right' }
-    },
-    margin: { left: 14, right: 14 }
+    columnStyles: computeEqualColumnStyles(doc, 4, [3]),
+    margin: { left: MARGIN_SIDE, right: MARGIN_SIDE },
+    didParseCell: (data) => {
+      const txt = String(data.cell.raw || '').toLowerCase();
+      if (txt.includes('total') || txt.includes('subtotal') || txt.includes('profit') || txt.includes('loss')) {
+        data.cell.styles.fontStyle = 'bold';
+      }
+    }
   });
-  
-  yPos = (doc as any).lastAutoTable.finalY + 10;
+
+  yPos = (doc as any).lastAutoTable.finalY + SECTION_SPACING;
   
   // Add note
   doc.setFontSize(8);
-  doc.text('See accompanying notes forming part of financial statements', 14, yPos);
-  doc.text('This is the Profit & Loss Statement referred to in our Report of even date.', 14, yPos + 4);
-  
-  yPos += 15;
+  doc.text('See accompanying notes forming part of financial statements', MARGIN_SIDE, yPos);
+  doc.text('This is the Profit & Loss Statement referred to in our Report of even date.', MARGIN_SIDE, yPos + 4);
+
+  yPos += SECTION_SPACING / 2;
   addSignatureBlock(doc, company, yPos);
 };
 
@@ -181,7 +210,7 @@ export const generateBalanceSheet = (
   fy: string
 ): void => {
   doc.addPage();
-  let yPos = 15;
+  let yPos = MARGIN_TOP;
   
   yPos = addCompanyHeader(doc, company, yPos);
   yPos = addDocumentTitle(doc, 'BALANCE SHEET AS AT 31ST MARCH ' + (parseInt(fy.split('-')[0]) + 1), '', yPos);
@@ -230,26 +259,25 @@ export const generateBalanceSheet = (
   ];
   
   autoTable(doc, {
-    startY: yPos,
+    startY: Math.max(yPos, MARGIN_TOP),
     body: tableData,
     theme: 'plain',
-    styles: { fontSize: 9, cellPadding: 1 },
-    columnStyles: {
-      0: { cellWidth: 15 },
-      1: { cellWidth: 100 },
-      2: { cellWidth: 20, halign: 'center' },
-      3: { cellWidth: 35, halign: 'right' }
-    },
-    margin: { left: 14, right: 14 }
+    styles: { fontSize: TABLE_FONT_SIZE, cellPadding: TABLE_CELL_PADDING },
+    columnStyles: computeEqualColumnStyles(doc, 4, [3]),
+    margin: { left: MARGIN_SIDE, right: MARGIN_SIDE },
+    didParseCell: (data) => {
+      const txt = String(data.cell.raw || '').toLowerCase();
+      if (txt.includes('total')) data.cell.styles.fontStyle = 'bold';
+    }
   });
-  
-  yPos = (doc as any).lastAutoTable.finalY + 10;
+
+  yPos = (doc as any).lastAutoTable.finalY + SECTION_SPACING;
   
   doc.setFontSize(8);
-  doc.text('See accompanying notes forming part of financial statements', 14, yPos);
-  doc.text('This is the Balance Sheet referred to in our Report of even date.', 14, yPos + 4);
-  
-  yPos += 15;
+  doc.text('See accompanying notes forming part of financial statements', MARGIN_SIDE, yPos);
+  doc.text('This is the Balance Sheet referred to in our Report of even date.', MARGIN_SIDE, yPos + 4);
+
+  yPos += SECTION_SPACING / 2;
   addSignatureBlock(doc, company, yPos);
 };
 
@@ -260,7 +288,7 @@ export const generateNotesToAccounts = (
   fy: string
 ): void => {
   doc.addPage();
-  let yPos = 15;
+  let yPos = MARGIN_TOP;
   
   yPos = addCompanyHeader(doc, company, yPos);
   yPos = addDocumentTitle(doc, `Notes forming part of Balance Sheet as on 31.03.${parseInt(fy.split('-')[0]) + 1}`, '', yPos);
@@ -268,11 +296,11 @@ export const generateNotesToAccounts = (
   // Note 1: Share Capital
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Note : 1 Share Capital', 14, yPos);
+  doc.text('Note : 1 Share Capital', MARGIN_SIDE, yPos);
   yPos += 5;
   
   autoTable(doc, {
-    startY: yPos,
+    startY: Math.max(yPos, MARGIN_TOP),
     head: [['Sr. No', 'Particulars', `FY ${fy}`]],
     body: [
       ['1', 'AUTHORIZED CAPITAL', ''],
@@ -284,25 +312,25 @@ export const generateNotesToAccounts = (
       ['', 'Total in', formatCurrency(data.shareCapital)],
     ],
     theme: 'plain',
-    styles: { fontSize: 9, cellPadding: 1 },
+    styles: { fontSize: TABLE_FONT_SIZE, cellPadding: TABLE_CELL_PADDING },
     headStyles: { fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-    columnStyles: {
-      0: { cellWidth: 20 },
-      1: { cellWidth: 100 },
-      2: { cellWidth: 50, halign: 'right' }
-    },
-    margin: { left: 14, right: 14 }
+    columnStyles: computeEqualColumnStyles(doc, 3, [2]),
+    margin: { left: MARGIN_SIDE, right: MARGIN_SIDE },
+    didParseCell: (data) => {
+      const txt = String(data.cell.raw || '').toLowerCase();
+      if (txt.includes('total')) data.cell.styles.fontStyle = 'bold';
+    }
   });
-  
-  yPos = (doc as any).lastAutoTable.finalY + 10;
+
+  yPos = (doc as any).lastAutoTable.finalY + SECTION_SPACING;
   
   // Note 2: Reserve & Surplus
   doc.setFont('helvetica', 'bold');
-  doc.text('Note :2 Reserve & Surplus', 14, yPos);
+  doc.text('Note :2 Reserve & Surplus', MARGIN_SIDE, yPos);
   yPos += 5;
   
   autoTable(doc, {
-    startY: yPos,
+    startY: Math.max(yPos, MARGIN_TOP),
     head: [['Sr. No', 'Particulars', `FY ${fy}`]],
     body: [
       ['1', 'Opening Surplus', '-'],
@@ -310,50 +338,50 @@ export const generateNotesToAccounts = (
       ['', '', formatCurrency(data.reservesAndSurplus)],
     ],
     theme: 'plain',
-    styles: { fontSize: 9, cellPadding: 1 },
+    styles: { fontSize: TABLE_FONT_SIZE, cellPadding: TABLE_CELL_PADDING },
     headStyles: { fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-    columnStyles: {
-      0: { cellWidth: 20 },
-      1: { cellWidth: 100 },
-      2: { cellWidth: 50, halign: 'right' }
-    },
-    margin: { left: 14, right: 14 }
+    columnStyles: computeEqualColumnStyles(doc, 3, [2]),
+    margin: { left: MARGIN_SIDE, right: MARGIN_SIDE },
+    didParseCell: (data) => {
+      const txt = String(data.cell.raw || '').toLowerCase();
+      if (txt.includes('total')) data.cell.styles.fontStyle = 'bold';
+    }
   });
-  
-  yPos = (doc as any).lastAutoTable.finalY + 10;
+
+  yPos = (doc as any).lastAutoTable.finalY + SECTION_SPACING;
   
   // Note 3: Other Current Liabilities
   doc.setFont('helvetica', 'bold');
-  doc.text('Note :3 Other Current Liabilities', 14, yPos);
+  doc.text('Note :3 Other Current Liabilities', MARGIN_SIDE, yPos);
   yPos += 5;
   
   autoTable(doc, {
-    startY: yPos,
+    startY: Math.max(yPos, MARGIN_TOP),
     head: [['Sr. No', 'Particulars', `FY ${fy}`]],
     body: [
       ['1', 'Trade Payables', formatCurrency(data.tradePayables)],
       ['', '', formatCurrency(data.otherCurrentLiabilities)],
     ],
     theme: 'plain',
-    styles: { fontSize: 9, cellPadding: 1 },
+    styles: { fontSize: TABLE_FONT_SIZE, cellPadding: TABLE_CELL_PADDING },
     headStyles: { fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-    columnStyles: {
-      0: { cellWidth: 20 },
-      1: { cellWidth: 100 },
-      2: { cellWidth: 50, halign: 'right' }
-    },
-    margin: { left: 14, right: 14 }
+    columnStyles: computeEqualColumnStyles(doc, 3, [2]),
+    margin: { left: MARGIN_SIDE, right: MARGIN_SIDE },
+    didParseCell: (data) => {
+      const txt = String(data.cell.raw || '').toLowerCase();
+      if (txt.includes('total')) data.cell.styles.fontStyle = 'bold';
+    }
   });
-  
-  yPos = (doc as any).lastAutoTable.finalY + 10;
+
+  yPos = (doc as any).lastAutoTable.finalY + SECTION_SPACING;
   
   // Note 4: Cash and Cash Equivalence
   doc.setFont('helvetica', 'bold');
-  doc.text('Note : 4 Cash and Cash Equivalence', 14, yPos);
+  doc.text('Note : 4 Cash and Cash Equivalence', MARGIN_SIDE, yPos);
   yPos += 5;
   
   autoTable(doc, {
-    startY: yPos,
+    startY: Math.max(yPos, MARGIN_TOP),
     head: [['Sr. No', 'Particulars', `FY ${fy}`]],
     body: [
       ['1', 'Cash Balance', '-'],
@@ -361,14 +389,14 @@ export const generateNotesToAccounts = (
       ['', 'Total in', formatCurrency(data.cashAndBank)],
     ],
     theme: 'plain',
-    styles: { fontSize: 9, cellPadding: 1 },
+    styles: { fontSize: TABLE_FONT_SIZE, cellPadding: TABLE_CELL_PADDING },
     headStyles: { fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-    columnStyles: {
-      0: { cellWidth: 20 },
-      1: { cellWidth: 100 },
-      2: { cellWidth: 50, halign: 'right' }
-    },
-    margin: { left: 14, right: 14 }
+    columnStyles: computeEqualColumnStyles(doc, 3, [2]),
+    margin: { left: MARGIN_SIDE, right: MARGIN_SIDE },
+    didParseCell: (data) => {
+      const txt = String(data.cell.raw || '').toLowerCase();
+      if (txt.includes('total')) data.cell.styles.fontStyle = 'bold';
+    }
   });
   
   // Add P&L Notes page
@@ -380,7 +408,7 @@ export const generateNotesToAccounts = (
   
   // Note 5: Revenue from operations
   doc.setFont('helvetica', 'bold');
-  doc.text('Note : 5 Revenue from operations', 14, yPos);
+  doc.text('Note : 5 Revenue from operations', MARGIN_SIDE, yPos);
   yPos += 5;
   
   const revenueBody = data.incomeDetails
@@ -389,50 +417,50 @@ export const generateNotesToAccounts = (
   revenueBody.push(['', 'Total in', formatCurrency(data.revenueFromOperations)]);
   
   autoTable(doc, {
-    startY: yPos,
+    startY: Math.max(yPos, MARGIN_TOP),
     head: [['Sr. No', 'Particulars', `FY ${fy}`]],
     body: revenueBody,
     theme: 'plain',
-    styles: { fontSize: 9, cellPadding: 1 },
+    styles: { fontSize: TABLE_FONT_SIZE, cellPadding: TABLE_CELL_PADDING },
     headStyles: { fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-    columnStyles: {
-      0: { cellWidth: 20 },
-      1: { cellWidth: 100 },
-      2: { cellWidth: 50, halign: 'right' }
-    },
-    margin: { left: 14, right: 14 }
+    columnStyles: computeEqualColumnStyles(doc, 3, [2]),
+    margin: { left: MARGIN_SIDE, right: MARGIN_SIDE },
+    didParseCell: (data) => {
+      const txt = String(data.cell.raw || '').toLowerCase();
+      if (txt.includes('total')) data.cell.styles.fontStyle = 'bold';
+    }
   });
-  
-  yPos = (doc as any).lastAutoTable.finalY + 10;
+
+  yPos = (doc as any).lastAutoTable.finalY + SECTION_SPACING;
   
   // Note 6: Other income
   doc.setFont('helvetica', 'bold');
-  doc.text('Note : 6 Other income', 14, yPos);
+  doc.text('Note : 6 Other income', MARGIN_SIDE, yPos);
   yPos += 5;
   
   autoTable(doc, {
-    startY: yPos,
+    startY: Math.max(yPos, MARGIN_TOP),
     head: [['Sr. No', 'Particulars', `FY ${fy}`]],
     body: [
       ['1', 'Other Income / Rounding off', formatCurrency(data.otherIncome)],
       ['', 'Total in', formatCurrency(data.otherIncome)],
     ],
     theme: 'plain',
-    styles: { fontSize: 9, cellPadding: 1 },
+    styles: { fontSize: TABLE_FONT_SIZE, cellPadding: TABLE_CELL_PADDING },
     headStyles: { fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-    columnStyles: {
-      0: { cellWidth: 20 },
-      1: { cellWidth: 100 },
-      2: { cellWidth: 50, halign: 'right' }
-    },
-    margin: { left: 14, right: 14 }
+    columnStyles: computeEqualColumnStyles(doc, 3, [2]),
+    margin: { left: MARGIN_SIDE, right: MARGIN_SIDE },
+    didParseCell: (data) => {
+      const txt = String(data.cell.raw || '').toLowerCase();
+      if (txt.includes('total')) data.cell.styles.fontStyle = 'bold';
+    }
   });
-  
-  yPos = (doc as any).lastAutoTable.finalY + 10;
+
+  yPos = (doc as any).lastAutoTable.finalY + SECTION_SPACING;
   
   // Note 7: Other Expenses
   doc.setFont('helvetica', 'bold');
-  doc.text('Note : 7 Other Expenses', 14, yPos);
+  doc.text('Note : 7 Other Expenses', MARGIN_SIDE, yPos);
   yPos += 5;
   
   const expenseBody = data.expenseDetails.map((item, idx) => 
@@ -441,18 +469,18 @@ export const generateNotesToAccounts = (
   expenseBody.push(['', 'Total in', formatCurrency(data.otherExpenses)]);
   
   autoTable(doc, {
-    startY: yPos,
+    startY: Math.max(yPos, MARGIN_TOP),
     head: [['Sr. No', 'Particulars', `FY ${fy}`]],
     body: expenseBody,
     theme: 'plain',
-    styles: { fontSize: 9, cellPadding: 1 },
+    styles: { fontSize: TABLE_FONT_SIZE, cellPadding: TABLE_CELL_PADDING },
     headStyles: { fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-    columnStyles: {
-      0: { cellWidth: 20 },
-      1: { cellWidth: 100 },
-      2: { cellWidth: 50, halign: 'right' }
-    },
-    margin: { left: 14, right: 14 }
+    columnStyles: computeEqualColumnStyles(doc, 3, [2]),
+    margin: { left: MARGIN_SIDE, right: MARGIN_SIDE },
+    didParseCell: (data) => {
+      const txt = String(data.cell.raw || '').toLowerCase();
+      if (txt.includes('total')) data.cell.styles.fontStyle = 'bold';
+    }
   });
 };
 
@@ -463,7 +491,7 @@ export const generateComputationOfIncome = (
   fy: string
 ): void => {
   doc.addPage();
-  let yPos = 15;
+  let yPos = MARGIN_TOP;
   
   yPos = addCompanyHeader(doc, company, yPos);
   
@@ -471,20 +499,22 @@ export const generateComputationOfIncome = (
   const assessmentYear = `${parseInt(fy.split('-')[0]) + 1}-${(parseInt(fy.split('-')[0]) + 2).toString().slice(-2)}`;
   
   doc.setFontSize(9);
-  doc.text(`PAN`, 14, yPos);
-  doc.text(company.pan, 80, yPos);
+  const leftCol = MARGIN_SIDE;
+  const rightCol = MARGIN_SIDE + 60;
+  doc.text(`PAN`, leftCol, yPos);
+  doc.text(company.pan || '-', rightCol, yPos);
   yPos += 4;
-  doc.text(`Date of Incorporation`, 14, yPos);
-  doc.text(company.dateOfIncorporation, 80, yPos);
+  doc.text(`Date of Incorporation`, leftCol, yPos);
+  doc.text(company.dateOfIncorporation || '-', rightCol, yPos);
   yPos += 4;
-  doc.text(`Status`, 14, yPos);
-  doc.text('COMPANY', 80, yPos);
+  doc.text(`Status`, leftCol, yPos);
+  doc.text('COMPANY', rightCol, yPos);
   yPos += 4;
-  doc.text(`Financial Year`, 14, yPos);
-  doc.text(fy, 80, yPos);
+  doc.text(`Financial Year`, leftCol, yPos);
+  doc.text(fy, rightCol, yPos);
   yPos += 4;
-  doc.text(`Assessment Year`, 14, yPos);
-  doc.text(assessmentYear, 80, yPos);
+  doc.text(`Assessment Year`, leftCol, yPos);
+  doc.text(assessmentYear, rightCol, yPos);
   yPos += 8;
   
   yPos = addDocumentTitle(doc, 'COMPUTATION OF TOTAL INCOME', '', yPos);
@@ -516,20 +546,21 @@ export const generateComputationOfIncome = (
   ];
   
   autoTable(doc, {
-    startY: yPos,
+    startY: Math.max(yPos, MARGIN_TOP),
     head: [['Particulars', 'Amount']],
     body: tableData,
     theme: 'plain',
-    styles: { fontSize: 9, cellPadding: 2 },
+    styles: { fontSize: TABLE_FONT_SIZE, cellPadding: TABLE_CELL_PADDING },
     headStyles: { fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-    columnStyles: {
-      0: { cellWidth: 130 },
-      1: { cellWidth: 40, halign: 'right' }
-    },
-    margin: { left: 14, right: 14 }
+    columnStyles: computeEqualColumnStyles(doc, 2, [1]),
+    margin: { left: MARGIN_SIDE, right: MARGIN_SIDE },
+    didParseCell: (data) => {
+      const txt = String(data.cell.raw || '').toLowerCase();
+      if (txt.includes('total') || txt.includes('tax')) data.cell.styles.fontStyle = 'bold';
+    }
   });
-  
-  yPos = (doc as any).lastAutoTable.finalY + 15;
+
+  yPos = (doc as any).lastAutoTable.finalY + SECTION_SPACING;
   addSignatureBlock(doc, company, yPos);
 };
 
@@ -549,6 +580,43 @@ export const generateFinancialStatementsPDF = (
   generateProfitAndLossStatement(doc, company, data, fy);
   generateBalanceSheet(doc, company, data, fy);
   generateNotesToAccounts(doc, company, data, fy);
-  
+  // Draw footer on every page: Chartered Accountant block (left) and Directors block (right)
+  const drawFooterPerPage = (d: jsPDF, c: CompanyDetails) => {
+    const pageCount = d.getNumberOfPages();
+    const pageH = getPageHeight(d);
+    const footerY = pageH - (MARGIN_BOTTOM / 2) - 6; // position within bottom margin
+
+    for (let p = 1; p <= pageCount; p++) {
+      d.setPage(p);
+      const pw = getPageWidth(d);
+      const leftX = MARGIN_SIDE;
+      const rightX = pw - MARGIN_SIDE;
+
+      d.setFontSize(9);
+      d.setFont('helvetica', 'normal');
+      // Left: Chartered Accountant block (kept from original layout)
+      d.text('For V S P & Associates', leftX, footerY - 6);
+      d.text('Chartered Accountants', leftX, footerY - 2);
+      d.text('FRN 028959S', leftX, footerY + 2);
+
+      // Right: Company / Directors block
+      d.setFont('helvetica', 'bold');
+      d.text(`For ${c.companyName ? c.companyName.toUpperCase() : ''}`, rightX, footerY - 10, { align: 'right' });
+      d.setFont('helvetica', 'bold');
+      if (c.ownerName) d.text(c.ownerName.toUpperCase(), rightX, footerY - 2, { align: 'right' });
+      d.setFont('helvetica', 'normal');
+      if (c.directorDIN) d.text(`DIN : ${c.directorDIN}`, rightX, footerY + 4, { align: 'right' });
+
+      if (c.secondDirectorName) {
+        d.setFont('helvetica', 'bold');
+        d.text(c.secondDirectorName.toUpperCase(), rightX, footerY + 14, { align: 'right' });
+        d.setFont('helvetica', 'normal');
+        if (c.secondDirectorDIN) d.text(`DIN : ${c.secondDirectorDIN}`, rightX, footerY + 18, { align: 'right' });
+      }
+    }
+  };
+
+  drawFooterPerPage(doc, company);
+
   return doc;
 };

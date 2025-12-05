@@ -624,6 +624,93 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Annual Report endpoint - generate in-process using PDFKit and stream the result
+const path = require('path');
+const { generateToStream } = require('./annualReportGenerator');
+
+app.get('/reports/annual', async (req, res) => {
+  let timeoutHandle;
+  try {
+    const year = req.query.year || '2024-25';
+    const ownerName = req.query.ownerName || process.env.ANNUAL_REPORT_OWNER || 'Company Director';
+
+    console.log('Generating annual report:', { year, ownerName });
+    
+    const filename = `annual-report-${String(year).replace(/[\\/\\\\]/g,'-')}.pdf`;
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Transfer-Encoding', 'chunked');
+
+    // generateToStream returns a Promise that resolves to a readable stream
+    const pdfStream = await generateToStream(String(year), String(ownerName), {});
+
+    // Pipe the stream to response
+    pdfStream.on('error', (err) => {
+      console.error('PDF stream runtime error:', err);
+      try { if (!res.headersSent) res.status(500).json({ success: false, error: 'Failed to generate PDF' }); } catch (e) { /* ignore */ }
+    });
+
+    pdfStream.on('data', (chunk) => console.log('PDF chunk:', chunk.length, 'bytes'));
+    pdfStream.pipe(res).on('error', (err) => console.error('Pipe error:', err));
+    res.on('error', (err) => console.error('Response error during PDF stream:', err));
+
+  } catch (err) {
+    console.error('Error in /reports/annual handler:', err);
+    clearTimeout(timeoutHandle);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: 'Internal server error', details: err.message });
+    } else {
+      res.end();
+    }
+  }
+});
+
+// Minimal test PDF endpoint for diagnostics
+app.get('/test/pdf', (req, res) => {
+  console.log('Test PDF endpoint called');
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', 'attachment; filename="test.pdf"');
+  
+  // Minimal valid PDF
+  const minimalPdf = Buffer.from(
+    '%PDF-1.4\n' +
+    '1 0 obj\n' +
+    '<< /Type /Catalog /Pages 2 0 R >>\n' +
+    'endobj\n' +
+    '2 0 obj\n' +
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>\n' +
+    'endobj\n' +
+    '3 0 obj\n' +
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> >>\n' +
+    'endobj\n' +
+    '4 0 obj\n' +
+    '<< /Length 44 >>\n' +
+    'stream\n' +
+    'BT /F1 12 Tf 50 700 Td (Test PDF) Tj ET\n' +
+    'endstream\n' +
+    'endobj\n' +
+    'xref\n' +
+    '0 5\n' +
+    '0000000000 65535 f\n' +
+    '0000000009 00000 n\n' +
+    '0000000074 00000 n\n' +
+    '0000000133 00000 n\n' +
+    '0000000340 00000 n\n' +
+    'trailer\n' +
+    '<< /Size 5 /Root 1 0 R >>\n' +
+    'startxref\n' +
+    '434\n' +
+    '%%EOF\n'
+  );
+  
+  console.log('Test PDF size:', minimalPdf.length);
+  res.send(minimalPdf);
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log('Federal Bank UPI Integration Server with TDS Support');

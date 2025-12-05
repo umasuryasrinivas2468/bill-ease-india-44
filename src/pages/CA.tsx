@@ -13,6 +13,7 @@ const CA = () => {
   const { toast } = useToast();
   const { data: invoices = [] } = useInvoices();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const generateGSTReport = () => {
     const csvHeaders = [
@@ -158,6 +159,33 @@ const CA = () => {
     }
   };
 
+  const downloadAnnualReport = async () => {
+    setIsGeneratingReport(true);
+    try {
+      const year = new Date().getFullYear() - 1 + '-' + new Date().getFullYear().toString().slice(-2); // e.g. 2023-24
+      const ownerName = encodeURIComponent('BODAPATI UMA SURYA SRINIVAS');
+      const resp = await fetch(`/reports/annual?year=${encodeURIComponent(year)}&ownerName=${ownerName}`);
+      if (!resp.ok) throw new Error('Server error: ' + resp.statusText);
+      const buf = await resp.arrayBuffer();
+      const blob = new Blob([buf], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Annual_Report_${year}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({ title: 'Annual Report', description: 'Annual report downloaded.' });
+    } catch (err) {
+      console.error('Failed to download annual report', err);
+      toast({ title: 'Error', description: 'Failed to download annual report', variant: 'destructive' });
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex items-center gap-4">
@@ -276,6 +304,32 @@ const CA = () => {
                     No invoices available. Create some invoices first.
                   </p>
                 )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Annual Report</CardTitle>
+                <CardDescription>Generate CA-style Annual Report PDF</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>Multi-page report with financial statements</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>Includes director report, notes and signatures</span>
+                </div>
+
+                <Button 
+                  onClick={downloadAnnualReport} 
+                  className="w-full"
+                  disabled={isGeneratingReport}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {isGeneratingReport ? 'Generating...' : 'Download Annual Report'}
+                </Button>
               </CardContent>
             </Card>
           </div>

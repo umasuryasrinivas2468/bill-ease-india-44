@@ -11,7 +11,11 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "gen:annual": "node scripts/generate-annual-report-node.js"
+  },
+  "bin": {
+    "gen-annual-report": "scripts/generate-annual-report.ts"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.31.6",
@@ -64,6 +68,7 @@
     "next-themes": "^0.3.0",
     "number-to-words": "^1.2.4",
     "qrcode": "^1.5.4",
+    "pdfkit": "^0.13.0",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
