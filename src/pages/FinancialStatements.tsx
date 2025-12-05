@@ -49,6 +49,7 @@ const FinancialStatements = () => {
         companyName: businessInfo.businessName || prev.companyName,
         ownerName: businessInfo.ownerName || prev.ownerName,
         address: `${businessInfo.address || ''}, ${businessInfo.city || ''}, ${businessInfo.state || ''}, ${businessInfo.pincode || ''}`.replace(/^, |, $/g, ''),
+        place: businessInfo.city || prev.place,
       }));
     }
   }, [businessInfo]);
