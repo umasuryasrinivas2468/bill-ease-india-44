@@ -2,17 +2,15 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { FileSpreadsheet, Download, CheckCircle, Upload } from 'lucide-react';
+import { FileSpreadsheet, Download, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useInvoices } from '@/hooks/useInvoices';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import BulkInvoiceProcessor from '@/components/BulkInvoiceProcessor';
 import VirtualCFO from '@/components/VirtualCFO';
-import { fetchFinancialData, CompanyDetails } from '@/services/financialStatementsService';
-import { generateProfitAndLossStatement, generateBalanceSheet, generateNotesToAccounts, generateComputationOfIncome } from '@/utils/financialStatementsPDF';
 import { useBusinessData } from '@/hooks/useBusinessData';
 import { useSupabaseUser } from '@/hooks/useSupabaseUser';
-import jsPDF from 'jspdf';
+import { generateAnnualReport } from '@/utils/annualReportPDF';
 
 const CA = () => {
   const { toast } = useToast();
@@ -180,35 +178,21 @@ const CA = () => {
       const fyStart = currentMonth >= 3 ? currentYear : currentYear - 1;
       const fy = `${fyStart}-${(fyStart + 1).toString().slice(-2)}`;
 
-      // Fetch financial data
-      const financialData = await fetchFinancialData(supabaseUser.id, fy);
-
-      // Build company details from business profile
-      const company: CompanyDetails = {
+      // Build company info from business profile
+      const companyInfo = {
         companyName: businessProfile?.businessName || 'Your Company Name',
-        cin: '',
-        pan: '',
-        address: [businessProfile?.address, businessProfile?.city, businessProfile?.state, businessProfile?.pincode]
-          .filter(Boolean).join(', ') || 'Address',
-        place: businessProfile?.city || 'Hyderabad',
-        dateOfIncorporation: '',
         ownerName: businessProfile?.ownerName || 'Director',
-        directorDIN: '',
+        address: businessProfile?.address || '',
+        city: businessProfile?.city || 'Hyderabad',
+        state: businessProfile?.state || '',
+        pincode: businessProfile?.pincode || '',
+        gstNumber: businessProfile?.gstNumber || '',
       };
 
-      // Generate PDF
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      
-      // Generate all sections
-      generateProfitAndLossStatement(doc, company, financialData, fy);
-      generateBalanceSheet(doc, company, financialData, fy);
-      generateNotesToAccounts(doc, company, financialData, fy);
-      generateComputationOfIncome(doc, company, financialData, fy);
+      // Generate comprehensive annual report
+      await generateAnnualReport(supabaseUser.id, fy, companyInfo);
 
-      // Download the PDF
-      doc.save(`Annual_Report_${fy}.pdf`);
-
-      toast({ title: 'Annual Report', description: 'Annual report downloaded successfully.' });
+      toast({ title: 'Annual Report', description: 'Comprehensive annual report downloaded successfully.' });
     } catch (err) {
       console.error('Failed to generate annual report', err);
       toast({ title: 'Error', description: 'Failed to generate annual report. Please try again.', variant: 'destructive' });
