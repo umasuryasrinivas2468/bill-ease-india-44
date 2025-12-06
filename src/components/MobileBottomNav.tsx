@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FileText, Users, Calculator, BookOpen, MoreHorizontal, X, Search } from 'lucide-react';
+import { FileText, Users, Home, BookOpen, MoreHorizontal, X, Search } from 'lucide-react';
 import { MobileSearch } from '@/components/MobileSearch';
 import {
   Drawer,
@@ -16,9 +16,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 const mainNavItems = [
+  { label: 'Home', icon: Home, path: '/dashboard' },
   { label: 'Invoices', icon: FileText, path: '/invoices' },
   { label: 'Clients', icon: Users, path: '/clients' },
-  { label: 'CA Tools', icon: Calculator, path: '/ca' },
   { label: 'Accounting', icon: BookOpen, path: '/accounting/chart-of-accounts' },
 ];
 
