@@ -9,14 +9,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import BulkInvoiceProcessor from '@/components/BulkInvoiceProcessor';
 import VirtualCFO from '@/components/VirtualCFO';
 import { useBusinessData } from '@/hooks/useBusinessData';
-import { useSupabaseUser } from '@/hooks/useSupabaseUser';
+import { useAuth } from '@/components/ClerkAuthProvider';
 import { generateAnnualReport } from '@/utils/annualReportPDF';
 
 const CA = () => {
   const { toast } = useToast();
   const { data: invoices = [] } = useInvoices();
   const { getBusinessInfo } = useBusinessData();
-  const { supabaseUser } = useSupabaseUser();
+  const { user } = useAuth();
   const businessProfile = getBusinessInfo();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
@@ -166,7 +166,7 @@ const CA = () => {
   };
 
   const downloadAnnualReport = async () => {
-    if (!supabaseUser?.id) {
+    if (!user?.id) {
       toast({ title: 'Error', description: 'User not authenticated', variant: 'destructive' });
       return;
     }
@@ -190,7 +190,7 @@ const CA = () => {
       };
 
       // Generate comprehensive annual report
-      await generateAnnualReport(supabaseUser.id, fy, companyInfo);
+      await generateAnnualReport(user.id, fy, companyInfo);
 
       toast({ title: 'Annual Report', description: 'Comprehensive annual report downloaded successfully.' });
     } catch (err) {
