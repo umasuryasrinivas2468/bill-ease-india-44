@@ -18,6 +18,7 @@ import AccountReceivables from '@/components/reports/AccountReceivables';
 import AccountPayables from '@/components/reports/AccountPayables';
 import PayablesReport from '@/components/reports/PayablesReport';
 import CashFlowAnalysis from '@/components/reports/CashFlowAnalysis';
+import GSTMonthCalendar from '@/components/reports/GSTMonthCalendar';
 
 import { createSampleBusinessData } from '@/utils/createSampleBusinessData';
 import { usePerformanceData } from '@/hooks/usePerformanceData';
@@ -388,7 +389,7 @@ const Reports = () => {
               </div>
             </div>
 
-            <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="bg-muted/50 p-4 rounded-lg">
               <h4 className="font-medium mb-2">B2B vs B2C Breakdown</h4>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
@@ -412,6 +413,15 @@ const Reports = () => {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Month-wise GST Calendar */}
+            <div className="border-t pt-4 mt-4">
+              <h4 className="font-medium mb-4 flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Month-wise GST Calendar
+              </h4>
+              <GSTMonthCalendar />
             </div>
           </div>
         </CardContent>
