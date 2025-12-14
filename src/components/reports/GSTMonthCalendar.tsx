@@ -79,6 +79,23 @@ const GSTMonthCalendar = () => {
     };
   }, [selectedYear, selectedMonth, invoices]);
 
+  // Format date as DD-MM-YYYY for GSTN
+  const formatDateGSTN = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  // Get financial year in YYYY-YY format
+  const getFinancialYear = (year: number, month: number) => {
+    if (month >= 3) { // April onwards
+      return `${year}-${String(year + 1).slice(-2)}`;
+    }
+    return `${year - 1}-${String(year).slice(-2)}`;
+  };
+
   const downloadGSTJson = () => {
     if (!selectedMonthData) {
       toast({
@@ -89,76 +106,104 @@ const GSTMonthCalendar = () => {
       return;
     }
 
-    const gstJson = {
-      report_type: selectedGstType,
-      gstin: businessInfo?.gstNumber || 'NOT_CONFIGURED',
-      business_name: businessInfo?.businessName || 'Business Name',
-      business_address: businessInfo?.address || '',
-      filing_period: {
-        month: selectedMonthData.month + 1,
-        month_name: MONTH_NAMES[selectedMonthData.month],
-        year: selectedMonthData.year,
-        financial_year: selectedMonthData.month >= 3 
-          ? `${selectedMonthData.year}-${selectedMonthData.year + 1}`
-          : `${selectedMonthData.year - 1}-${selectedMonthData.year}`,
-      },
-      summary: {
-        total_invoices: selectedMonthData.invoiceCount,
-        total_taxable_value: Math.round(selectedMonthData.totalSales - selectedMonthData.totalGst),
-        cgst: selectedMonthData.cgst,
-        sgst: selectedMonthData.sgst,
-        igst: 0,
-        total_gst: selectedMonthData.totalGst,
-        total_invoice_value: Math.round(selectedMonthData.totalSales),
-      },
-      ...(selectedGstType === 'GSTR1' && {
-        b2b: selectedMonthData.invoices
-          .filter(inv => inv.client_gst_number)
-          .map(inv => ({
-            invoice_number: inv.invoice_number,
-            invoice_date: inv.invoice_date,
-            client_name: inv.client_name,
-            client_gstin: inv.client_gst_number,
-            taxable_value: Number(inv.amount || 0),
-            cgst: Math.round(Number(inv.gst_amount || 0) * 0.5),
-            sgst: Math.round(Number(inv.gst_amount || 0) * 0.5),
-            igst: 0,
-            total_value: Number(inv.total_amount || 0),
-          })),
-        b2c: selectedMonthData.invoices
-          .filter(inv => !inv.client_gst_number)
-          .map(inv => ({
-            invoice_number: inv.invoice_number,
-            invoice_date: inv.invoice_date,
-            client_name: inv.client_name,
-            taxable_value: Number(inv.amount || 0),
-            cgst: Math.round(Number(inv.gst_amount || 0) * 0.5),
-            sgst: Math.round(Number(inv.gst_amount || 0) * 0.5),
-            igst: 0,
-            total_value: Number(inv.total_amount || 0),
-          })),
-      }),
-      ...(selectedGstType === 'GSTR9' && {
-        annual_summary: {
-          total_invoices: selectedMonthData.invoiceCount,
-          total_taxable_value: Math.round(selectedMonthData.totalSales - selectedMonthData.totalGst),
-          total_tax_paid: selectedMonthData.totalGst,
-        },
-        invoices: selectedMonthData.invoices.map(inv => ({
-          invoice_number: inv.invoice_number,
-          invoice_date: inv.invoice_date,
-          client_name: inv.client_name,
-          client_gstin: inv.client_gst_number || null,
-          taxable_value: Number(inv.amount || 0),
-          cgst: Math.round(Number(inv.gst_amount || 0) * 0.5),
-          sgst: Math.round(Number(inv.gst_amount || 0) * 0.5),
-          igst: 0,
-          total_value: Number(inv.total_amount || 0),
-          status: inv.status,
+    const gstin = businessInfo?.gstNumber || 'NOT_CONFIGURED';
+    const retPeriod = `${String(selectedMonthData.month + 1).padStart(2, '0')}${selectedMonthData.year}`;
+    const financialYear = getFinancialYear(selectedMonthData.year, selectedMonthData.month);
+
+    let gstJson: any;
+
+    if (selectedGstType === 'GSTR1') {
+      // GSTN-compliant GSTR-1 format
+      const b2bInvoices = selectedMonthData.invoices.filter(inv => inv.client_gst_number);
+      const b2cInvoices = selectedMonthData.invoices.filter(inv => !inv.client_gst_number);
+
+      // Group B2B invoices by GSTIN
+      const b2bGrouped = b2bInvoices.reduce((acc: any, inv) => {
+        const ctin = inv.client_gst_number!;
+        if (!acc[ctin]) {
+          acc[ctin] = [];
+        }
+        acc[ctin].push({
+          inum: inv.invoice_number,
+          idt: formatDateGSTN(inv.invoice_date),
+          val: Number(inv.total_amount || 0),
+          pos: gstin.slice(0, 2), // Place of supply from GSTIN
+          rchrg: 'N',
+          itms: [{
+            num: 1,
+            itm_det: {
+              txval: Number(inv.amount || 0),
+              rt: Number(inv.gst_rate || 18),
+              camt: Math.round(Number(inv.gst_amount || 0) * 0.5 * 100) / 100,
+              samt: Math.round(Number(inv.gst_amount || 0) * 0.5 * 100) / 100,
+              iamt: 0,
+            }
+          }]
+        });
+        return acc;
+      }, {});
+
+      gstJson = {
+        gstin: gstin,
+        ret_period: retPeriod,
+        b2b: Object.entries(b2bGrouped).map(([ctin, invs]) => ({
+          ctin: ctin,
+          inv: invs,
         })),
-      }),
-      generated_at: new Date().toISOString(),
-    };
+        b2cs: b2cInvoices.length > 0 ? [{
+          sply_ty: 'INTRA',
+          pos: gstin.slice(0, 2),
+          txval: b2cInvoices.reduce((sum, inv) => sum + Number(inv.amount || 0), 0),
+          camt: b2cInvoices.reduce((sum, inv) => sum + Math.round(Number(inv.gst_amount || 0) * 0.5 * 100) / 100, 0),
+          samt: b2cInvoices.reduce((sum, inv) => sum + Math.round(Number(inv.gst_amount || 0) * 0.5 * 100) / 100, 0),
+          iamt: 0,
+        }] : [],
+      };
+    } else {
+      // GSTN-compliant GSTR-9 format
+      const totalTaxableValue = Math.round(selectedMonthData.totalSales - selectedMonthData.totalGst);
+      const cgst = selectedMonthData.cgst;
+      const sgst = selectedMonthData.sgst;
+      const igst = 0;
+
+      gstJson = {
+        gstin: gstin,
+        fy: financialYear,
+        tbl4: {
+          // Table 4 - Outward Supplies
+          txos: {
+            // Taxable outward supplies
+            txval: totalTaxableValue,
+            iamt: igst,
+            camt: cgst,
+            samt: sgst,
+            csamt: 0, // Cess
+          }
+        },
+        tbl9: {
+          // Table 9 - Tax Paid
+          pt_csh: {
+            iamt: igst,
+            camt: cgst,
+            samt: sgst,
+            csamt: 0,
+          },
+          pt_itc: {
+            iamt: 0,
+            camt: 0,
+            samt: 0,
+            csamt: 0,
+          }
+        },
+        summary: {
+          total_taxable_value: totalTaxableValue,
+          total_tax_paid: cgst + sgst + igst,
+          cgst: cgst,
+          sgst: sgst,
+          igst: igst,
+        }
+      };
+    }
 
     const blob = new Blob([JSON.stringify(gstJson, null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
@@ -170,7 +215,7 @@ const GSTMonthCalendar = () => {
 
     toast({
       title: 'GST JSON Downloaded',
-      description: `${selectedGstType} data for ${selectedMonthData.label} has been downloaded.`,
+      description: `GSTN-compliant ${selectedGstType} for ${selectedMonthData.label} downloaded.`,
     });
   };
 
