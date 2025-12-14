@@ -1,23 +1,15 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Calendar, FileJson } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar, FileJson, Download } from 'lucide-react';
 import { useInvoices } from '@/hooks/useInvoices';
 import { useBusinessData } from '@/hooks/useBusinessData';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
-interface MonthData {
-  year: number;
-  month: number;
-  label: string;
-  shortLabel: string;
-  hasData: boolean;
-  invoiceCount: number;
-  totalSales: number;
-  cgst: number;
-  sgst: number;
-  totalGst: number;
-}
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 const GSTMonthCalendar = () => {
   const { data: invoices = [] } = useInvoices();
@@ -25,102 +17,160 @@ const GSTMonthCalendar = () => {
   const { toast } = useToast();
   const businessInfo = getBusinessInfo();
 
-  // Get the first invoice date and generate months from then to current
-  const monthsData = useMemo(() => {
-    if (invoices.length === 0) return [];
+  const [selectedYear, setSelectedYear] = useState<string>('');
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [selectedGstType, setSelectedGstType] = useState<string>('GSTR1');
 
-    // Find the earliest invoice date
+  // Get available years and months from invoices
+  const { availableYears, availableMonths, firstInvoiceDate } = useMemo(() => {
+    if (invoices.length === 0) {
+      return { availableYears: [], availableMonths: [], firstInvoiceDate: null };
+    }
+
     const dates = invoices.map(inv => new Date(inv.invoice_date));
     const earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
     const currentDate = new Date();
 
-    // Generate all months from earliest to current
-    const months: MonthData[] = [];
-    const startYear = earliestDate.getFullYear();
-    const startMonth = earliestDate.getMonth();
-    const endYear = currentDate.getFullYear();
-    const endMonth = currentDate.getMonth();
-
-    for (let year = startYear; year <= endYear; year++) {
-      const monthStart = year === startYear ? startMonth : 0;
-      const monthEnd = year === endYear ? endMonth : 11;
-
-      for (let month = monthStart; month <= monthEnd; month++) {
-        const monthInvoices = invoices.filter(inv => {
-          const invDate = new Date(inv.invoice_date);
-          return invDate.getFullYear() === year && invDate.getMonth() === month;
-        });
-
-        const totalSales = monthInvoices.reduce((sum, inv) => sum + Number(inv.total_amount || 0), 0);
-        const totalGst = monthInvoices.reduce((sum, inv) => sum + Number(inv.gst_amount || 0), 0);
-
-        months.push({
-          year,
-          month,
-          label: new Date(year, month).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
-          shortLabel: new Date(year, month).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' }),
-          hasData: monthInvoices.length > 0,
-          invoiceCount: monthInvoices.length,
-          totalSales,
-          cgst: Math.round(totalGst * 0.5),
-          sgst: Math.round(totalGst * 0.5),
-          totalGst,
-        });
-      }
+    const years: number[] = [];
+    for (let y = earliestDate.getFullYear(); y <= currentDate.getFullYear(); y++) {
+      years.push(y);
     }
 
-    return months;
+    return {
+      availableYears: years,
+      availableMonths: MONTH_NAMES,
+      firstInvoiceDate: earliestDate,
+    };
   }, [invoices]);
 
-  const downloadGSTJson = (monthData: MonthData) => {
+  // Set default year/month to first invoice date
+  React.useEffect(() => {
+    if (firstInvoiceDate && !selectedYear) {
+      setSelectedYear(String(firstInvoiceDate.getFullYear()));
+      setSelectedMonth(String(firstInvoiceDate.getMonth()));
+    }
+  }, [firstInvoiceDate, selectedYear]);
+
+  // Get data for selected month
+  const selectedMonthData = useMemo(() => {
+    if (!selectedYear || selectedMonth === '') return null;
+
+    const year = parseInt(selectedYear);
+    const month = parseInt(selectedMonth);
+
     const monthInvoices = invoices.filter(inv => {
       const invDate = new Date(inv.invoice_date);
-      return invDate.getFullYear() === monthData.year && invDate.getMonth() === monthData.month;
+      return invDate.getFullYear() === year && invDate.getMonth() === month;
     });
 
+    const totalSales = monthInvoices.reduce((sum, inv) => sum + Number(inv.total_amount || 0), 0);
+    const totalGst = monthInvoices.reduce((sum, inv) => sum + Number(inv.gst_amount || 0), 0);
+
+    return {
+      year,
+      month,
+      label: `${MONTH_NAMES[month]} ${year}`,
+      invoiceCount: monthInvoices.length,
+      totalSales,
+      cgst: Math.round(totalGst * 0.5),
+      sgst: Math.round(totalGst * 0.5),
+      totalGst,
+      invoices: monthInvoices,
+    };
+  }, [selectedYear, selectedMonth, invoices]);
+
+  const downloadGSTJson = () => {
+    if (!selectedMonthData) {
+      toast({
+        title: 'Select Month',
+        description: 'Please select a year and month first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const gstJson = {
+      report_type: selectedGstType,
       gstin: businessInfo?.gstNumber || 'NOT_CONFIGURED',
       business_name: businessInfo?.businessName || 'Business Name',
+      business_address: businessInfo?.address || '',
       filing_period: {
-        month: monthData.month + 1,
-        year: monthData.year,
-        label: monthData.label,
+        month: selectedMonthData.month + 1,
+        month_name: MONTH_NAMES[selectedMonthData.month],
+        year: selectedMonthData.year,
+        financial_year: selectedMonthData.month >= 3 
+          ? `${selectedMonthData.year}-${selectedMonthData.year + 1}`
+          : `${selectedMonthData.year - 1}-${selectedMonthData.year}`,
       },
       summary: {
-        total_invoices: monthData.invoiceCount,
-        total_taxable_value: Math.round(monthData.totalSales - monthData.totalGst),
-        cgst: monthData.cgst,
-        sgst: monthData.sgst,
+        total_invoices: selectedMonthData.invoiceCount,
+        total_taxable_value: Math.round(selectedMonthData.totalSales - selectedMonthData.totalGst),
+        cgst: selectedMonthData.cgst,
+        sgst: selectedMonthData.sgst,
         igst: 0,
-        total_gst: monthData.totalGst,
-        total_invoice_value: Math.round(monthData.totalSales),
+        total_gst: selectedMonthData.totalGst,
+        total_invoice_value: Math.round(selectedMonthData.totalSales),
       },
-      invoices: monthInvoices.map(inv => ({
-        invoice_number: inv.invoice_number,
-        invoice_date: inv.invoice_date,
-        client_name: inv.client_name,
-        client_gstin: inv.client_gst_number || null,
-        taxable_value: Number(inv.amount || 0),
-        cgst: Math.round(Number(inv.gst_amount || 0) * 0.5),
-        sgst: Math.round(Number(inv.gst_amount || 0) * 0.5),
-        igst: 0,
-        total_value: Number(inv.total_amount || 0),
-        status: inv.status,
-      })),
+      ...(selectedGstType === 'GSTR1' && {
+        b2b: selectedMonthData.invoices
+          .filter(inv => inv.client_gst_number)
+          .map(inv => ({
+            invoice_number: inv.invoice_number,
+            invoice_date: inv.invoice_date,
+            client_name: inv.client_name,
+            client_gstin: inv.client_gst_number,
+            taxable_value: Number(inv.amount || 0),
+            cgst: Math.round(Number(inv.gst_amount || 0) * 0.5),
+            sgst: Math.round(Number(inv.gst_amount || 0) * 0.5),
+            igst: 0,
+            total_value: Number(inv.total_amount || 0),
+          })),
+        b2c: selectedMonthData.invoices
+          .filter(inv => !inv.client_gst_number)
+          .map(inv => ({
+            invoice_number: inv.invoice_number,
+            invoice_date: inv.invoice_date,
+            client_name: inv.client_name,
+            taxable_value: Number(inv.amount || 0),
+            cgst: Math.round(Number(inv.gst_amount || 0) * 0.5),
+            sgst: Math.round(Number(inv.gst_amount || 0) * 0.5),
+            igst: 0,
+            total_value: Number(inv.total_amount || 0),
+          })),
+      }),
+      ...(selectedGstType === 'GSTR9' && {
+        annual_summary: {
+          total_invoices: selectedMonthData.invoiceCount,
+          total_taxable_value: Math.round(selectedMonthData.totalSales - selectedMonthData.totalGst),
+          total_tax_paid: selectedMonthData.totalGst,
+        },
+        invoices: selectedMonthData.invoices.map(inv => ({
+          invoice_number: inv.invoice_number,
+          invoice_date: inv.invoice_date,
+          client_name: inv.client_name,
+          client_gstin: inv.client_gst_number || null,
+          taxable_value: Number(inv.amount || 0),
+          cgst: Math.round(Number(inv.gst_amount || 0) * 0.5),
+          sgst: Math.round(Number(inv.gst_amount || 0) * 0.5),
+          igst: 0,
+          total_value: Number(inv.total_amount || 0),
+          status: inv.status,
+        })),
+      }),
       generated_at: new Date().toISOString(),
     };
 
     const blob = new Blob([JSON.stringify(gstJson, null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `GST_${monthData.year}_${String(monthData.month + 1).padStart(2, '0')}.json`;
+    link.download = `${selectedGstType}_${selectedMonthData.year}_${String(selectedMonthData.month + 1).padStart(2, '0')}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
     toast({
       title: 'GST JSON Downloaded',
-      description: `GST data for ${monthData.label} has been downloaded.`,
+      description: `${selectedGstType} data for ${selectedMonthData.label} has been downloaded.`,
     });
   };
 
@@ -128,75 +178,115 @@ const GSTMonthCalendar = () => {
     return (
       <div className="text-center py-8 text-muted-foreground">
         <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
-        <p>No invoices found. Create your first invoice to see the GST calendar.</p>
+        <p>No invoices found. Create your first invoice to generate GST reports.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+    <div className="space-y-6">
+      {/* Info text */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Calendar className="h-4 w-4" />
         <span>
-          Showing months from your first invoice ({monthsData[0]?.label}) to current month
+          Data available from {firstInvoiceDate?.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
         </span>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-        {monthsData.map((monthData) => (
-          <div
-            key={`${monthData.year}-${monthData.month}`}
-            className={cn(
-              'relative rounded-lg border p-3 transition-all',
-              monthData.hasData
-                ? 'bg-card hover:shadow-md border-primary/20 hover:border-primary/40'
-                : 'bg-muted/30 opacity-60 cursor-not-allowed'
-            )}
-          >
-            <div className="text-sm font-medium mb-2">{monthData.shortLabel}</div>
-            
-            {monthData.hasData ? (
-              <>
-                <div className="space-y-1 text-xs mb-3">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Invoices:</span>
-                    <span className="font-medium">{monthData.invoiceCount}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">GST:</span>
-                    <span className="font-medium text-green-600">₹{monthData.totalGst.toLocaleString()}</span>
-                  </div>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full text-xs h-7"
-                  onClick={() => downloadGSTJson(monthData)}
-                >
-                  <FileJson className="h-3 w-3 mr-1" />
-                  JSON
-                </Button>
-              </>
-            ) : (
-              <div className="text-xs text-muted-foreground text-center py-3">
-                No data
-              </div>
-            )}
-          </div>
-        ))}
+      {/* Dropdowns Row */}
+      <div className="flex flex-wrap items-end gap-4">
+        {/* Year Dropdown */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Year</label>
+          <Select value={selectedYear} onValueChange={setSelectedYear}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableYears.map(year => (
+                <SelectItem key={year} value={String(year)}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Month Dropdown */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Month</label>
+          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableMonths.map((month, index) => (
+                <SelectItem key={index} value={String(index)}>
+                  {month}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* GST Type Dropdown */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">GST Type</label>
+          <Select value={selectedGstType} onValueChange={setSelectedGstType}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="GSTR1">GSTR-1</SelectItem>
+              <SelectItem value="GSTR9">GSTR-9</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Download Button */}
+        <Button 
+          onClick={downloadGSTJson}
+          disabled={!selectedYear || selectedMonth === ''}
+          className="gap-2"
+        >
+          <Download className="h-4 w-4" />
+          Download JSON
+        </Button>
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-4 text-xs text-muted-foreground mt-4 pt-4 border-t">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-primary/20 border border-primary/40" />
-          <span>Active (has invoices)</span>
+      {/* Selected Month Summary */}
+      {selectedMonthData && selectedMonthData.invoiceCount > 0 && (
+        <div className="rounded-lg border bg-card p-4">
+          <h4 className="font-medium mb-3">{selectedMonthData.label} Summary</h4>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Invoices</p>
+              <p className="text-lg font-semibold">{selectedMonthData.invoiceCount}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Total Sales</p>
+              <p className="text-lg font-semibold">₹{selectedMonthData.totalSales.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">CGST + SGST</p>
+              <p className="text-lg font-semibold text-green-600">
+                ₹{selectedMonthData.cgst.toLocaleString()} + ₹{selectedMonthData.sgst.toLocaleString()}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Total GST</p>
+              <p className="text-lg font-semibold text-primary">₹{selectedMonthData.totalGst.toLocaleString()}</p>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-muted/30 border" />
-          <span>Inactive (no invoices)</span>
+      )}
+
+      {selectedMonthData && selectedMonthData.invoiceCount === 0 && (
+        <div className="rounded-lg border bg-muted/30 p-4 text-center text-muted-foreground">
+          <FileJson className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p>No invoices found for {selectedMonthData.label}</p>
         </div>
-      </div>
+      )}
     </div>
   );
 };
