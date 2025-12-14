@@ -160,7 +160,7 @@ const GSTMonthCalendar = () => {
         }] : [],
       };
     } else {
-      // GSTN-compliant GSTR-9 format
+      // GSTR-9 format as per user specification
       const totalTaxableValue = Math.round(selectedMonthData.totalSales - selectedMonthData.totalGst);
       const cgst = selectedMonthData.cgst;
       const sgst = selectedMonthData.sgst;
@@ -169,38 +169,19 @@ const GSTMonthCalendar = () => {
       gstJson = {
         gstin: gstin,
         fy: financialYear,
-        tbl4: {
-          // Table 4 - Outward Supplies
-          txos: {
-            // Taxable outward supplies
-            txval: totalTaxableValue,
-            iamt: igst,
-            camt: cgst,
-            samt: sgst,
-            csamt: 0, // Cess
-          }
-        },
-        tbl9: {
-          // Table 9 - Tax Paid
-          pt_csh: {
-            iamt: igst,
-            camt: cgst,
-            samt: sgst,
-            csamt: 0,
-          },
-          pt_itc: {
-            iamt: 0,
-            camt: 0,
-            samt: 0,
-            csamt: 0,
-          }
-        },
-        summary: {
-          total_taxable_value: totalTaxableValue,
-          total_tax_paid: cgst + sgst + igst,
+        outward_supplies: {
+          taxable_value: totalTaxableValue,
           cgst: cgst,
           sgst: sgst,
           igst: igst,
+          cess: 0
+        },
+        tax_paid: {
+          cgst: cgst,
+          sgst: sgst,
+          igst: igst,
+          cess: 0,
+          total: cgst + sgst + igst
         }
       };
     }
