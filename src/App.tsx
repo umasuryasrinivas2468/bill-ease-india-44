@@ -49,6 +49,7 @@ import GST3Filing from "./pages/reports/GST3Filing";
 import Expenses from "./pages/Expenses";
 import TDS from "./pages/TDS";
 import DeliveryChallans from "./pages/DeliveryChallans";
+import ITR6Filing from "./pages/ITR6Filing";
 
 // License pages
 import StarterPage from "./pages/StarterPage";
@@ -166,6 +167,7 @@ function App() {
                         <Route path="/support" element={<Support />} />
                         <Route path="/notifications" element={<Notifications />} />
                         <Route path="/ca" element={<CA />} />
+                        <Route path="/ca/itr6" element={<ITR6Filing />} />
                         <Route path="/payout" element={<Payout />} />
                         <Route path="/quotations" element={<QuotationsInfo />} />
                         <Route path="/quotations/create" element={<Quotations />} />
