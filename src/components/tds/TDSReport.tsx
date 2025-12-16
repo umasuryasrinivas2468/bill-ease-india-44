@@ -6,13 +6,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Download, FileSpreadsheet, Calendar, Filter, IndianRupee, Percent, TrendingDown } from 'lucide-react';
+import { Download, FileSpreadsheet, Calendar, Filter, IndianRupee, Percent, TrendingDown, FileText } from 'lucide-react';
 import { DateRangePicker } from '@/components/DateRangePicker';
 import { useTDSTransactions, useTDSSummary } from '@/hooks/useTDSTransactions';
 import type { TDSReportFilters } from '@/types/tds';
 import { format } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { toast } from '@/hooks/use-toast';
+import { downloadTDSReportPDF } from '@/utils/tdsPDF';
+import { useEnhancedBusinessData } from '@/hooks/useEnhancedBusinessData';
 
 const TDSReport = () => {
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
@@ -30,6 +32,8 @@ const TDSReport = () => {
 
   const { data: transactions = [], isLoading } = useTDSTransactions(filters);
   const { data: summary } = useTDSSummary(filters);
+  const { getBusinessInfo } = useEnhancedBusinessData();
+  const businessInfo = getBusinessInfo();
 
   const stats = [
     {
@@ -120,6 +124,28 @@ const TDSReport = () => {
     });
   };
 
+  const handleExportPDF = () => {
+    if (!summary) {
+      toast({
+        title: "No Data",
+        description: "No TDS data available to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const periodLabel = selectedPeriod === 'custom' 
+      ? `${dateRange.from ? format(dateRange.from, 'dd MMM yyyy') : ''} - ${dateRange.to ? format(dateRange.to, 'dd MMM yyyy') : ''}`
+      : selectedPeriod.charAt(0).toUpperCase() + selectedPeriod.slice(1);
+    
+    downloadTDSReportPDF(transactions, summary, periodLabel, businessInfo);
+    
+    toast({
+      title: "PDF Generated",
+      description: "TDS report has been downloaded as PDF.",
+    });
+  };
+
   const handlePeriodChange = (period: string) => {
     setSelectedPeriod(period as any);
     if (period !== 'custom') {
@@ -180,11 +206,15 @@ const TDSReport = () => {
           />
               )}
 
-              <Button variant="outline" onClick={handleExportExcel}>
+              <Button variant="default" onClick={handleExportPDF} className="transition-all hover:scale-105">
+                <FileText className="h-4 w-4 mr-2" />
+                PDF
+              </Button>
+              <Button variant="outline" onClick={handleExportExcel} className="transition-all hover:scale-105">
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
                 Excel
               </Button>
-              <Button variant="outline" onClick={handleExportCSV}>
+              <Button variant="outline" onClick={handleExportCSV} className="transition-all hover:scale-105">
                 <Download className="h-4 w-4 mr-2" />
                 CSV
               </Button>
@@ -195,11 +225,15 @@ const TDSReport = () => {
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <Card key={stat.title}>
+        {stats.map((stat, index) => (
+          <Card 
+            key={stat.title} 
+            className="transition-all duration-300 hover:scale-[1.02] hover:shadow-lg animate-fade-in"
+            style={{ animationDelay: `${index * 100}ms` }}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
+              <stat.icon className={`h-4 w-4 ${stat.color} transition-transform duration-200 hover:scale-110`} />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>

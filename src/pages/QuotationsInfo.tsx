@@ -7,11 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Check, XCircle, PauseCircle, Plus, Eye, Download } from 'lucide-react';
+import { Search, Check, XCircle, PauseCircle, Plus, Eye, Download, Send } from 'lucide-react';
 import { useQuotations, useUpdateQuotationStatus, Quotation } from '@/hooks/useQuotations';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import QuotationViewer from '@/components/QuotationViewer';
+import SendDocumentDialog from '@/components/SendDocumentDialog';
 import { useCSVExport } from '@/hooks/useCSVExport';
 
 const statusColors: Record<Quotation['status'], string> = {
@@ -34,6 +35,13 @@ const QuotationsInfo: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | Quotation['status']>('all');
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [isSendDialogOpen, setIsSendDialogOpen] = useState(false);
+  const [quotationToSend, setQuotationToSend] = useState<Quotation | null>(null);
+
+  const handleSendQuotation = (quotation: Quotation) => {
+    setQuotationToSend(quotation);
+    setIsSendDialogOpen(true);
+  };
 
   const filtered = useMemo(() => {
     const s = searchTerm.toLowerCase();
@@ -202,10 +210,19 @@ const QuotationsInfo: React.FC = () => {
                             variant="outline"
                             size="sm"
                             onClick={() => handleViewQuotation(q)}
-                            className="flex items-center gap-1"
+                            className="flex items-center gap-1 transition-all hover:scale-105"
                           >
                             <Eye className="h-3 w-3" />
                             View
+                          </Button>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleSendQuotation(q)}
+                            className="flex items-center gap-1 transition-all hover:scale-105"
+                          >
+                            <Send className="h-3 w-3" />
+                            Send
                           </Button>
                         </div>
                       </TableCell>
@@ -241,6 +258,22 @@ const QuotationsInfo: React.FC = () => {
         isOpen={isViewerOpen}
         onClose={handleCloseViewer}
       />
+
+      {quotationToSend && (
+        <SendDocumentDialog
+          isOpen={isSendDialogOpen}
+          onClose={() => {
+            setIsSendDialogOpen(false);
+            setQuotationToSend(null);
+          }}
+          documentType="quotation"
+          documentNumber={quotationToSend.quotation_number}
+          recipientName={quotationToSend.client_name}
+          recipientEmail={quotationToSend.client_email || ''}
+          recipientPhone={quotationToSend.client_phone || ''}
+          amount={quotationToSend.total_amount}
+        />
+      )}
     </div>
   );
 };
