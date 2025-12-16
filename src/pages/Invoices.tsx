@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Search, Plus, Download, Eye, FileText, Trash2 } from 'lucide-react';
+import { Search, Plus, Download, Eye, FileText, Trash2, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useInvoices, useDeleteInvoice, Invoice } from '@/hooks/useInvoices';
 import InvoiceViewer from '@/components/InvoiceViewer';
+import SendDocumentDialog from '@/components/SendDocumentDialog';
 import { useToast } from '@/hooks/use-toast';
 
 const Invoices = () => {
@@ -16,9 +17,16 @@ const Invoices = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [isSendDialogOpen, setIsSendDialogOpen] = useState(false);
+  const [invoiceToSend, setInvoiceToSend] = useState<Invoice | null>(null);
   const { data: invoices = [], isLoading } = useInvoices();
   const deleteInvoice = useDeleteInvoice();
   const { toast } = useToast();
+
+  const handleSendInvoice = (invoice: Invoice) => {
+    setInvoiceToSend(invoice);
+    setIsSendDialogOpen(true);
+  };
 
   const filteredInvoices = invoices.filter(invoice => {
     const matchesSearch = invoice.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -88,7 +96,7 @@ const Invoices = () => {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <SidebarTrigger className="md:hidden" />
@@ -206,6 +214,7 @@ const Invoices = () => {
                               size="sm" 
                               variant="outline"
                               onClick={() => handleViewInvoice(invoice)}
+                              className="transition-all hover:scale-105"
                             >
                               <Eye className="h-3 w-3" />
                             </Button>
@@ -213,14 +222,24 @@ const Invoices = () => {
                               size="sm" 
                               variant="outline"
                               onClick={() => handleDownloadInvoice(invoice)}
+                              className="transition-all hover:scale-105"
                             >
                               <Download className="h-3 w-3" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="default"
+                              onClick={() => handleSendInvoice(invoice)}
+                              className="transition-all hover:scale-105 bg-primary"
+                            >
+                              <Send className="h-3 w-3" />
                             </Button>
                             <Button 
                               size="sm" 
                               variant="outline"
                               onClick={() => handleDeleteInvoice(invoice)}
                               disabled={deleteInvoice.isPending}
+                              className="transition-all hover:scale-105"
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
@@ -267,7 +286,7 @@ const Invoices = () => {
                     <Button 
                       size="sm" 
                       variant="outline" 
-                      className="flex-1"
+                      className="flex-1 transition-all hover:scale-[1.02]"
                       onClick={() => handleViewInvoice(invoice)}
                     >
                       <Eye className="h-3 w-3 mr-1" />
@@ -276,7 +295,7 @@ const Invoices = () => {
                     <Button 
                       size="sm" 
                       variant="outline" 
-                      className="flex-1"
+                      className="flex-1 transition-all hover:scale-[1.02]"
                       onClick={() => handleDownloadInvoice(invoice)}
                     >
                       <Download className="h-3 w-3 mr-1" />
@@ -284,9 +303,19 @@ const Invoices = () => {
                     </Button>
                     <Button 
                       size="sm" 
+                      variant="default"
+                      className="flex-1 transition-all hover:scale-[1.02]"
+                      onClick={() => handleSendInvoice(invoice)}
+                    >
+                      <Send className="h-3 w-3 mr-1" />
+                      Send
+                    </Button>
+                    <Button 
+                      size="sm" 
                       variant="outline" 
                       onClick={() => handleDeleteInvoice(invoice)}
                       disabled={deleteInvoice.isPending}
+                      className="transition-all hover:scale-[1.02]"
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
@@ -306,6 +335,22 @@ const Invoices = () => {
           setSelectedInvoice(null);
         }}
       />
+
+      {invoiceToSend && (
+        <SendDocumentDialog
+          isOpen={isSendDialogOpen}
+          onClose={() => {
+            setIsSendDialogOpen(false);
+            setInvoiceToSend(null);
+          }}
+          documentType="invoice"
+          documentNumber={invoiceToSend.invoice_number}
+          recipientName={invoiceToSend.client_name}
+          recipientEmail={invoiceToSend.client_email || ''}
+          amount={invoiceToSend.total_amount}
+          dueDate={invoiceToSend.due_date}
+        />
+      )}
     </div>
   );
 };
