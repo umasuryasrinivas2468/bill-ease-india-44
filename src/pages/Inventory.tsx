@@ -12,6 +12,8 @@ import { useUser } from '@clerk/clerk-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Search, Filter, ArrowUpDown } from 'lucide-react';
 
 interface InventoryItem {
   id: string;
@@ -36,6 +38,8 @@ const Inventory = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
 
   const [formData, setFormData] = useState({
     product_name: '',
@@ -67,13 +71,13 @@ const Inventory = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      
+
       // Transform the data to match our interface
       const transformedData: InventoryItem[] = (data || []).map(item => ({
         ...item,
         type: item.type as 'goods' | 'services'
       }));
-      
+
       setInventory(transformedData);
     } catch (error) {
       console.error('Error fetching inventory:', error);
@@ -156,18 +160,18 @@ const Inventory = () => {
           .from('inventory')
           .update(itemData)
           .eq('id', editingItem.id);
-        
+
         if (error) throw error;
         toast({ title: "Success", description: "Item updated successfully!" });
       } else {
         const { error } = await supabase
           .from('inventory')
           .insert([itemData]);
-        
+
         if (error) throw error;
         toast({ title: "Success", description: "Item added successfully!" });
       }
-      
+
       setIsDialogOpen(false);
       resetForm();
       fetchInventory();
@@ -209,9 +213,9 @@ const Inventory = () => {
   };
 
   const getLowStockItems = () => {
-    return inventory.filter(item => 
-      item.type === 'goods' && 
-      item.stock_quantity !== null && 
+    return inventory.filter(item =>
+      item.type === 'goods' &&
+      item.stock_quantity !== null &&
       item.reorder_level !== null &&
       item.stock_quantity <= item.reorder_level
     );
@@ -228,6 +232,15 @@ const Inventory = () => {
 
   const lowStockItems = getLowStockItems();
 
+  const filteredInventory = inventory.filter(item => {
+    const matchesSearch = item.product_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.sku.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
+  const uniqueCategories = Array.from(new Set(inventory.map(item => item.category)));
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -238,7 +251,7 @@ const Inventory = () => {
             <p className="text-muted-foreground">Manage your products and services</p>
           </div>
         </div>
-        
+
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={resetForm}>
@@ -251,41 +264,41 @@ const Inventory = () => {
               <DialogTitle>{editingItem ? 'Edit' : 'Add'} Inventory Item</DialogTitle>
               <DialogDescription>Fill in the details for the inventory item</DialogDescription>
             </DialogHeader>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="product_name">Product Name *</Label>
                 <Input
                   id="product_name"
                   value={formData.product_name}
-                  onChange={(e) => setFormData({...formData, product_name: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, product_name: e.target.value })}
                   placeholder="Product or service name"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="sku">SKU *</Label>
                 <Input
                   id="sku"
                   value={formData.sku}
-                  onChange={(e) => setFormData({...formData, sku: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                   placeholder="SKU-001"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="category">Category *</Label>
                 <Input
                   id="category"
                   value={formData.category}
-                  onChange={(e) => setFormData({...formData, category: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   placeholder="Electronics, Services, etc."
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="type">Type *</Label>
-                <Select value={formData.type} onValueChange={(value: 'goods' | 'services') => setFormData({...formData, type: value})}>
+                <Select value={formData.type} onValueChange={(value: 'goods' | 'services') => setFormData({ ...formData, type: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -295,33 +308,33 @@ const Inventory = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="purchase_price">Purchase Price (₹)</Label>
                 <Input
                   id="purchase_price"
                   type="number"
                   value={formData.purchase_price}
-                  onChange={(e) => setFormData({...formData, purchase_price: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, purchase_price: e.target.value })}
                   placeholder="0.00"
                   step="0.01"
                   min="0"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="selling_price">Selling Price (₹) *</Label>
                 <Input
                   id="selling_price"
                   type="number"
                   value={formData.selling_price}
-                  onChange={(e) => setFormData({...formData, selling_price: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, selling_price: e.target.value })}
                   placeholder="0.00"
                   step="0.01"
                   min="0"
                 />
               </div>
-              
+
               {formData.type === 'goods' && (
                 <>
                   <div className="space-y-2">
@@ -330,53 +343,53 @@ const Inventory = () => {
                       id="stock_quantity"
                       type="number"
                       value={formData.stock_quantity}
-                      onChange={(e) => setFormData({...formData, stock_quantity: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
                       placeholder="0"
                       min="0"
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="reorder_level">Reorder Level</Label>
                     <Input
                       id="reorder_level"
                       type="number"
                       value={formData.reorder_level}
-                      onChange={(e) => setFormData({...formData, reorder_level: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, reorder_level: e.target.value })}
                       placeholder="10"
                       min="0"
                     />
                   </div>
                 </>
               )}
-              
+
               <div className="space-y-2">
                 <Label htmlFor="supplier_name">Supplier Name</Label>
                 <Input
                   id="supplier_name"
                   value={formData.supplier_name}
-                  onChange={(e) => setFormData({...formData, supplier_name: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
                   placeholder="Supplier company name"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="supplier_contact">Supplier Contact</Label>
                 <Input
                   id="supplier_contact"
                   value={formData.supplier_contact}
-                  onChange={(e) => setFormData({...formData, supplier_contact: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, supplier_contact: e.target.value })}
                   placeholder="+91 9876543210"
                 />
               </div>
-              
+
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="supplier_email">Supplier Email</Label>
                 <Input
                   id="supplier_email"
                   type="email"
                   value={formData.supplier_email}
-                  onChange={(e) => setFormData({...formData, supplier_email: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, supplier_email: e.target.value })}
                   placeholder="supplier@example.com"
                 />
               </div>
@@ -396,59 +409,64 @@ const Inventory = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Total Items</CardTitle>
+            <CardTitle className="text-sm font-medium text-blue-800">Total Items</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{inventory.length}</div>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-3xl font-bold text-blue-900">{inventory.length}</div>
+            <div className="text-xs text-blue-600 mt-1">
               {inventory.filter(i => i.type === 'goods').length} goods, {inventory.filter(i => i.type === 'services').length} services
             </div>
           </CardContent>
         </Card>
-        
-        <Card>
+
+        <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-100">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Low Stock Alerts</CardTitle>
+            <CardTitle className="text-sm font-medium text-amber-800">Low Stock Alerts</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{lowStockItems.length}</div>
-            <div className="text-sm text-muted-foreground">Items need reordering</div>
+            <div className="text-3xl font-bold text-amber-900">{lowStockItems.length}</div>
+            <div className="text-xs text-amber-600 mt-1">Items need reordering</div>
           </CardContent>
         </Card>
-        
-        <Card>
+
+        <Card className="bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-100">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Total Inventory Value</CardTitle>
+            <CardTitle className="text-sm font-medium text-emerald-800">Total Inventory Value</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{getTotalValue().toFixed(2)}</div>
-            <div className="text-sm text-muted-foreground">Based on purchase price</div>
+            <div className="text-3xl font-bold text-emerald-900">₹{getTotalValue().toFixed(2)}</div>
+            <div className="text-xs text-emerald-600 mt-1">Based on purchase price</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Low Stock Alerts */}
       {lowStockItems.length > 0 && (
-        <Card className="border-orange-200 bg-orange-50">
-          <CardHeader>
-            <CardTitle className="text-orange-800 flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
+        <Card className="border-orange-200 bg-orange-50/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-orange-800 flex items-center gap-2 text-base">
+              <AlertTriangle className="h-4 w-4" />
               Low Stock Alerts
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {lowStockItems.map((item) => (
-                <div key={item.id} className="flex items-center justify-between py-2 border-b border-orange-200 last:border-b-0">
-                  <div>
-                    <span className="font-medium">{item.product_name}</span>
-                    <span className="text-sm text-muted-foreground ml-2">({item.sku})</span>
+                <div key={item.id} className="flex items-center justify-between py-2 border-b border-orange-200/50 last:border-b-0">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-xs">
+                      {item.stock_quantity}
+                    </div>
+                    <div>
+                      <span className="font-medium text-sm block">{item.product_name}</span>
+                      <span className="text-xs text-muted-foreground">SKU: {item.sku}</span>
+                    </div>
                   </div>
-                  <Badge variant="outline" className="text-orange-700 border-orange-300">
-                    {item.type === 'services' ? 'N/A' : `${item.stock_quantity} left`}
-                  </Badge>
+                  <Button variant="outline" size="sm" className="h-7 text-xs border-orange-300 text-orange-700 hover:bg-orange-100" onClick={() => handleEdit(item)}>
+                    Restock
+                  </Button>
                 </div>
               ))}
             </div>
@@ -456,78 +474,116 @@ const Inventory = () => {
         </Card>
       )}
 
-      {/* Inventory List */}
-      {isLoading ? (
-        <div className="text-center py-8">Loading inventory...</div>
-      ) : inventory.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-8">
-            <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">No inventory items yet</h3>
-            <p className="text-muted-foreground mb-4">Add your first product or service to get started</p>
-            <Button onClick={() => {
-              resetForm();
-              setIsDialogOpen(true);
-            }}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add First Item
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4">
-          {inventory.map((item) => (
-            <Card key={item.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{item.product_name}</CardTitle>
-                    <CardDescription>SKU: {item.sku} | Category: {item.category}</CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={item.type === 'goods' ? 'default' : 'secondary'}>
-                      {item.type}
-                    </Badge>
-                    <div className="flex gap-1">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(item)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDelete(item.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">Stock:</span> {item.type === 'services' ? 'N/A' : item.stock_quantity}
-                    {item.type === 'goods' && item.stock_quantity <= item.reorder_level && (
-                      <Badge variant="outline" className="ml-2 text-orange-700 border-orange-300">
-                        Low Stock
-                      </Badge>
-                    )}
-                  </div>
-                  {item.purchase_price && (
-                    <div>
-                      <span className="font-medium">Purchase:</span> ₹{item.purchase_price.toFixed(2)}
-                    </div>
-                  )}
-                  <div>
-                    <span className="font-medium">Selling:</span> ₹{item.selling_price.toFixed(2)}
-                  </div>
-                  {item.supplier_name && (
-                    <div>
-                      <span className="font-medium">Supplier:</span> {item.supplier_name}
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+      {/* Inventory Filters & Table */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or SKU..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {uniqueCategories.map(cat => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      )}
+
+        {isLoading ? (
+          <div className="text-center py-12 border rounded-lg bg-slate-50">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading inventory...</p>
+          </div>
+        ) : filteredInventory.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-12">
+              <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">No items found</h3>
+              <p className="text-muted-foreground mb-4">
+                {searchQuery ? "No items match your search criteria" : "Add your first product or service to get started"}
+              </p>
+              {!searchQuery && (
+                <Button onClick={() => {
+                  resetForm();
+                  setIsDialogOpen(true);
+                }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add First Item
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="border rounded-md bg-white overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead>Product</TableHead>
+                  <TableHead>SKU</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Stock</TableHead>
+                  <TableHead className="text-right">Selling Price</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredInventory.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium">
+                      {item.product_name}
+                      {item.type === 'goods' && item.stock_quantity <= item.reorder_level && (
+                        <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-red-500" title="Low Stock"></span>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{item.sku}</TableCell>
+                    <TableCell>{item.category}</TableCell>
+                    <TableCell>
+                      <Badge variant={item.type === 'goods' ? 'default' : 'secondary'} className="text-xs">
+                        {item.type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {item.type === 'services' ? (
+                        <span className="text-muted-foreground">-</span>
+                      ) : (
+                        <span className={item.stock_quantity <= item.reorder_level ? "text-red-600 font-bold" : ""}>
+                          {item.stock_quantity}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">₹{item.selling_price.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(item)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleDelete(item.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+
     </div>
   );
 };

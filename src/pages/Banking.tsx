@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Plus, Edit, Trash2, CreditCard, CheckCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, CreditCard, CheckCircle, Copy, Building2, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@clerk/clerk-react';
@@ -130,18 +130,18 @@ const Banking = () => {
           .from('bank_details')
           .update(accountData)
           .eq('id', editingAccount.id);
-        
+
         if (error) throw error;
         toast({ title: "Success", description: "Bank account updated successfully!" });
       } else {
         const { error } = await supabase
           .from('bank_details')
           .insert([accountData]);
-        
+
         if (error) throw error;
         toast({ title: "Success", description: "Bank account added successfully!" });
       }
-      
+
       setIsDialogOpen(false);
       resetForm();
       fetchBankAccounts();
@@ -184,7 +184,15 @@ const Banking = () => {
 
   const maskAccountNumber = (accountNumber: string) => {
     if (accountNumber.length <= 4) return accountNumber;
-    return `****-${accountNumber.slice(-4)}`;
+    return `**** **** **** ${accountNumber.slice(-4)}`;
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied!",
+      description: `${label} copied to clipboard`,
+    });
   };
 
   return (
@@ -197,7 +205,7 @@ const Banking = () => {
             <p className="text-muted-foreground">Manage your bank accounts securely</p>
           </div>
         </div>
-        
+
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={resetForm}>
@@ -210,61 +218,61 @@ const Banking = () => {
               <DialogTitle>{editingAccount ? 'Edit' : 'Add'} Bank Account</DialogTitle>
               <DialogDescription>Enter your bank account details securely</DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="account_holder_name">Account Holder Name *</Label>
                 <Input
                   id="account_holder_name"
                   value={formData.account_holder_name}
-                  onChange={(e) => setFormData({...formData, account_holder_name: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, account_holder_name: e.target.value })}
                   placeholder="John Doe"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="account_number">Account Number *</Label>
                 <Input
                   id="account_number"
                   value={formData.account_number}
-                  onChange={(e) => setFormData({...formData, account_number: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
                   placeholder="1234567890"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="ifsc_code">IFSC Code *</Label>
                 <Input
                   id="ifsc_code"
                   value={formData.ifsc_code}
-                  onChange={(e) => setFormData({...formData, ifsc_code: e.target.value.toUpperCase()})}
+                  onChange={(e) => setFormData({ ...formData, ifsc_code: e.target.value.toUpperCase() })}
                   placeholder="SBIN0001234"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="bank_name">Bank Name *</Label>
                 <Input
                   id="bank_name"
                   value={formData.bank_name}
-                  onChange={(e) => setFormData({...formData, bank_name: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
                   placeholder="State Bank of India"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="branch_name">Branch Name</Label>
                 <Input
                   id="branch_name"
                   value={formData.branch_name}
-                  onChange={(e) => setFormData({...formData, branch_name: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, branch_name: e.target.value })}
                   placeholder="Main Branch"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="account_type">Account Type</Label>
-                <Select value={formData.account_type} onValueChange={(value) => setFormData({...formData, account_type: value})}>
+                <Select value={formData.account_type} onValueChange={(value) => setFormData({ ...formData, account_type: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -289,71 +297,127 @@ const Banking = () => {
         </Dialog>
       </div>
 
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3 text-blue-700">
+        <div className="bg-blue-100 p-2 rounded-full">
+          <Info className="h-5 w-5" />
+        </div>
+        <div>
+          <h4 className="font-semibold text-sm">Coming Soon</h4>
+          <p className="text-sm">We are updating connected banking services soon!</p>
+        </div>
+      </div>
+
       {/* Bank Accounts List */}
       {isLoading ? (
-        <div className="text-center py-8">Loading bank accounts...</div>
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mb-4"></div>
+          <p className="text-muted-foreground">Loading your secure banking details...</p>
+        </div>
       ) : bankAccounts.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-8">
-            <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">No bank accounts yet</h3>
-            <p className="text-muted-foreground mb-4">Add your first bank account to get started</p>
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="bg-primary/10 p-4 rounded-full mb-4">
+              <CreditCard className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">No bank accounts added</h3>
+            <p className="text-muted-foreground mb-6 max-w-sm">
+              Add your bank account details to receive payments and manage your finances securely.
+            </p>
             <Button onClick={() => {
               resetForm();
               setIsDialogOpen(true);
             }}>
               <Plus className="h-4 w-4 mr-2" />
-              Add First Account
+              Add Bank Account
             </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {bankAccounts.map((account) => (
-            <Card key={account.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      {account.bank_name}
-                      {account.is_primary && (
-                        <Badge variant="default" className="flex items-center gap-1">
-                          <CheckCircle className="h-3 w-3" />
-                          Primary
-                        </Badge>
-                      )}
-                    </CardTitle>
-                    <CardDescription>{account.account_holder_name}</CardDescription>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(account)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDelete(account.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">Account Number:</span> {maskAccountNumber(account.account_number)}
-                  </div>
-                  <div>
-                    <span className="font-medium">IFSC Code:</span> {account.ifsc_code}
-                  </div>
-                  <div>
-                    <span className="font-medium">Account Type:</span> {account.account_type?.charAt(0).toUpperCase()}{account.account_type?.slice(1)}
-                  </div>
-                  {account.branch_name && (
-                    <div className="md:col-span-3">
-                      <span className="font-medium">Branch:</span> {account.branch_name}
+            <div key={account.id} className="relative group perspective-1000">
+              <div className={`
+                relative overflow-hidden rounded-xl p-6 h-56 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-xl
+                ${account.is_primary
+                  ? 'bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-lg'
+                  : 'bg-white border text-card-foreground hover:border-primary/50 shadow-sm'}
+              `}>
+
+                {/* Decorative background elements */}
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/5 rounded-full blur-2xl"></div>
+                <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-primary/5 rounded-full blur-3xl"></div>
+
+                <div className="relative z-10 flex flex-col h-full justify-between">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2">
+                      <div className={`p-2 rounded-lg ${account.is_primary ? 'bg-white/10' : 'bg-primary/10'}`}>
+                        <Building2 className={`h-5 w-5 ${account.is_primary ? 'text-white' : 'text-primary'}`} />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-lg tracking-tight line-clamp-1">{account.bank_name}</h3>
+                        <p className={`text-xs ${account.is_primary ? 'text-slate-300' : 'text-muted-foreground'}`}>
+                          {account.account_type?.toUpperCase()} ACCOUNT
+                        </p>
+                      </div>
                     </div>
-                  )}
+                    {account.is_primary && (
+                      <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400 border-0">
+                        Primary
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="space-y-4 my-2">
+                    <div className="flex items-center justify-between group/number">
+                      <p className="font-mono text-xl tracking-wider pt-2">
+                        {maskAccountNumber(account.account_number)}
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`h-6 w-6 opacity-0 group-hover/number:opacity-100 transition-opacity ${account.is_primary ? 'text-white hover:bg-white/20' : ''}`}
+                        onClick={() => copyToClipboard(account.account_number, "Account number")}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+
+                    <div className="flex justify-between items-end text-sm">
+                      <div>
+                        <p className={`text-xs mb-0.5 ${account.is_primary ? 'text-slate-400' : 'text-muted-foreground'}`}>Account Holder</p>
+                        <p className="font-medium truncate max-w-[140px]">{account.account_holder_name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-xs mb-0.5 ${account.is_primary ? 'text-slate-400' : 'text-muted-foreground'}`}>IFSC</p>
+                        <div className="flex items-center gap-1">
+                          <p className="font-mono font-medium">{account.ifsc_code}</p>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-4 w-4 ${account.is_primary ? 'text-slate-300 hover:text-white hover:bg-white/10' : 'text-muted-foreground'}`}
+                            onClick={() => copyToClipboard(account.ifsc_code, "IFSC code")}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+
+                <div className={`
+                    absolute top-4 right-4 flex gap-1 transition-opacity duration-200 
+                    ${account.is_primary ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}
+                `}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 bg-black/20 hover:bg-black/40 text-white backdrop-blur-sm" onClick={() => handleEdit(account)}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 bg-red-500/20 hover:bg-red-500/40 text-red-100 backdrop-blur-sm" onClick={() => handleDelete(account.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       )}

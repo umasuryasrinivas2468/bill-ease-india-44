@@ -47,6 +47,7 @@ import Vendors from "./pages/Vendors";
 import PayLink from "./pages/PayLink";
 import GST3Filing from "./pages/reports/GST3Filing";
 import Expenses from "./pages/Expenses";
+import Payroll from "./pages/Payroll";
 import TDS from "./pages/TDS";
 import DeliveryChallans from "./pages/DeliveryChallans";
 import ITR6Filing from "./pages/ITR6Filing";
@@ -74,8 +75,8 @@ const queryClient = new QueryClient();
 
 // Create plan-restricted route components
 const PlanRestrictedLoans = createPlanRestrictedRoute(
-  Loans, 
-  'loans', 
+  Loans,
+  'loans',
   'Loans',
   'Access loan products and financing options for your business'
 );
@@ -83,29 +84,29 @@ const PlanRestrictedLoans = createPlanRestrictedRoute(
 // Business Reports is now available for all plans - no restriction needed
 
 const PlanRestrictedAITaxAdvisor = createPlanRestrictedRoute(
-  AIBusinessTaxAdvisor, 
-  'virtualCFO', 
+  AIBusinessTaxAdvisor,
+  'virtualCFO',
   'AI Tax Advisor',
   'Get AI-powered tax advice and CFO insights for your business'
 );
 
 const PlanRestrictedCashFlowForecasting = createPlanRestrictedRoute(
-  CashFlowForecasting, 
-  'cashFlowForecasting', 
+  CashFlowForecasting,
+  'cashFlowForecasting',
   'Cash Flow Forecasting',
   'Predict and manage your business cash flow with advanced analytics'
 );
 
 const PlanRestrictedSalesOrders = createPlanRestrictedRoute(
-  SalesOrders, 
-  'salesOrders', 
+  SalesOrders,
+  'salesOrders',
   'Sales Orders',
   'Manage and track your sales orders efficiently'
 );
 
 const PlanRestrictedPurchaseOrders = createPlanRestrictedRoute(
-  PurchaseOrders, 
-  'purchaseOrders', 
+  PurchaseOrders,
+  'purchaseOrders',
   'Purchase Orders',
   'Create and manage purchase orders for your business'
 );
@@ -125,10 +126,10 @@ function App() {
                 <Route path="/starter.202512a" element={<StarterPage />} />
                 <Route path="/growth.202514b" element={<GrowthPage />} />
                 <Route path="/scale.202516c" element={<ScalePage />} />
-                
+
                 {/* Unauthorized access page */}
                 <Route path="/unauthorized-access" element={<UnauthorizedAccessPage />} />
-                
+
                 {/* Routes with AppLayout (sidebar) */}
                 <Route path="/*" element={
                   <AppLayout>
@@ -139,7 +140,7 @@ function App() {
                       <Route path="/" element={<Index />} />
                       <Route path="/login" element={<Login />} />
                       <Route path="/clerk-login" element={<ClerkLogin />} />
-                      
+
                       {/* Protected Routes */}
                       <Route element={<ProtectedRoute />}>
                         <Route path="/dashboard" element={<Dashboard />} />
@@ -162,6 +163,7 @@ function App() {
                         <Route path="/reports/receivables" element={<Receivables />} />
                         <Route path="/reports/payables" element={<Payables />} />
                         <Route path="/banking" element={<Banking />} />
+                        <Route path="/payroll" element={<Payroll />} />
                         <Route path="/upi-collections" element={<UPICollections />} />
                         <Route path="/marketplace" element={<Marketplace />} />
                         <Route path="/support" element={<Support />} />
@@ -174,10 +176,10 @@ function App() {
                         <Route path="/branding" element={<Branding />} />
                         <Route path="/payments" element={<Payments />} />
                         <Route path="/vendors" element={<Vendors />} />
-                        
+
                         {/* Plan Test Route - For development/testing */}
                         <Route path="/plan-test" element={<PlanTestPage />} />
-                        
+
                         {/* Accounting Routes */}
                         <Route path="/accounting/chart-of-accounts" element={<ChartOfAccounts />} />
                         <Route path="/accounting/ledgers" element={<Ledgers />} />
@@ -191,7 +193,7 @@ function App() {
 
                       {/* Public payment landing (customers) */}
                       <Route path="/pay" element={<PayLink />} />
-                      
+
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </AppLayout>

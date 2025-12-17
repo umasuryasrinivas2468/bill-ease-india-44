@@ -52,8 +52,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { BankingUnavailableModal } from "@/components/BankingUnavailableModal";
-import { PayrollUnavailableModal } from "@/components/PayrollUnavailableModal";
+
 import { PlanAwareMenuItem } from "@/components/PlanAwareMenuItem";
 
 const mainMenuItems = [
@@ -62,7 +61,7 @@ const mainMenuItems = [
   { title: "Quotations", url: "/quotations", icon: Quote },
   { title: "Clients", url: "/clients", icon: Users },
 
-  { title: "Banking", url: "#", icon: Banknote, special: "banking" },
+  { title: "Banking", url: "/banking", icon: Banknote },
   { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
@@ -107,9 +106,8 @@ export function AppSidebar() {
   const [isCAToolsOpen, setIsCAToolsOpen] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
-  const [isBankingModalOpen, setIsBankingModalOpen] = useState(false);
-  const [isPayrollModalOpen, setIsPayrollModalOpen] = useState(false);
-  
+
+
   const businessInfo = getBusinessInfo();
   const businessAssets = getBusinessAssets();
   const brandingAssets = getBrandingWithFallback();
@@ -154,7 +152,7 @@ export function AppSidebar() {
           <SidebarTrigger className="h-6 w-6" />
         </div>
       </div>
-      
+
       <SidebarContent className="flex flex-col h-full">
         <div className="flex-1">
           <SidebarGroup>
@@ -165,44 +163,32 @@ export function AppSidebar() {
               <SidebarMenu>
                 {mainMenuItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild={!(item as any).special}>
-                      {(item as any).special === "banking" ? (
-                        <button
-                          onClick={() => setIsBankingModalOpen(true)}
-                          className="w-full flex items-center gap-2 px-3 py-2 hover:bg-accent hover:text-accent-foreground rounded-md text-left"
-                          title={item.title}
-                        >
-                          <item.icon className="h-4 w-4" />
-                          {!isCollapsed && <span>{item.title}</span>}
-                        </button>
-                      ) : (
-                        <NavLink
-                          to={item.url}
-                          className={getNavCls(item.url)}
-                          title={item.title}
-                        >
-                          <item.icon className="h-4 w-4" />
-                          {!isCollapsed && <span>{item.title}</span>}
-                        </NavLink>
-                      )}
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        className={getNavCls(item.url)}
+                        title={item.title}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {!isCollapsed && <span>{item.title}</span>}
+                      </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
-                
-                {/* Payroll */}
+
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
-                    <button
-                      onClick={() => setIsPayrollModalOpen(true)}
-                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-accent hover:text-accent-foreground rounded-md text-left"
+                    <NavLink
+                      to="/payroll"
+                      className={getNavCls('/payroll')}
                       title="Payroll"
                     >
                       <UserCheck className="h-4 w-4" />
                       {!isCollapsed && <span>Payroll</span>}
-                    </button>
+                    </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                
+
                 {/* Loans - Plan Restricted */}
                 {!isCollapsed && (
                   <PlanAwareMenuItem
@@ -222,21 +208,21 @@ export function AppSidebar() {
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                
+
                 {/* Inventory Collapsible Menu */}
                 <SidebarMenuItem>
-                  <Collapsible 
-                    open={isInventoryOpen} 
+                  <Collapsible
+                    open={isInventoryOpen}
                     onOpenChange={setIsInventoryOpen}
                     className="w-full"
                   >
                     <div className="w-full">
-                      <SidebarMenuButton 
+                      <SidebarMenuButton
                         asChild
                         className={`w-full ${currentPath.startsWith('/inventory') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
                         title="Inventory Management"
                       >
-                        <CollapsibleTrigger 
+                        <CollapsibleTrigger
                           className="w-full"
                           onClick={() => setIsInventoryOpen(!isInventoryOpen)}
                         >
@@ -249,7 +235,7 @@ export function AppSidebar() {
                           )}
                         </CollapsibleTrigger>
                       </SidebarMenuButton>
-                      
+
                       {!isCollapsed && (
                         <CollapsibleContent className="transition-all duration-200 ease-in-out">
                           <SidebarMenuSub>
@@ -284,21 +270,21 @@ export function AppSidebar() {
                     </div>
                   </Collapsible>
                 </SidebarMenuItem>
-                
+
                 {/* Reports Collapsible Menu */}
                 <SidebarMenuItem>
-                  <Collapsible 
-                    open={isReportsOpen} 
+                  <Collapsible
+                    open={isReportsOpen}
                     onOpenChange={setIsReportsOpen}
                     className="w-full"
                   >
                     <div className="w-full">
-                      <SidebarMenuButton 
+                      <SidebarMenuButton
                         asChild
                         className={`w-full ${currentPath.startsWith('/reports') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
                         title="Reports & Analytics"
                       >
-                        <CollapsibleTrigger 
+                        <CollapsibleTrigger
                           className="w-full"
                           onClick={() => setIsReportsOpen(!isReportsOpen)}
                         >
@@ -311,7 +297,7 @@ export function AppSidebar() {
                           )}
                         </CollapsibleTrigger>
                       </SidebarMenuButton>
-                      
+
                       {!isCollapsed && (
                         <CollapsibleContent className="transition-all duration-200 ease-in-out">
                           <SidebarMenuSub>
@@ -346,21 +332,21 @@ export function AppSidebar() {
                     </div>
                   </Collapsible>
                 </SidebarMenuItem>
-                
+
                 {/* CA Tools Collapsible Menu */}
                 <SidebarMenuItem>
-                  <Collapsible 
-                    open={isCAToolsOpen} 
+                  <Collapsible
+                    open={isCAToolsOpen}
                     onOpenChange={setIsCAToolsOpen}
                     className="w-full"
                   >
                     <div className="w-full">
-                      <SidebarMenuButton 
+                      <SidebarMenuButton
                         asChild
                         className={`w-full ${(currentPath.startsWith('/ca') || currentPath.startsWith('/accounting')) ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
                         title="CA Tools & Accounting"
                       >
-                        <CollapsibleTrigger 
+                        <CollapsibleTrigger
                           className="w-full"
                           onClick={() => setIsCAToolsOpen(!isCAToolsOpen)}
                         >
@@ -373,7 +359,7 @@ export function AppSidebar() {
                           )}
                         </CollapsibleTrigger>
                       </SidebarMenuButton>
-                      
+
                       {!isCollapsed && (
                         <CollapsibleContent className="transition-all duration-200 ease-in-out">
                           <SidebarMenuSub>
@@ -419,15 +405,8 @@ export function AppSidebar() {
           </Button>
         </div>
       </SidebarContent>
-      
-      <BankingUnavailableModal 
-        isOpen={isBankingModalOpen}
-        onClose={() => setIsBankingModalOpen(false)}
-      />
-      <PayrollUnavailableModal 
-        isOpen={isPayrollModalOpen}
-        onClose={() => setIsPayrollModalOpen(false)}
-      />
+
+
     </Sidebar>
   );
 }
