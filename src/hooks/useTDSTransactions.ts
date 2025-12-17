@@ -20,10 +20,6 @@ export interface TDSTransaction {
   certificate_number?: string;
   created_at: string;
   updated_at: string;
-  clients?: {
-    name: string;
-    gst_number?: string;
-  };
   tds_rules?: {
     category: string;
   };
@@ -61,7 +57,6 @@ export const useTDSTransactions = (filters?: {
         .from('tds_transactions')
         .select(`
           *,
-          clients(name, gst_number),
           tds_rules(category)
         `)
         .eq('user_id', normalizedUserId);
