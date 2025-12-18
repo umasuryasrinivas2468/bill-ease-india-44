@@ -4,9 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Download, FileSpreadsheet, Calendar, Filter, IndianRupee, Percent, TrendingDown, FileText } from 'lucide-react';
+import { Download, FileSpreadsheet, Calendar, IndianRupee, Percent, TrendingDown, FileText, Award } from 'lucide-react';
 import { DateRangePicker } from '@/components/DateRangePicker';
 import { useTDSTransactions, useTDSSummary } from '@/hooks/useTDSTransactions';
 import type { TDSReportFilters } from '@/types/tds';
@@ -14,6 +12,7 @@ import { format } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { toast } from '@/hooks/use-toast';
 import { downloadTDSReportPDF } from '@/utils/tdsPDF';
+import { downloadForm16APDF } from '@/utils/form16aPDF';
 import { useEnhancedBusinessData } from '@/hooks/useEnhancedBusinessData';
 
 const TDSReport = () => {
@@ -143,6 +142,26 @@ const TDSReport = () => {
     toast({
       title: "PDF Generated",
       description: "TDS report has been downloaded as PDF.",
+    });
+  };
+
+  const handleGenerateCertificate = (transaction: any) => {
+    const deductorInfo = {
+      businessName: businessInfo?.businessName,
+      ownerName: businessInfo?.ownerName,
+      address: businessInfo?.address,
+      pan: businessInfo?.gstNumber?.substring(2, 12) || '', // Extract PAN from GST
+      tan: '', // TAN to be added in settings
+      city: businessInfo?.city,
+      state: businessInfo?.state,
+      pincode: businessInfo?.pincode,
+    };
+
+    downloadForm16APDF(transaction, deductorInfo);
+    
+    toast({
+      title: "Certificate Generated",
+      description: `Form 16A certificate for ${transaction.vendor_name} has been downloaded.`,
     });
   };
 
@@ -328,11 +347,12 @@ const TDSReport = () => {
                     <TableHead>Net Paid</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Certificate No</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {transactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
+                    <TableRow key={transaction.id} className="transition-all hover:bg-muted/50">
                       <TableCell>
                         {format(new Date(transaction.transaction_date), 'dd/MM/yyyy')}
                       </TableCell>
@@ -353,6 +373,17 @@ const TDSReport = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>{transaction.certificate_number || '-'}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleGenerateCertificate(transaction)}
+                          className="transition-all hover:scale-105 hover:bg-primary hover:text-primary-foreground"
+                        >
+                          <Award className="h-4 w-4 mr-1" />
+                          Form 16A
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
