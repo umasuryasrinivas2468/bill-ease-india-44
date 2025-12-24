@@ -9,6 +9,41 @@ import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { useAuth } from '@/components/ClerkAuthProvider';
 import { useSupabaseUser } from '@/hooks/useSupabaseUser';
 
+// Ad component renders the AdSense <ins> and ensures the script is loaded.
+function OnlyForYouAd() {
+  React.useEffect(() => {
+    try {
+      // add script if not already present
+      const existing = Array.from(document.scripts).find(s => s.src.includes('pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'));
+      if (!existing) {
+        const s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7244347008549487';
+        s.crossOrigin = 'anonymous';
+        document.head.appendChild(s);
+      }
+      // push ad render
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      ;(window.adsbygoogle = window.adsbygoogle || []).push({});
+    } catch (e) {
+      // ignore errors in ad render
+      // console.warn('adsbygoogle push failed', e);
+    }
+  }, []);
+
+  return (
+    <div>
+      <ins className="adsbygoogle"
+        style={{ display: 'block' }}
+        data-ad-client="ca-pub-7244347008549487"
+        data-ad-slot="4310946291"
+        data-ad-format="auto"
+        data-full-width-responsive="true"></ins>
+    </div>
+  );
+}
+
 const Dashboard = () => {
   const { data: dashboardData, isLoading } = useDashboardStats();
   const { user: clerkUser } = useAuth();
@@ -146,8 +181,8 @@ const Dashboard = () => {
       </div>
 
       {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="rounded-none lg:col-span-2">
           <CardHeader>
             <CardTitle>Recent Invoices</CardTitle>
             <CardDescription>Your latest invoice activity</CardDescription>
@@ -165,7 +200,7 @@ const Dashboard = () => {
               ) : (
                 <>
                   {dashboardData?.recentInvoices.map((invoice) => (
-                    <div key={invoice.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div key={invoice.id} className="flex items-center justify-between p-3 border rounded-none">
                       <div>
                         <p className="font-medium">{invoice.invoice_number}</p>
                         <p className="text-sm text-muted-foreground">{invoice.client_name}</p>
@@ -191,48 +226,19 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
+        {/* Only For You ad panel */}
         <Card>
           <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Common tasks to get you started</CardDescription>
+            <CardTitle>Only For You</CardTitle>
+            <CardDescription>Sponsored</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <Button asChild className="w-full justify-start" variant="outline">
-              <Link to="/create-invoice">
-                <Plus className="h-4 w-4 mr-2" />
-                Create New Invoice
-              </Link>
-            </Button>
-            <Button asChild className="w-full justify-start" variant="outline">
-              <Link to="/clients">
-                <Users className="h-4 w-4 mr-2" />
-                Add New Client
-              </Link>
-            </Button>
-            <Button asChild className="w-full justify-start" variant="outline">
-              <Link to="/reports">
-                <TrendingUp className="h-4 w-4 mr-2" />
-                View GST Reports
-              </Link>
-            </Button>
-            <Button asChild className="w-full justify-start" variant="outline">
-              <Link to="/settings">
-                <FileText className="h-4 w-4 mr-2" />
-                Update Business Info
-              </Link>
-            </Button>
+          <CardContent>
+            <OnlyForYouAd />
           </CardContent>
         </Card>
       </div>
 
-      {/* Mobile Quick Action Button */}
-      <div className="fixed bottom-6 right-6 sm:hidden">
-        <Button asChild size="lg" className="rounded-full h-14 w-14 shadow-lg" variant="orange">
-          <Link to="/create-invoice">
-            <Plus className="h-6 w-6" />
-          </Link>
-        </Button>
-      </div>
+      {/* Mobile Quick Action Button removed per request */}
     </div>
   );
 };
