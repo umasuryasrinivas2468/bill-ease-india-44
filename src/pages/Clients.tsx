@@ -132,19 +132,17 @@ const Clients = () => {
       const clientsToInsert = validRows.map((row) => ({
         user_id: user.id,
         name: row.client_name,
-        email: row.email || '',
-        phone: row.phone || '',
-        gst_number: row.gst_number || '',
-        billing_address: row.billing_address || '',
-        shipping_address: row.shipping_address || '',
-        contact_person: row.contact_person || '',
+        email: row.email || null,
+        phone: row.phone || null,
+        gst_number: row.gst_number || null,
+        address: row.billing_address || row.address || null,
       }));
 
       const { error } = await supabase.from('clients').insert(clientsToInsert);
       if (error) throw error;
 
-      // Refetch clients data
-      await queryClient.invalidateQueries({ queryKey: ['clients', user.id] });
+      // Refetch clients data - use both patterns to ensure cache is invalidated
+      await queryClient.invalidateQueries({ queryKey: ['clients'] });
 
       setIsImportDialogOpen(false);
       toast({

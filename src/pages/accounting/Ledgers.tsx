@@ -1,11 +1,15 @@
 
 import React, { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/ClerkAuthProvider";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Upload } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import ImportDialog from "@/components/ImportDialog";
 
 type Account = {
   id: string;
@@ -32,6 +36,9 @@ export default function Ledgers() {
   const { user } = useAuth();
   const userId = user?.id as string | undefined;
   const [accountId, setAccountId] = useState<string>("");
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: accounts } = useQuery({
     queryKey: ["accounts", userId],
@@ -83,6 +90,43 @@ export default function Ledgers() {
   const selectedAccount = (accounts || []).find((a) => a.id === accountId);
   const opening = Number(selectedAccount?.opening_balance || 0);
 
+  const handleImportLedgers = async (validRows: any[]) => {
+    try {
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
+      // Import as accounts (ledger accounts)
+      const accountsToInsert = validRows.map((row, index) => ({
+        user_id: userId,
+        account_name: row.ledger_name,
+        account_code: `ACC${String(Date.now() + index).slice(-6)}`,
+        account_type: 'Asset', // Default type
+        opening_balance: parseFloat(row.opening_balance || 0),
+        is_active: true,
+      }));
+
+      const { error } = await supabase.from('accounts').insert(accountsToInsert);
+      if (error) throw error;
+
+      // Refetch accounts data
+      await queryClient.invalidateQueries({ queryKey: ['accounts'] });
+
+      setIsImportDialogOpen(false);
+      toast({
+        title: 'Import Successful',
+        description: `${validRows.length} ledger accounts imported successfully.`,
+      });
+    } catch (err) {
+      console.error('Import error:', err);
+      toast({
+        title: 'Import Failed',
+        description: 'Failed to import ledger accounts. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const rows = useMemo(() => {
     const sorted = (lines || []).slice().sort((a, b) => {
       const ja = journalsMap?.[a.journal_id]?.journal_date || a.created_at;
@@ -108,10 +152,23 @@ export default function Ledgers() {
 
   return (
     <div className="p-4 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Ledgers</h1>
-        <p className="text-muted-foreground text-sm mt-1">View account ledgers and transaction history</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Ledgers</h1>
+          <p className="text-muted-foreground text-sm mt-1">View account ledgers and transaction history</p>
+        </div>
+        <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
+          <Upload className="h-4 w-4 mr-2" />
+          Import
+        </Button>
       </div>
+
+      <ImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        moduleKey="ledgers"
+        onConfirmImport={handleImportLedgers}
+      />
 
       <Card className="p-4 space-y-4">
         <div className="max-w-sm">
