@@ -7,13 +7,17 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Check, XCircle, PauseCircle, Plus, Eye, Download, Send } from 'lucide-react';
+import { Search, Check, XCircle, PauseCircle, Plus, Eye, Download, Send, Upload } from 'lucide-react';
 import { useQuotations, useUpdateQuotationStatus, Quotation } from '@/hooks/useQuotations';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import QuotationViewer from '@/components/QuotationViewer';
 import SendDocumentDialog from '@/components/SendDocumentDialog';
 import { useCSVExport } from '@/hooks/useCSVExport';
+import { supabase } from '@/lib/supabase';
+import { useUser } from '@clerk/clerk-react';
+import { useQueryClient } from '@tanstack/react-query';
+import ImportDialog from '@/components/ImportDialog';
 
 const statusColors: Record<Quotation['status'], string> = {
   draft: 'bg-gray-100 text-gray-800',
@@ -30,12 +34,15 @@ const QuotationsInfo: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { exportQuotations, isExporting } = useCSVExport();
+  const { user } = useUser();
+  const queryClient = useQueryClient();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | Quotation['status']>('all');
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [isSendDialogOpen, setIsSendDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [quotationToSend, setQuotationToSend] = useState<Quotation | null>(null);
 
   const handleSendQuotation = (quotation: Quotation) => {
@@ -85,6 +92,57 @@ const QuotationsInfo: React.FC = () => {
     setSelectedQuotation(null);
   };
 
+  const handleImportQuotations = async (validRows: any[]) => {
+    try {
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+
+      const quotationsToInsert = validRows.map((row) => ({
+        user_id: user.id,
+        quotation_number: row.quotation_number,
+        quotation_date: row.quotation_date,
+        client_name: row.client_name,
+        client_email: row.client_email || '',
+        client_phone: row.client_phone || '',
+        client_address: row.client_address || '',
+        amount: parseFloat(row.quantity || 0) * parseFloat(row.rate || 0),
+        tax_amount: (parseFloat(row.quantity || 0) * parseFloat(row.rate || 0)) * (parseFloat(row.gst_rate || 18) / 100),
+        total_amount: (parseFloat(row.quantity || 0) * parseFloat(row.rate || 0)) * (1 + parseFloat(row.gst_rate || 18) / 100),
+        status: 'draft',
+        notes: row.notes || '',
+        items: [
+          {
+            name: row.item_description || '',
+            description: row.hsn_sac || '',
+            quantity: parseFloat(row.quantity || 1),
+            price: parseFloat(row.rate || 0),
+            amount: parseFloat(row.quantity || 1) * parseFloat(row.rate || 0),
+          }
+        ],
+      }));
+
+      const { error } = await supabase.from('quotations').insert(quotationsToInsert);
+      if (error) throw error;
+
+      // Refetch quotations data
+      await queryClient.invalidateQueries({ queryKey: ['quotations', user.id] });
+
+      setIsImportDialogOpen(false);
+      toast({
+        title: 'Import Successful',
+        description: `${validRows.length} quotations imported successfully.`,
+      });
+    } catch (err) {
+      console.error('Import error:', err);
+      toast({
+        title: 'Import Failed',
+        description: 'Failed to import quotations. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-4 md:p-6 space-y-6">
@@ -124,6 +182,14 @@ const QuotationsInfo: React.FC = () => {
             {isExporting ? 'Exporting...' : 'Export CSV'}
           </Button>
           <Button 
+            onClick={() => setIsImportDialogOpen(true)}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Upload className="h-4 w-4" />
+            Import
+          </Button>
+          <Button 
             onClick={() => navigate('/quotations/create')}
             className="flex items-center gap-2"
           >
@@ -132,6 +198,13 @@ const QuotationsInfo: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      <ImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        moduleKey="quotations"
+        onConfirmImport={handleImportQuotations}
+      />
 
       <Card>
         <CardHeader>

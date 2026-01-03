@@ -5,12 +5,16 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Search, Plus, Download, Eye, FileText, Trash2, Send } from 'lucide-react';
+import { Search, Plus, Download, Eye, FileText, Trash2, Send, Upload } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useInvoices, useDeleteInvoice, Invoice } from '@/hooks/useInvoices';
 import InvoiceViewer from '@/components/InvoiceViewer';
 import SendDocumentDialog from '@/components/SendDocumentDialog';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
+import { useQueryClient } from '@tanstack/react-query';
+import { useUser } from '@clerk/clerk-react';
+import ImportDialog from '@/components/ImportDialog';
 
 const Invoices = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,10 +22,13 @@ const Invoices = () => {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [isSendDialogOpen, setIsSendDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [invoiceToSend, setInvoiceToSend] = useState<Invoice | null>(null);
   const { data: invoices = [], isLoading } = useInvoices();
   const deleteInvoice = useDeleteInvoice();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { user } = useUser();
 
   const handleSendInvoice = (invoice: Invoice) => {
     setInvoiceToSend(invoice);
@@ -77,6 +84,57 @@ const Invoices = () => {
     }
   };
 
+  const handleImportInvoices = async (validRows: any[]) => {
+    try {
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+
+      const invoicesToInsert = validRows.map((row) => ({
+        user_id: user.id,
+        invoice_number: row.invoice_number,
+        invoice_date: row.invoice_date,
+        due_date: row.due_date || null,
+        client_name: row.client_name,
+        client_gst_number: row.client_gst_number || '',
+        amount: parseFloat(row.quantity || 0) * parseFloat(row.rate || 0),
+        gst_amount: (parseFloat(row.quantity || 0) * parseFloat(row.rate || 0)) * (parseFloat(row.gst_rate || 18) / 100),
+        gst_rate: parseFloat(row.gst_rate || 18),
+        total_amount: (parseFloat(row.quantity || 0) * parseFloat(row.rate || 0)) * (1 + parseFloat(row.gst_rate || 18) / 100),
+        status: 'pending',
+        notes: row.notes || '',
+        items: [
+          {
+            description: row.item_description || '',
+            hsn_sac: row.hsn_sac || '',
+            quantity: parseFloat(row.quantity || 1),
+            rate: parseFloat(row.rate || 0),
+            amount: parseFloat(row.quantity || 1) * parseFloat(row.rate || 0),
+          }
+        ],
+      }));
+
+      const { error } = await supabase.from('invoices').insert(invoicesToInsert);
+      if (error) throw error;
+
+      // Refetch invoices data
+      await queryClient.invalidateQueries({ queryKey: ['invoices', user.id] });
+
+      setIsImportDialogOpen(false);
+      toast({
+        title: 'Import Successful',
+        description: `${validRows.length} invoices imported successfully.`,
+      });
+    } catch (err) {
+      console.error('Import error:', err);
+      toast({
+        title: 'Import Failed',
+        description: 'Failed to import invoices. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-4 md:p-6 space-y-6">
@@ -105,13 +163,26 @@ const Invoices = () => {
             <p className="text-muted-foreground">Manage your invoices and track payments</p>
           </div>
         </div>
-        <Button asChild variant="orange">
-          <Link to="/create-invoice">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Invoice
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Import
+          </Button>
+          <Button asChild variant="orange">
+            <Link to="/create-invoice">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Invoice
+            </Link>
+          </Button>
+        </div>
       </div>
+
+      <ImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        moduleKey="invoices"
+        onConfirmImport={handleImportInvoices}
+      />
 
       {/* Filters */}
       <Card>

@@ -5,18 +5,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Search, Plus, Mail, Phone, MapPin, FileText, Users, Edit, Trash2 } from 'lucide-react';
+import { Search, Plus, Mail, Phone, MapPin, FileText, Users, Edit, Trash2, Upload } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useClients, useCreateClient, useUpdateClient, useDeleteClient, Client } from '@/hooks/useClients';
 import { useNavigate } from 'react-router-dom';
 import { useInvoices } from '@/hooks/useInvoices';
+import { supabase } from '@/lib/supabase';
+import { useQueryClient } from '@tanstack/react-query';
+import { useUser } from '@clerk/clerk-react';
+import ImportDialog from '@/components/ImportDialog';
 
 const Clients = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useUser();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [newClient, setNewClient] = useState({
     name: '',
@@ -116,6 +123,44 @@ const Clients = () => {
     navigate(`/invoices?client=${encodeURIComponent(client.name)}`);
   };
 
+  const handleImportClients = async (validRows: any[]) => {
+    try {
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+
+      const clientsToInsert = validRows.map((row) => ({
+        user_id: user.id,
+        name: row.client_name,
+        email: row.email || '',
+        phone: row.phone || '',
+        gst_number: row.gst_number || '',
+        billing_address: row.billing_address || '',
+        shipping_address: row.shipping_address || '',
+        contact_person: row.contact_person || '',
+      }));
+
+      const { error } = await supabase.from('clients').insert(clientsToInsert);
+      if (error) throw error;
+
+      // Refetch clients data
+      await queryClient.invalidateQueries({ queryKey: ['clients', user.id] });
+
+      setIsImportDialogOpen(false);
+      toast({
+        title: 'Import Successful',
+        description: `${validRows.length} clients imported successfully.`,
+      });
+    } catch (err) {
+      console.error('Import error:', err);
+      toast({
+        title: 'Import Failed',
+        description: 'Failed to import clients. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-4 md:p-6 space-y-6">
@@ -157,81 +202,95 @@ const Clients = () => {
           </div>
         </div>
         
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="orange">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Client
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Add New Client</DialogTitle>
-              <DialogDescription>
-                Enter the client details below to add them to your database.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Client Name *</Label>
-                <Input
-                  id="name"
-                  value={newClient.name}
-                  onChange={(e) => setNewClient({...newClient, name: e.target.value})}
-                  placeholder="Enter client name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={newClient.email}
-                  onChange={(e) => setNewClient({...newClient, email: e.target.value})}
-                  placeholder="client@example.com"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={newClient.phone}
-                  onChange={(e) => setNewClient({...newClient, phone: e.target.value})}
-                  placeholder="+91 98765 43210"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="gstNumber">GST Number</Label>
-                <Input
-                  id="gstNumber"
-                  value={newClient.gst_number}
-                  onChange={(e) => setNewClient({...newClient, gst_number: e.target.value})}
-                  placeholder="22AAAAA0000A1Z5"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Textarea
-                  id="address"
-                  value={newClient.address}
-                  onChange={(e) => setNewClient({...newClient, address: e.target.value})}
-                  placeholder="Enter client address"
-                  rows={3}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button 
-                variant="orange"
-                onClick={handleAddClient}
-                disabled={createClientMutation.isPending}
-              >
-                {createClientMutation.isPending ? "Adding..." : "Add Client"}
+        <div className="flex gap-2">
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="orange">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Client
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Add New Client</DialogTitle>
+                <DialogDescription>
+                  Enter the client details below to add them to your database.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Client Name *</Label>
+                  <Input
+                    id="name"
+                    value={newClient.name}
+                    onChange={(e) => setNewClient({...newClient, name: e.target.value})}
+                    placeholder="Enter client name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={newClient.email}
+                    onChange={(e) => setNewClient({...newClient, email: e.target.value})}
+                    placeholder="client@example.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input
+                    id="phone"
+                    value={newClient.phone}
+                    onChange={(e) => setNewClient({...newClient, phone: e.target.value})}
+                    placeholder="+91 98765 43210"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gstNumber">GST Number</Label>
+                  <Input
+                    id="gstNumber"
+                    value={newClient.gst_number}
+                    onChange={(e) => setNewClient({...newClient, gst_number: e.target.value})}
+                    placeholder="22AAAAA0000A1Z5"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Textarea
+                    id="address"
+                    value={newClient.address}
+                    onChange={(e) => setNewClient({...newClient, address: e.target.value})}
+                    placeholder="Enter client address"
+                    rows={3}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button 
+                  variant="orange"
+                  onClick={handleAddClient}
+                  disabled={createClientMutation.isPending}
+                >
+                  {createClientMutation.isPending ? "Adding..." : "Add Client"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          
+          <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Import
+          </Button>
+        </div>
+        </div>
+
+      <ImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        moduleKey="clients"
+        onConfirmImport={handleImportClients}
+      />
 
       {/* Search */}
       <Card>

@@ -5,12 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Plus, Minus, FileText, ArrowLeft } from 'lucide-react';
+import { Plus, Minus, FileText, ArrowLeft, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { supabase } from '@/lib/supabase';
 import QuotationItemSelector from '@/components/QuotationItemSelector';
+import ImportDialog from '@/components/ImportDialog';
 
 interface QuotationItem {
   product_id?: string;
@@ -41,6 +42,7 @@ const Quotations = () => {
   const [items, setItems] = useState<QuotationItem[]>([
     { product_id: '', name: '', description: '', quantity: 1, price: 0, amount: 0 }
   ]);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const addItem = () => {
     setItems([...items, { product_id: '', name: '', description: '', quantity: 1, price: 0, amount: 0 }]);
@@ -208,6 +210,50 @@ const Quotations = () => {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleImportQuotations = async (validRows: any[]) => {
+    try {
+      const quotationsToInsert = validRows.map((row) => ({
+        quotation_number: row.quotation_number,
+        quotation_date: row.quotation_date,
+        client_name: row.client_name,
+        client_email: row.client_email || '',
+        client_phone: row.client_phone || '',
+        client_address: row.client_address || '',
+        amount: parseFloat(row.quantity || 0) * parseFloat(row.rate || 0),
+        tax_amount: (parseFloat(row.quantity || 0) * parseFloat(row.rate || 0)) * (parseFloat(row.gst_rate || 18) / 100),
+        total_amount: (parseFloat(row.quantity || 0) * parseFloat(row.rate || 0)) * (1 + parseFloat(row.gst_rate || 18) / 100),
+        status: 'draft',
+        notes: row.notes || '',
+        items: [
+          {
+            name: row.item_description || '',
+            description: row.hsn_sac || '',
+            quantity: parseFloat(row.quantity || 1),
+            price: parseFloat(row.rate || 0),
+            amount: parseFloat(row.quantity || 1) * parseFloat(row.rate || 0),
+          }
+        ],
+        user_id: user?.id,
+      }));
+
+      const { error } = await supabase.from('quotations').insert(quotationsToInsert);
+      if (error) throw error;
+
+      setIsImportDialogOpen(false);
+      toast({
+        title: 'Import Successful',
+        description: `${validRows.length} quotations imported successfully.`,
+      });
+    } catch (err) {
+      console.error('Import error:', err);
+      toast({
+        title: 'Import Failed',
+        description: 'Failed to import quotations. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 

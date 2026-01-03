@@ -11,6 +11,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
 import { useTDSRules } from '@/hooks/useTDSRules';
+import { Upload } from 'lucide-react';
+import ImportDialog from '@/components/ImportDialog';
 
 interface VendorRecord {
   id: string;
@@ -29,6 +31,7 @@ export default function Vendors() {
   const [vendors, setVendors] = useState<VendorRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [editing, setEditing] = useState<VendorRecord | null>(null);
   const { data: tdsRules = [] } = useTDSRules();
 
@@ -112,11 +115,45 @@ export default function Vendors() {
     }
   };
 
+  const handleImportVendors = async (validRows: any[]) => {
+    try {
+      const vendorsToInsert = validRows.map((row) => ({
+        user_id: user?.id,
+        name: row.vendor_name,
+        email: row.email || '',
+        phone: row.phone || '',
+        address: row.billing_address || '',
+        pan: row.pan || '',
+      }));
+
+      const { error } = await supabase.from('vendors').insert(vendorsToInsert);
+      if (error) throw error;
+
+      setIsImportDialogOpen(false);
+      fetchVendors();
+      toast({
+        title: 'Import Successful',
+        description: `${validRows.length} vendors imported successfully.`,
+      });
+    } catch (err) {
+      console.error('Import error:', err);
+      toast({
+        title: 'Import Failed',
+        description: 'Failed to import vendors. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Vendors</h1>
-        <div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Import
+          </Button>
           <Button onClick={openCreate}>New Vendor</Button>
         </div>
       </div>
@@ -214,6 +251,13 @@ export default function Vendors() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        moduleKey="vendors"
+        onConfirmImport={handleImportVendors}
+      />
     </div>
   );
 }
