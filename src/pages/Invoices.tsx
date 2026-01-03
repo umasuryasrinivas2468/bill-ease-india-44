@@ -15,6 +15,7 @@ import { supabase } from '@/lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/clerk-react';
 import ImportDialog from '@/components/ImportDialog';
+import { normalizeUserId } from '@/lib/userUtils';
 
 const Invoices = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -90,6 +91,8 @@ const Invoices = () => {
         throw new Error('User not authenticated');
       }
 
+      const uid = normalizeUserId(user.id);
+
       const invoicesToInsert = validRows.map((row) => {
         const quantity = parseFloat(row.quantity || 1);
         const rate = parseFloat(row.rate || 0);
@@ -103,7 +106,7 @@ const Invoices = () => {
         const dueDate = row.due_date || new Date(new Date(invoiceDate).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
         return {
-          user_id: user.id,
+          user_id: uid,
           invoice_number: row.invoice_number,
           invoice_date: invoiceDate,
           due_date: dueDate,

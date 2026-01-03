@@ -26,9 +26,10 @@ export interface Quotation {
 
 export const useQuotations = () => {
   const { user } = useUser();
+  const normalizedUserId = user ? normalizeUserId(user.id) : null;
 
   return useQuery({
-    queryKey: ['quotations', user?.id],
+    queryKey: ['quotations', normalizedUserId],
     queryFn: async () => {
       if (!user || !isValidUserId(user.id)) {
         console.error('[useQuotations] User not authenticated or invalid user ID:', user?.id);
