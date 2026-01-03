@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@clerk/clerk-react';
-import { isValidUserId } from '@/lib/userUtils';
+import { isValidUserId, normalizeUserId } from '@/lib/userUtils';
 
 export interface Invoice {
   id: string;
@@ -30,16 +30,17 @@ export interface Invoice {
 
 export const useInvoices = () => {
   const { user } = useUser();
+  const normalizedUserId = user ? normalizeUserId(user.id) : null;
   
   return useQuery({
-    queryKey: ['invoices', user?.id],
+    queryKey: ['invoices', normalizedUserId],
     queryFn: async () => {
       if (!user || !isValidUserId(user.id)) {
         console.error('User not authenticated or invalid user ID:', user?.id);
         throw new Error('User not authenticated or invalid user ID');
       }
       
-      const uid = user.id;
+      const uid = normalizeUserId(user.id);
       console.log('Fetching invoices for user:', uid);
       
       const { data, error } = await supabase
@@ -53,7 +54,7 @@ export const useInvoices = () => {
         throw error;
       }
       
-      console.log('Fetched invoices:', data);
+      console.log('Fetched invoices:', data?.length || 0, 'records');
       
       // Check for overdue invoices and update status (client-side for view)
       const today = new Date().toISOString().split('T')[0];
