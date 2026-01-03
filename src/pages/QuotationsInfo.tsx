@@ -98,35 +98,45 @@ const QuotationsInfo: React.FC = () => {
         throw new Error('User not authenticated');
       }
 
-      const quotationsToInsert = validRows.map((row) => ({
-        user_id: user.id,
-        quotation_number: row.quotation_number,
-        quotation_date: row.quotation_date,
-        client_name: row.client_name,
-        client_email: row.client_email || '',
-        client_phone: row.client_phone || '',
-        client_address: row.client_address || '',
-        amount: parseFloat(row.quantity || 0) * parseFloat(row.rate || 0),
-        tax_amount: (parseFloat(row.quantity || 0) * parseFloat(row.rate || 0)) * (parseFloat(row.gst_rate || 18) / 100),
-        total_amount: (parseFloat(row.quantity || 0) * parseFloat(row.rate || 0)) * (1 + parseFloat(row.gst_rate || 18) / 100),
-        status: 'draft',
-        notes: row.notes || '',
-        items: [
-          {
-            name: row.item_description || '',
-            description: row.hsn_sac || '',
-            quantity: parseFloat(row.quantity || 1),
-            price: parseFloat(row.rate || 0),
-            amount: parseFloat(row.quantity || 1) * parseFloat(row.rate || 0),
-          }
-        ],
-      }));
+      const quotationsToInsert = validRows.map((row) => {
+        const quantity = parseFloat(row.quantity || 1);
+        const rate = parseFloat(row.rate || 0);
+        const gstRate = parseFloat(row.gst_rate || 18);
+        const subtotal = quantity * rate;
+        const taxAmount = subtotal * (gstRate / 100);
+        const totalAmount = subtotal + taxAmount;
+
+        return {
+          user_id: user.id,
+          quotation_number: row.quotation_number,
+          quotation_date: row.quotation_date,
+          client_name: row.client_name,
+          client_email: row.client_email || null,
+          client_phone: row.client_phone || null,
+          client_address: row.client_address || null,
+          subtotal: subtotal,
+          tax_amount: taxAmount,
+          total_amount: totalAmount,
+          validity_period: 30,
+          status: 'draft',
+          terms_conditions: row.notes || null,
+          items: [
+            {
+              name: row.item_description || '',
+              description: row.hsn_sac || '',
+              quantity: quantity,
+              price: rate,
+              amount: subtotal,
+            }
+          ],
+        };
+      });
 
       const { error } = await supabase.from('quotations').insert(quotationsToInsert);
       if (error) throw error;
 
-      // Refetch quotations data
-      await queryClient.invalidateQueries({ queryKey: ['quotations', user.id] });
+      // Refetch quotations data - use both patterns to ensure cache is invalidated
+      await queryClient.invalidateQueries({ queryKey: ['quotations'] });
 
       setIsImportDialogOpen(false);
       toast({

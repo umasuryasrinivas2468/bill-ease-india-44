@@ -90,35 +90,48 @@ const Invoices = () => {
         throw new Error('User not authenticated');
       }
 
-      const invoicesToInsert = validRows.map((row) => ({
-        user_id: user.id,
-        invoice_number: row.invoice_number,
-        invoice_date: row.invoice_date,
-        due_date: row.due_date || null,
-        client_name: row.client_name,
-        client_gst_number: row.client_gst_number || '',
-        amount: parseFloat(row.quantity || 0) * parseFloat(row.rate || 0),
-        gst_amount: (parseFloat(row.quantity || 0) * parseFloat(row.rate || 0)) * (parseFloat(row.gst_rate || 18) / 100),
-        gst_rate: parseFloat(row.gst_rate || 18),
-        total_amount: (parseFloat(row.quantity || 0) * parseFloat(row.rate || 0)) * (1 + parseFloat(row.gst_rate || 18) / 100),
-        status: 'pending',
-        notes: row.notes || '',
-        items: [
-          {
-            description: row.item_description || '',
-            hsn_sac: row.hsn_sac || '',
-            quantity: parseFloat(row.quantity || 1),
-            rate: parseFloat(row.rate || 0),
-            amount: parseFloat(row.quantity || 1) * parseFloat(row.rate || 0),
-          }
-        ],
-      }));
+      const invoicesToInsert = validRows.map((row) => {
+        const quantity = parseFloat(row.quantity || 1);
+        const rate = parseFloat(row.rate || 0);
+        const gstRate = parseFloat(row.gst_rate || 18);
+        const amount = quantity * rate;
+        const gstAmount = amount * (gstRate / 100);
+        const totalAmount = amount + gstAmount;
+        
+        // Calculate due date if not provided (30 days from invoice date)
+        const invoiceDate = row.invoice_date;
+        const dueDate = row.due_date || new Date(new Date(invoiceDate).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+        return {
+          user_id: user.id,
+          invoice_number: row.invoice_number,
+          invoice_date: invoiceDate,
+          due_date: dueDate,
+          client_name: row.client_name,
+          client_gst_number: row.client_gst_number || null,
+          amount: amount,
+          gst_amount: gstAmount,
+          gst_rate: gstRate,
+          total_amount: totalAmount,
+          status: 'pending',
+          notes: row.notes || null,
+          items: [
+            {
+              description: row.item_description || '',
+              hsn_sac: row.hsn_sac || '',
+              quantity: quantity,
+              rate: rate,
+              amount: amount,
+            }
+          ],
+        };
+      });
 
       const { error } = await supabase.from('invoices').insert(invoicesToInsert);
       if (error) throw error;
 
-      // Refetch invoices data
-      await queryClient.invalidateQueries({ queryKey: ['invoices', user.id] });
+      // Refetch invoices data - use both patterns to ensure cache is invalidated
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
 
       setIsImportDialogOpen(false);
       toast({
