@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Edit, Check, DollarSign, X, Eye } from 'lucide-react';
+import { Plus, Search, Filter, Edit, Check, DollarSign, X, Eye, Download, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,14 +32,22 @@ import { useToast } from '@/components/ui/use-toast';
 import { DatePicker } from '@/components/ui/date-picker';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@clerk/clerk-react';
+import OrderItemSelector from '@/components/OrderItemSelector';
+import { InventoryItem } from '@/hooks/useInventory';
+import { downloadOrderPDF, getOrderPDFBlob } from '@/utils/orderPDF';
+import { useSimpleBranding } from '@/hooks/useSimpleBranding';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SalesOrderItem {
   id: string;
+  product_id?: string;
   product_name: string;
+  sku?: string;
   quantity: number;
   price: number;
   tax_rate: number;
   total: number;
+  available_stock?: number;
 }
 
 interface SalesOrder {
@@ -47,13 +55,29 @@ interface SalesOrder {
   order_number: string;
   client_name: string;
   client_email?: string;
+  client_phone?: string;
+  client_address?: string;
   order_date: string;
   due_date: string;
   total_amount: number;
+  subtotal?: number;
+  tax_amount?: number;
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
   payment_status: 'paid' | 'unpaid' | 'partial';
   items: SalesOrderItem[];
   notes?: string;
+}
+
+interface BusinessProfile {
+  business_name: string;
+  owner_name: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  phone?: string;
+  email?: string;
+  gst_number?: string;
 }
 
 const statusColors = {
@@ -79,8 +103,10 @@ export default function SalesOrders() {
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<SalesOrder | null>(null);
+  const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null);
   const { user } = useUser();
   const { toast } = useToast();
+  const { getBrandingWithFallback } = useSimpleBranding();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -99,12 +125,28 @@ export default function SalesOrders() {
   useEffect(() => {
     if (user) {
       fetchSalesOrders();
+      fetchBusinessProfile();
     }
   }, [user]);
 
   useEffect(() => {
     filterOrders();
   }, [orders, searchTerm, statusFilter, paymentFilter]);
+
+  const fetchBusinessProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('business_profiles')
+        .select('*')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      setBusinessProfile(data);
+    } catch (error) {
+      console.error('Error fetching business profile:', error);
+    }
+  };
 
   const fetchSalesOrders = async () => {
     try {
@@ -167,6 +209,31 @@ export default function SalesOrders() {
     const taxAmount = orderItems.reduce((sum, item) => sum + ((item.quantity * item.price * item.tax_rate) / 100), 0);
     const total = subtotal + taxAmount;
     return { subtotal, taxAmount, total };
+  };
+
+  const handleInventoryItemSelect = (index: number, item: InventoryItem | null, productName: string) => {
+    const updatedItems = [...orderItems];
+    if (item) {
+      updatedItems[index] = {
+        ...updatedItems[index],
+        product_id: item.id,
+        product_name: item.product_name,
+        sku: item.sku,
+        price: item.selling_price,
+        tax_rate: 18, // Default GST
+        available_stock: item.stock_quantity,
+        total: calculateItemTotal({ ...updatedItems[index], price: item.selling_price, quantity: updatedItems[index].quantity, tax_rate: 18 }),
+      };
+    } else {
+      updatedItems[index] = {
+        ...updatedItems[index],
+        product_id: undefined,
+        product_name: productName,
+        sku: undefined,
+        available_stock: undefined,
+      };
+    }
+    setOrderItems(updatedItems);
   };
 
   const handleItemChange = (index: number, field: keyof SalesOrderItem, value: any) => {
@@ -319,14 +386,87 @@ export default function SalesOrders() {
     setFormData({
       client_name: order.client_name,
       client_email: order.client_email || '',
-      client_phone: '', // Would need to add this field to the order
-      client_address: '', // Would need to add this field to the order
+      client_phone: order.client_phone || '',
+      client_address: order.client_address || '',
       order_date: new Date(order.order_date),
       due_date: new Date(order.due_date),
       notes: order.notes || '',
     });
     setOrderItems(order.items || []);
     setIsFormOpen(true);
+  };
+
+  const handleDownloadPDF = async (order: SalesOrder) => {
+    try {
+      const branding = getBrandingWithFallback();
+      await downloadOrderPDF(
+        order,
+        businessProfile || { business_name: 'Your Company', owner_name: '' },
+        branding,
+        'sales'
+      );
+      toast({
+        title: 'Success',
+        description: 'PDF downloaded successfully',
+      });
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to download PDF',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleEmailOrder = async (order: SalesOrder) => {
+    try {
+      const branding = getBrandingWithFallback();
+      const pdfBlob = await getOrderPDFBlob(
+        order,
+        businessProfile || { business_name: 'Your Company', owner_name: '' },
+        branding,
+        'sales'
+      );
+
+      // Create subject and body
+      const subject = encodeURIComponent(`Sales Order ${order.order_number} from ${businessProfile?.business_name || 'Our Company'}`);
+      const body = encodeURIComponent(
+        `Dear ${order.client_name},\n\n` +
+        `Please find attached the Sales Order ${order.order_number}.\n\n` +
+        `Order Details:\n` +
+        `- Order Number: ${order.order_number}\n` +
+        `- Order Date: ${new Date(order.order_date).toLocaleDateString()}\n` +
+        `- Due Date: ${new Date(order.due_date).toLocaleDateString()}\n` +
+        `- Total Amount: ₹${order.total_amount.toFixed(2)}\n\n` +
+        `Please review and confirm at your earliest convenience.\n\n` +
+        `Best regards,\n${businessProfile?.owner_name || 'Your Company'}`
+      );
+
+      // Open mailto with the email
+      const mailtoLink = `mailto:${order.client_email || ''}?subject=${subject}&body=${body}`;
+      window.open(mailtoLink, '_blank');
+
+      // Download PDF for manual attachment
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `SO_${order.order_number}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Email Draft Opened',
+        description: 'PDF has been downloaded. Please attach it to your email.',
+      });
+    } catch (error) {
+      console.error('Error preparing email:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to prepare email',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (loading) {
@@ -371,6 +511,22 @@ export default function SalesOrders() {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="client_phone">Customer Phone</Label>
+                  <Input
+                    id="client_phone"
+                    value={formData.client_phone}
+                    onChange={(e) => setFormData({ ...formData, client_phone: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="client_address">Customer Address</Label>
+                  <Input
+                    id="client_address"
+                    value={formData.client_address}
+                    onChange={(e) => setFormData({ ...formData, client_address: e.target.value })}
+                  />
+                </div>
+                <div>
                   <Label htmlFor="order_date">Order Date *</Label>
                   <DatePicker
                     date={formData.order_date}
@@ -392,13 +548,14 @@ export default function SalesOrders() {
                   {orderItems.map((item, index) => (
                     <div key={index} className="grid grid-cols-12 gap-2 items-center p-2 border rounded">
                       <div className="col-span-4">
-                        <Input
-                          placeholder="Product name"
+                        <OrderItemSelector
                           value={item.product_name}
-                          onChange={(e) => handleItemChange(index, 'product_name', e.target.value)}
+                          onSelect={(inventoryItem, productName) => handleInventoryItemSelect(index, inventoryItem, productName)}
+                          showStock={true}
+                          placeholder="Select product"
                         />
                       </div>
-                      <div className="col-span-2">
+                      <div className="col-span-1">
                         <Input
                           type="number"
                           placeholder="Qty"
@@ -417,7 +574,7 @@ export default function SalesOrders() {
                           onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value) || 0)}
                         />
                       </div>
-                      <div className="col-span-2">
+                      <div className="col-span-1">
                         <Input
                           type="number"
                           placeholder="Tax %"
@@ -427,10 +584,15 @@ export default function SalesOrders() {
                           onChange={(e) => handleItemChange(index, 'tax_rate', parseFloat(e.target.value) || 0)}
                         />
                       </div>
-                      <div className="col-span-1 text-right">
-                        ₹{item.total.toFixed(2)}
+                      <div className="col-span-2 text-right">
+                        <div>₹{item.total.toFixed(2)}</div>
+                        {item.available_stock !== undefined && (
+                          <div className="text-xs text-muted-foreground">
+                            Stock: {item.available_stock}
+                          </div>
+                        )}
                       </div>
-                      <div className="col-span-1">
+                      <div className="col-span-2 flex gap-1">
                         <Button
                           type="button"
                           variant="outline"
@@ -592,42 +754,91 @@ export default function SalesOrders() {
                   <TableCell>{new Date(order.due_date).toLocaleDateString()}</TableCell>
                   <TableCell>₹{order.total_amount.toFixed(2)}</TableCell>
                   <TableCell>
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => startEdit(order)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      {order.status === 'pending' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => updateOrderStatus(order.id, 'confirmed')}
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {order.payment_status !== 'paid' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => markAsPaid(order.id)}
-                        >
-                          <DollarSign className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {(order.status === 'pending' || order.status === 'confirmed') && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => updateOrderStatus(order.id, 'cancelled')}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                    <TooltipProvider>
+                      <div className="flex space-x-1">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => startEdit(order)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Edit</TooltipContent>
+                        </Tooltip>
+
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDownloadPDF(order)}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Download PDF</TooltipContent>
+                        </Tooltip>
+
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEmailOrder(order)}
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Email Order</TooltipContent>
+                        </Tooltip>
+
+                        {order.status === 'pending' && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => updateOrderStatus(order.id, 'confirmed')}
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Confirm</TooltipContent>
+                          </Tooltip>
+                        )}
+                        {order.payment_status !== 'paid' && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => markAsPaid(order.id)}
+                              >
+                                <DollarSign className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Mark Paid</TooltipContent>
+                          </Tooltip>
+                        )}
+                        {(order.status === 'pending' || order.status === 'confirmed') && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => updateOrderStatus(order.id, 'cancelled')}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Cancel</TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                    </TooltipProvider>
                   </TableCell>
                 </TableRow>
               ))}

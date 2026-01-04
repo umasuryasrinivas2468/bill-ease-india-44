@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Edit, Check, DollarSign, X, Eye } from 'lucide-react';
+import { Plus, Search, Filter, Edit, Check, DollarSign, X, Eye, Download, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,10 +32,17 @@ import { useToast } from '@/components/ui/use-toast';
 import { DatePicker } from '@/components/ui/date-picker';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@clerk/clerk-react';
+import OrderItemSelector from '@/components/OrderItemSelector';
+import { InventoryItem } from '@/hooks/useInventory';
+import { downloadOrderPDF, getOrderPDFBlob } from '@/utils/orderPDF';
+import { useSimpleBranding } from '@/hooks/useSimpleBranding';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface PurchaseOrderItem {
   id: string;
+  product_id?: string;
   product_name: string;
+  sku?: string;
   quantity: number;
   price: number;
   tax_rate: number;
@@ -47,9 +54,13 @@ interface PurchaseOrder {
   order_number: string;
   vendor_name: string;
   vendor_email?: string;
+  vendor_phone?: string;
+  vendor_address?: string;
   order_date: string;
   due_date: string;
   total_amount: number;
+  subtotal?: number;
+  tax_amount?: number;
   status: 'pending' | 'confirmed' | 'received' | 'cancelled';
   payment_status: 'paid' | 'unpaid' | 'partial';
   items: PurchaseOrderItem[];
@@ -58,10 +69,22 @@ interface PurchaseOrder {
 
 interface Vendor {
   id: string;
-  vendor_name: string;
-  vendor_email?: string;
-  vendor_phone?: string;
-  vendor_address?: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+}
+
+interface BusinessProfile {
+  business_name: string;
+  owner_name: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  phone?: string;
+  email?: string;
+  gst_number?: string;
 }
 
 const statusColors = {
@@ -87,8 +110,10 @@ export default function PurchaseOrders() {
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<PurchaseOrder | null>(null);
+  const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null);
   const { user } = useUser();
   const { toast } = useToast();
+  const { getBrandingWithFallback } = useSimpleBranding();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -108,12 +133,28 @@ export default function PurchaseOrders() {
     if (user) {
       fetchPurchaseOrders();
       fetchVendors();
+      fetchBusinessProfile();
     }
   }, [user]);
 
   useEffect(() => {
     filterOrders();
   }, [orders, searchTerm, statusFilter, paymentFilter]);
+
+  const fetchBusinessProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('business_profiles')
+        .select('*')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      setBusinessProfile(data);
+    } catch (error) {
+      console.error('Error fetching business profile:', error);
+    }
+  };
 
   const fetchPurchaseOrders = async () => {
     try {
@@ -147,7 +188,7 @@ export default function PurchaseOrders() {
         .order('name');
 
       if (error) throw error;
-      setVendors((data || []).map((v: any) => ({ ...v, vendor_name: v.name })) as any);
+      setVendors((data || []) as Vendor[]);
     } catch (error) {
       console.error('Error fetching vendors:', error);
     }
@@ -193,17 +234,40 @@ export default function PurchaseOrders() {
     return { subtotal, taxAmount, total };
   };
 
-  const handleVendorSelect = (vendorName: string) => {
-    const vendor = vendors.find(v => v.vendor_name === vendorName);
+  const handleVendorSelect = (vendorId: string) => {
+    const vendor = vendors.find(v => v.id === vendorId);
     if (vendor) {
       setFormData({
         ...formData,
-        vendor_name: vendor.vendor_name,
-        vendor_email: vendor.vendor_email || '',
-        vendor_phone: vendor.vendor_phone || '',
-        vendor_address: vendor.vendor_address || '',
+        vendor_name: vendor.name,
+        vendor_email: vendor.email || '',
+        vendor_phone: vendor.phone || '',
+        vendor_address: vendor.address || '',
       });
     }
+  };
+
+  const handleInventoryItemSelect = (index: number, item: InventoryItem | null, productName: string) => {
+    const updatedItems = [...orderItems];
+    if (item) {
+      updatedItems[index] = {
+        ...updatedItems[index],
+        product_id: item.id,
+        product_name: item.product_name,
+        sku: item.sku,
+        price: item.purchase_price || item.selling_price,
+        tax_rate: 18,
+        total: calculateItemTotal({ ...updatedItems[index], price: item.purchase_price || item.selling_price, quantity: updatedItems[index].quantity, tax_rate: 18 }),
+      };
+    } else {
+      updatedItems[index] = {
+        ...updatedItems[index],
+        product_id: undefined,
+        product_name: productName,
+        sku: undefined,
+      };
+    }
+    setOrderItems(updatedItems);
   };
 
   const handleItemChange = (index: number, field: keyof PurchaseOrderItem, value: any) => {
@@ -356,14 +420,84 @@ export default function PurchaseOrders() {
     setFormData({
       vendor_name: order.vendor_name,
       vendor_email: order.vendor_email || '',
-      vendor_phone: '',
-      vendor_address: '',
+      vendor_phone: order.vendor_phone || '',
+      vendor_address: order.vendor_address || '',
       order_date: new Date(order.order_date),
       due_date: new Date(order.due_date),
       notes: order.notes || '',
     });
     setOrderItems(order.items || []);
     setIsFormOpen(true);
+  };
+
+  const handleDownloadPDF = async (order: PurchaseOrder) => {
+    try {
+      const branding = getBrandingWithFallback();
+      await downloadOrderPDF(
+        order,
+        businessProfile || { business_name: 'Your Company', owner_name: '' },
+        branding,
+        'purchase'
+      );
+      toast({
+        title: 'Success',
+        description: 'PDF downloaded successfully',
+      });
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to download PDF',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleEmailOrder = async (order: PurchaseOrder) => {
+    try {
+      const branding = getBrandingWithFallback();
+      const pdfBlob = await getOrderPDFBlob(
+        order,
+        businessProfile || { business_name: 'Your Company', owner_name: '' },
+        branding,
+        'purchase'
+      );
+
+      const subject = encodeURIComponent(`Purchase Order ${order.order_number} from ${businessProfile?.business_name || 'Our Company'}`);
+      const body = encodeURIComponent(
+        `Dear ${order.vendor_name},\n\n` +
+        `Please find attached the Purchase Order ${order.order_number}.\n\n` +
+        `Order Details:\n` +
+        `- Order Number: ${order.order_number}\n` +
+        `- Order Date: ${new Date(order.order_date).toLocaleDateString()}\n` +
+        `- Due Date: ${new Date(order.due_date).toLocaleDateString()}\n` +
+        `- Total Amount: ₹${order.total_amount.toFixed(2)}\n\n` +
+        `Please confirm receipt and expected delivery date.\n\n` +
+        `Best regards,\n${businessProfile?.owner_name || 'Your Company'}`
+      );
+
+      const mailtoLink = `mailto:${order.vendor_email || ''}?subject=${subject}&body=${body}`;
+      window.open(mailtoLink, '_blank');
+
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `PO_${order.order_number}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Email Draft Opened',
+        description: 'PDF has been downloaded. Please attach it to your email.',
+      });
+    } catch (error) {
+      console.error('Error preparing email:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to prepare email',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (loading) {
@@ -390,22 +524,24 @@ export default function PurchaseOrders() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="vendor_name">Vendor Name *</Label>
-                  <Select value={formData.vendor_name} onValueChange={handleVendorSelect}>
+                  <Label htmlFor="vendor_select">Select Vendor</Label>
+                  <Select onValueChange={handleVendorSelect}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select or type vendor name" />
+                      <SelectValue placeholder="Select from vendors" />
                     </SelectTrigger>
                     <SelectContent>
                       {vendors.map((vendor) => (
-                        <SelectItem key={vendor.id} value={vendor.vendor_name}>
-                          {vendor.vendor_name}
+                        <SelectItem key={vendor.id} value={vendor.id}>
+                          {vendor.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div>
+                  <Label htmlFor="vendor_name">Vendor Name *</Label>
                   <Input
-                    className="mt-2"
-                    placeholder="Or type new vendor name"
+                    id="vendor_name"
                     value={formData.vendor_name}
                     onChange={(e) => setFormData({ ...formData, vendor_name: e.target.value })}
                     required
@@ -418,6 +554,14 @@ export default function PurchaseOrders() {
                     type="email"
                     value={formData.vendor_email}
                     onChange={(e) => setFormData({ ...formData, vendor_email: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="vendor_phone">Vendor Phone</Label>
+                  <Input
+                    id="vendor_phone"
+                    value={formData.vendor_phone}
+                    onChange={(e) => setFormData({ ...formData, vendor_phone: e.target.value })}
                   />
                 </div>
                 <div>
@@ -442,10 +586,11 @@ export default function PurchaseOrders() {
                   {orderItems.map((item, index) => (
                     <div key={index} className="grid grid-cols-12 gap-2 items-center p-2 border rounded">
                       <div className="col-span-4">
-                        <Input
-                          placeholder="Product name"
+                        <OrderItemSelector
                           value={item.product_name}
-                          onChange={(e) => handleItemChange(index, 'product_name', e.target.value)}
+                          onSelect={(inventoryItem, productName) => handleInventoryItemSelect(index, inventoryItem, productName)}
+                          showStock={false}
+                          placeholder="Select product"
                         />
                       </div>
                       <div className="col-span-2">
@@ -467,7 +612,7 @@ export default function PurchaseOrders() {
                           onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value) || 0)}
                         />
                       </div>
-                      <div className="col-span-2">
+                      <div className="col-span-1">
                         <Input
                           type="number"
                           placeholder="Tax %"
@@ -477,7 +622,7 @@ export default function PurchaseOrders() {
                           onChange={(e) => handleItemChange(index, 'tax_rate', parseFloat(e.target.value) || 0)}
                         />
                       </div>
-                      <div className="col-span-1 text-right">
+                      <div className="col-span-2 text-right">
                         ₹{item.total.toFixed(2)}
                       </div>
                       <div className="col-span-1">
@@ -641,42 +786,91 @@ export default function PurchaseOrders() {
                   <TableCell>{new Date(order.due_date).toLocaleDateString()}</TableCell>
                   <TableCell>₹{order.total_amount.toFixed(2)}</TableCell>
                   <TableCell>
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => startEdit(order)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      {order.status === 'pending' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => updateOrderStatus(order.id, 'confirmed')}
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {order.payment_status !== 'paid' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => markAsPaid(order.id)}
-                        >
-                          <DollarSign className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {(order.status === 'pending' || order.status === 'confirmed') && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => updateOrderStatus(order.id, 'cancelled')}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                    <TooltipProvider>
+                      <div className="flex space-x-1">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => startEdit(order)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Edit</TooltipContent>
+                        </Tooltip>
+
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDownloadPDF(order)}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Download PDF</TooltipContent>
+                        </Tooltip>
+
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEmailOrder(order)}
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Email Order</TooltipContent>
+                        </Tooltip>
+
+                        {order.status === 'pending' && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => updateOrderStatus(order.id, 'confirmed')}
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Confirm</TooltipContent>
+                          </Tooltip>
+                        )}
+                        {order.payment_status !== 'paid' && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => markAsPaid(order.id)}
+                              >
+                                <DollarSign className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Mark Paid</TooltipContent>
+                          </Tooltip>
+                        )}
+                        {(order.status === 'pending' || order.status === 'confirmed') && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => updateOrderStatus(order.id, 'cancelled')}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Cancel</TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                    </TooltipProvider>
                   </TableCell>
                 </TableRow>
               ))}
