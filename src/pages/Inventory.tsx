@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Filter, ArrowUpDown } from 'lucide-react';
+import { useVendors, Vendor } from '@/hooks/useVendors';
 
 interface InventoryItem {
   id: string;
@@ -28,12 +29,14 @@ interface InventoryItem {
   supplier_name?: string;
   supplier_contact?: string;
   supplier_email?: string;
+  vendor_ids?: string[];
   created_at: string;
 }
 
 const Inventory = () => {
   const { user } = useUser();
   const { toast } = useToast();
+  const { data: vendors } = useVendors();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -53,6 +56,7 @@ const Inventory = () => {
     supplier_name: '',
     supplier_contact: '',
     supplier_email: '',
+    selected_vendor_id: '',
   });
 
   useEffect(() => {
@@ -104,6 +108,7 @@ const Inventory = () => {
       supplier_name: '',
       supplier_contact: '',
       supplier_email: '',
+      selected_vendor_id: '',
     });
     setEditingItem(null);
   };
@@ -121,9 +126,28 @@ const Inventory = () => {
       supplier_name: item.supplier_name || '',
       supplier_contact: item.supplier_contact || '',
       supplier_email: item.supplier_email || '',
+      selected_vendor_id: item.vendor_ids?.[0] || '',
     });
     setEditingItem(item);
     setIsDialogOpen(true);
+  };
+
+  const handleVendorSelect = (vendorId: string) => {
+    const vendor = vendors?.find(v => v.id === vendorId);
+    if (vendor) {
+      setFormData({
+        ...formData,
+        selected_vendor_id: vendorId,
+        supplier_name: vendor.name,
+        supplier_contact: vendor.phone || '',
+        supplier_email: vendor.email || '',
+      });
+    } else {
+      setFormData({
+        ...formData,
+        selected_vendor_id: '',
+      });
+    }
   };
 
   const handleSubmit = async () => {
@@ -362,6 +386,32 @@ const Inventory = () => {
                   </div>
                 </>
               )}
+
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="vendor_select">Select Vendor (from Vendors Master)</Label>
+                <Select
+                  value={formData.selected_vendor_id}
+                  onValueChange={handleVendorSelect}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a vendor for procurement" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {vendors?.map((vendor) => (
+                      <SelectItem key={vendor.id} value={vendor.id}>
+                        <div className="flex items-center gap-2">
+                          <span>{vendor.name}</span>
+                          {vendor.tds_enabled && (
+                            <Badge variant="outline" className="text-xs">TDS</Badge>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Selecting a vendor will auto-fill supplier details below</p>
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="supplier_name">Supplier Name</Label>
