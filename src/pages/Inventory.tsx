@@ -133,6 +133,17 @@ const Inventory = () => {
   };
 
   const handleVendorSelect = (vendorId: string) => {
+    if (vendorId === 'no_vendor') {
+      setFormData({
+        ...formData,
+        selected_vendor_id: '',
+        supplier_name: '',
+        supplier_contact: '',
+        supplier_email: '',
+      });
+      return;
+    }
+
     const vendor = vendors?.find(v => v.id === vendorId);
     if (vendor) {
       setFormData({
@@ -276,14 +287,16 @@ const Inventory = () => {
           </div>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Item
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <Button onClick={() => {
+          resetForm();
+          setIsDialogOpen(true);
+        }}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Item
+        </Button>
+
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen} modal={true}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto z-50">
             <DialogHeader>
               <DialogTitle>{editingItem ? 'Edit' : 'Add'} Inventory Item</DialogTitle>
               <DialogDescription>Fill in the details for the inventory item</DialogDescription>
@@ -397,7 +410,7 @@ const Inventory = () => {
                     <SelectValue placeholder="Select a vendor for procurement" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="no_vendor">None</SelectItem>
                     {vendors?.map((vendor) => (
                       <SelectItem key={vendor.id} value={vendor.id}>
                         <div className="flex items-center gap-2">

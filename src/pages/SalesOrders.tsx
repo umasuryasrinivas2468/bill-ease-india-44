@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Edit, Check, DollarSign, X, Eye, Download, Mail } from 'lucide-react';
+import { Plus, Search, Filter, Edit, Check, DollarSign, X, Eye, Download, Mail, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -239,11 +239,11 @@ export default function SalesOrders() {
   const handleItemChange = (index: number, field: keyof SalesOrderItem, value: any) => {
     const updatedItems = [...orderItems];
     updatedItems[index] = { ...updatedItems[index], [field]: value };
-    
+
     if (field === 'quantity' || field === 'price' || field === 'tax_rate') {
       updatedItems[index].total = calculateItemTotal(updatedItems[index]);
     }
-    
+
     setOrderItems(updatedItems);
   };
 
@@ -280,7 +280,7 @@ export default function SalesOrders() {
     e.preventDefault();
     try {
       const { subtotal, taxAmount, total } = calculateOrderTotals();
-      
+
       const orderData = {
         user_id: user?.id,
         order_number: editingOrder?.order_number || generateOrderNumber(),
@@ -340,6 +340,29 @@ export default function SalesOrders() {
 
       if (error) throw error;
 
+      if (status === 'delivered') {
+        const order = orders.find(o => o.id === orderId);
+        if (order && order.items) {
+          for (const item of order.items) {
+            if (item.product_id) {
+              const { data: inventoryItem } = await supabase
+                .from('inventory')
+                .select('stock_quantity, type')
+                .eq('id', item.product_id)
+                .single();
+
+              if (inventoryItem && inventoryItem.type === 'goods') {
+                const newStock = Math.max(0, (inventoryItem.stock_quantity || 0) - item.quantity);
+                await supabase
+                  .from('inventory')
+                  .update({ stock_quantity: newStock })
+                  .eq('id', item.product_id);
+              }
+            }
+          }
+        }
+      }
+
       toast({
         title: 'Success',
         description: 'Order status updated successfully',
@@ -398,10 +421,16 @@ export default function SalesOrders() {
 
   const handleDownloadPDF = async (order: SalesOrder) => {
     try {
+      // Validate order data
+      if (!order.items || order.items.length === 0) {
+        throw new Error('Order has no items');
+      }
+
+      console.log('Generating PDF for order:', order.order_number);
       const branding = getBrandingWithFallback();
       await downloadOrderPDF(
         order,
-        businessProfile || { business_name: 'Your Company', owner_name: '' },
+        businessProfile || { business_name: 'Business Name', owner_name: '' },
         branding,
         'sales'
       );
@@ -411,9 +440,10 @@ export default function SalesOrders() {
       });
     } catch (error) {
       console.error('Error downloading PDF:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
         title: 'Error',
-        description: 'Failed to download PDF',
+        description: `Failed to download PDF: ${errorMessage}`,
         variant: 'destructive',
       });
     }
@@ -421,10 +451,16 @@ export default function SalesOrders() {
 
   const handleEmailOrder = async (order: SalesOrder) => {
     try {
+      // Validate order data
+      if (!order.items || order.items.length === 0) {
+        throw new Error('Order has no items');
+      }
+
+      console.log('Preparing email for order:', order.order_number);
       const branding = getBrandingWithFallback();
       const pdfBlob = await getOrderPDFBlob(
         order,
-        businessProfile || { business_name: 'Your Company', owner_name: '' },
+        businessProfile || { business_name: 'Business Name', owner_name: '' },
         branding,
         'sales'
       );
@@ -461,9 +497,10 @@ export default function SalesOrders() {
       });
     } catch (error) {
       console.error('Error preparing email:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
         title: 'Error',
-        description: 'Failed to prepare email',
+        description: `Failed to prepare email: ${errorMessage}`,
         variant: 'destructive',
       });
     }
@@ -835,6 +872,20 @@ export default function SalesOrders() {
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>Cancel</TooltipContent>
+                          </Tooltip>
+                        )}
+                        {(order.status === 'confirmed' || order.status === 'shipped') && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => updateOrderStatus(order.id, 'delivered')}
+                              >
+                                <Truck className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Mark Delivered</TooltipContent>
                           </Tooltip>
                         )}
                       </div>

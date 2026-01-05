@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 interface OrderItem {
   id: string;
@@ -101,7 +101,7 @@ export const generateOrderPDF = async (
       y += 25;
     }
   } catch (e) {
-    console.log('Could not load logo');
+    console.log('Could not load logo', e);
   }
 
   // Header with order type
@@ -122,7 +122,7 @@ export const generateOrderPDF = async (
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...primaryColor);
-  doc.text(businessInfo.business_name || 'Your Company', 15, y);
+  doc.text(businessInfo.business_name || 'Business Name', 15, y);
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
@@ -155,28 +155,28 @@ export const generateOrderPDF = async (
   // Order Details (Right side)
   const detailsX = pageWidth / 2 + 10;
   let detailsY = 50;
-  
+
   doc.setFillColor(...lightGray);
   doc.roundedRect(detailsX - 5, detailsY - 5, pageWidth / 2 - 20, 35, 2, 2, 'F');
-  
+
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.text('Order Date:', detailsX, detailsY);
   doc.setFont('helvetica', 'normal');
   doc.text(new Date(order.order_date).toLocaleDateString('en-IN'), detailsX + 35, detailsY);
-  
+
   detailsY += 7;
   doc.setFont('helvetica', 'bold');
   doc.text('Due Date:', detailsX, detailsY);
   doc.setFont('helvetica', 'normal');
   doc.text(new Date(order.due_date).toLocaleDateString('en-IN'), detailsX + 35, detailsY);
-  
+
   detailsY += 7;
   doc.setFont('helvetica', 'bold');
   doc.text('Status:', detailsX, detailsY);
   doc.setFont('helvetica', 'normal');
   doc.text(order.status.toUpperCase(), detailsX + 35, detailsY);
-  
+
   detailsY += 7;
   doc.setFont('helvetica', 'bold');
   doc.text('Payment:', detailsX, detailsY);
@@ -231,7 +231,7 @@ export const generateOrderPDF = async (
     `₹${item.total.toFixed(2)}`,
   ]);
 
-  (doc as any).autoTable({
+  autoTable(doc, {
     startY: y,
     head: [['#', 'Item', 'SKU', 'Qty', 'Rate', 'Tax', 'Amount']],
     body: tableData,
