@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Plus, Edit, Trash2, Package, AlertTriangle } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, AlertTriangle, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@clerk/clerk-react';
@@ -56,7 +56,7 @@ const Inventory = () => {
     supplier_name: '',
     supplier_contact: '',
     supplier_email: '',
-    selected_vendor_id: '',
+    vendor_ids: [] as string[],
   });
 
   useEffect(() => {
@@ -79,7 +79,9 @@ const Inventory = () => {
       // Transform the data to match our interface
       const transformedData: InventoryItem[] = (data || []).map(item => ({
         ...item,
-        type: item.type as 'goods' | 'services'
+        type: item.type as 'goods' | 'services',
+        // Ensure vendor_ids is treated as an array if it exists, otherwise empty
+        vendor_ids: Array.isArray((item as any).vendor_ids) ? (item as any).vendor_ids : []
       }));
 
       setInventory(transformedData);
@@ -108,7 +110,7 @@ const Inventory = () => {
       supplier_name: '',
       supplier_contact: '',
       supplier_email: '',
-      selected_vendor_id: '',
+      vendor_ids: [],
     });
     setEditingItem(null);
   };
@@ -126,40 +128,13 @@ const Inventory = () => {
       supplier_name: item.supplier_name || '',
       supplier_contact: item.supplier_contact || '',
       supplier_email: item.supplier_email || '',
-      selected_vendor_id: item.vendor_ids?.[0] || '',
+      vendor_ids: item.vendor_ids || [],
     });
     setEditingItem(item);
     setIsDialogOpen(true);
   };
 
-  const handleVendorSelect = (vendorId: string) => {
-    if (vendorId === 'no_vendor') {
-      setFormData({
-        ...formData,
-        selected_vendor_id: '',
-        supplier_name: '',
-        supplier_contact: '',
-        supplier_email: '',
-      });
-      return;
-    }
-
-    const vendor = vendors?.find(v => v.id === vendorId);
-    if (vendor) {
-      setFormData({
-        ...formData,
-        selected_vendor_id: vendorId,
-        supplier_name: vendor.name,
-        supplier_contact: vendor.phone || '',
-        supplier_email: vendor.email || '',
-      });
-    } else {
-      setFormData({
-        ...formData,
-        selected_vendor_id: '',
-      });
-    }
-  };
+  // handleVendorSelect is replaced by inline logic in UI
 
   const handleSubmit = async () => {
     if (!user?.id) return;
@@ -186,6 +161,7 @@ const Inventory = () => {
       supplier_name: formData.supplier_name || null,
       supplier_contact: formData.supplier_contact || null,
       supplier_email: formData.supplier_email || null,
+      vendor_ids: formData.vendor_ids,
     };
 
     setIsLoading(true);
@@ -401,29 +377,77 @@ const Inventory = () => {
               )}
 
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="vendor_select">Select Vendor (from Vendors Master)</Label>
-                <Select
-                  value={formData.selected_vendor_id}
-                  onValueChange={handleVendorSelect}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a vendor for procurement" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="no_vendor">None</SelectItem>
-                    {vendors?.map((vendor) => (
-                      <SelectItem key={vendor.id} value={vendor.id}>
+                <Label>Preferred Vendors (Priority Order)</Label>
+                <div className="flex gap-2 mb-2">
+                  <Select
+                    value=""
+                    onValueChange={(value) => {
+                      if (value && !formData.vendor_ids.includes(value)) {
+                        const newVendorIds = [...formData.vendor_ids, value];
+                        setFormData({
+                          ...formData,
+                          vendor_ids: newVendorIds,
+                          // Update supplier details from the primary (first) vendor if it's the first one added
+                          ...(newVendorIds.length === 1 ? (() => {
+                            const vendor = vendors?.find(v => v.id === value);
+                            return vendor ? {
+                              supplier_name: vendor.name,
+                              supplier_contact: vendor.phone || '',
+                              supplier_email: vendor.email || ''
+                            } : {};
+                          })() : {})
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Add a vendor..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vendors?.filter(v => !formData.vendor_ids.includes(v.id)).map((vendor) => (
+                        <SelectItem key={vendor.id} value={vendor.id}>
+                          <div className="flex items-center gap-2">
+                            <span>{vendor.name}</span>
+                            {vendor.tds_enabled && (
+                              <Badge variant="outline" className="text-xs">TDS</Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  {formData.vendor_ids.map((vendorId, index) => {
+                    const vendor = vendors?.find(v => v.id === vendorId);
+                    if (!vendor) return null;
+                    return (
+                      <div key={vendorId} className="flex items-center justify-between p-2 border rounded-md bg-slate-50">
                         <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="bg-white">{index + 1}</Badge>
                           <span>{vendor.name}</span>
-                          {vendor.tds_enabled && (
-                            <Badge variant="outline" className="text-xs">TDS</Badge>
-                          )}
                         </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">Selecting a vendor will auto-fill supplier details below</p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const newVendorIds = formData.vendor_ids.filter(id => id !== vendorId);
+                            setFormData({ ...formData, vendor_ids: newVendorIds });
+                          }}
+                        >
+                          <X className="h-4 w-4 text-muted-foreground hover:text-red-500" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  {formData.vendor_ids.length === 0 && (
+                    <div className="text-sm text-muted-foreground italic p-2 border border-dashed rounded-md text-center">
+                      No vendors selected. Add vendors to establish priority.
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">

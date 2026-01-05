@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Edit, Check, DollarSign, X, Eye, Download, Mail } from 'lucide-react';
+import { Plus, Search, Filter, Edit, Check, DollarSign, X, Eye, Download, Mail, PackageCheck, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +26,55 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+
+const OrderTimeline = ({ order }: { order: PurchaseOrder }) => {
+  const steps = [
+    { id: 'pending', label: 'Order Placed', date: order.order_date },
+    { id: 'confirmed', label: 'Confirmed', date: null },
+    { id: 'received', label: 'Received', date: order.status === 'received' ? (order as any).updated_at : null },
+  ];
+
+  const currentStepIndex = steps.findIndex(s => s.id === order.status);
+  const isCancelled = order.status === 'cancelled';
+
+  return (
+    <div className="py-4">
+      <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
+        {steps.map((step, index) => {
+          const isCompleted = currentStepIndex >= index || (index === 0);
+          const isCurrent = currentStepIndex === index;
+
+          return (
+            <div key={step.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-slate-300 group-[.is-active]:bg-emerald-500 text-slate-500 group-[.is-active]:text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
+                {isCompleted ? <Check className="w-5 h-5" /> : <div className="w-3 h-3 bg-white rounded-full" />}
+              </div>
+              <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded border border-slate-200 shadow bg-white">
+                <div className="flex items-center justify-between space-x-2 mb-1">
+                  <div className="font-bold text-slate-900">{step.label}</div>
+                  <time className="font-caveat font-medium text-indigo-500">
+                    {step.date ? new Date(step.date).toLocaleDateString() : (isCurrent && !isCancelled ? "In Progress" : "")}
+                  </time>
+                </div>
+                <div className="text-slate-500 text-sm">
+                  {isCurrent && !isCancelled ? (
+                    "Current Status"
+                  ) : isCancelled ? (
+                    <span className="text-red-500 font-bold">Cancelled</span>
+                  ) : isCompleted ? (
+                    "Completed"
+                  ) : (
+                    "Pending"
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
@@ -373,6 +422,29 @@ export default function PurchaseOrders() {
         .eq('id', orderId);
 
       if (error) throw error;
+
+      if (status === 'received') {
+        const order = orders.find(o => o.id === orderId);
+        if (order && order.items) {
+          for (const item of order.items) {
+            if (item.product_id) {
+              const { data: inventoryItem } = await supabase
+                .from('inventory')
+                .select('stock_quantity, type')
+                .eq('id', item.product_id)
+                .single();
+
+              if (inventoryItem && inventoryItem.type === 'goods') {
+                const newStock = (inventoryItem.stock_quantity || 0) + item.quantity;
+                await supabase
+                  .from('inventory')
+                  .update({ stock_quantity: newStock })
+                  .eq('id', item.product_id);
+              }
+            }
+          }
+        }
+      }
 
       toast({
         title: 'Success',
@@ -883,6 +955,33 @@ export default function PurchaseOrders() {
                             <TooltipContent>Cancel</TooltipContent>
                           </Tooltip>
                         )}
+                        {order.status === 'confirmed' && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => updateOrderStatus(order.id, 'received')}
+                              >
+                                <PackageCheck className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Mark Received</TooltipContent>
+                          </Tooltip>
+                        )}
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="ghost">
+                              <Clock className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Order Timeline - {order.order_number}</DialogTitle>
+                            </DialogHeader>
+                            <OrderTimeline order={order} />
+                          </DialogContent>
+                        </Dialog>
                       </div>
                     </TooltipProvider>
                   </TableCell>

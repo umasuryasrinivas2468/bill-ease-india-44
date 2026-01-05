@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Edit, Check, DollarSign, X, Eye, Download, Mail, Truck } from 'lucide-react';
+import { Plus, Search, Filter, Edit, Check, DollarSign, X, Eye, Download, Mail, Truck, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +19,56 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+
+const OrderTimeline = ({ order }: { order: SalesOrder }) => {
+  const steps = [
+    { id: 'pending', label: 'Order Placed', date: order.order_date },
+    { id: 'confirmed', label: 'Confirmed', date: null },
+    { id: 'shipped', label: 'Shipped', date: null },
+    { id: 'delivered', label: 'Delivered', date: order.status === 'delivered' ? (order as any).updated_at : null },
+  ];
+
+  const currentStepIndex = steps.findIndex(s => s.id === order.status);
+  const isCancelled = order.status === 'cancelled';
+
+  return (
+    <div className="py-4">
+      <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
+        {steps.map((step, index) => {
+          const isCompleted = currentStepIndex >= index || (index === 0);
+          const isCurrent = currentStepIndex === index;
+
+          return (
+            <div key={step.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-slate-300 group-[.is-active]:bg-emerald-500 text-slate-500 group-[.is-active]:text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
+                {isCompleted ? <Check className="w-5 h-5" /> : <div className="w-3 h-3 bg-white rounded-full" />}
+              </div>
+              <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded border border-slate-200 shadow bg-white">
+                <div className="flex items-center justify-between space-x-2 mb-1">
+                  <div className="font-bold text-slate-900">{step.label}</div>
+                  <time className="font-caveat font-medium text-indigo-500">
+                    {step.date ? new Date(step.date).toLocaleDateString() : (isCurrent && !isCancelled ? "In Progress" : "")}
+                  </time>
+                </div>
+                <div className="text-slate-500 text-sm">
+                  {isCurrent && !isCancelled ? (
+                    "Current Status"
+                  ) : isCancelled ? (
+                    <span className="text-red-500 font-bold">Cancelled</span>
+                  ) : isCompleted ? (
+                    "Completed"
+                  ) : (
+                    "Pending"
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 import {
   Select,
   SelectContent,
