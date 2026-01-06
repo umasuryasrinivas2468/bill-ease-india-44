@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { FileText, Download, Building2, Calculator, BookOpen, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { FileText, Download, Building2, Calculator, BookOpen, FileSpreadsheet, Loader2, ScrollText, ClipboardList } from 'lucide-react';
 import { useEnhancedBusinessData } from '@/hooks/useEnhancedBusinessData';
 import { 
   fetchFinancialData, 
@@ -16,15 +16,25 @@ import {
   FinancialData
 } from '@/services/financialStatementsService';
 import { generateFinancialStatementsPDF } from '@/utils/financialStatementsPDF';
+import { 
+  generateIncomeExpenditurePDF, 
+  generateJournalAuditPDF, 
+  processJournalsForIncomeExpenditure,
+  IncomeExpenditureData,
+  CompanyInfo
+} from '@/utils/incomeExpenditurePDF';
+import { useJournalsWithLines } from '@/hooks/useJournals';
 
 const FinancialStatements = () => {
   const { user } = useUser();
   const { getBusinessInfo } = useEnhancedBusinessData();
   const businessInfo = getBusinessInfo();
+  const { data: journalsData, isLoading: journalsLoading } = useJournalsWithLines();
   
   const [financialYear, setFinancialYear] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [financialData, setFinancialData] = useState<FinancialData | null>(null);
+  const [incomeExpenditureData, setIncomeExpenditureData] = useState<IncomeExpenditureData | null>(null);
   
   // Company details form
   const [companyDetails, setCompanyDetails] = useState<CompanyDetails>({
@@ -41,6 +51,18 @@ const FinancialStatements = () => {
   });
   
   const fyOptions = getFinancialYearOptions();
+  
+  // Process journals for Income & Expenditure when data is available
+  useEffect(() => {
+    if (journalsData && journalsData.journals.length > 0) {
+      const ieData = processJournalsForIncomeExpenditure(
+        journalsData.journals,
+        journalsData.lines,
+        journalsData.accounts
+      );
+      setIncomeExpenditureData(ieData);
+    }
+  }, [journalsData]);
   
   useEffect(() => {
     if (businessInfo) {
@@ -94,6 +116,69 @@ const FinancialStatements = () => {
     }
   };
   
+  const handleGenerateIncomeExpenditurePDF = () => {
+    if (!companyDetails.companyName) {
+      toast.error('Please fill in company name');
+      return;
+    }
+    
+    if (!incomeExpenditureData) {
+      toast.error('No journal data available');
+      return;
+    }
+    
+    try {
+      const companyInfo: CompanyInfo = {
+        companyName: companyDetails.companyName,
+        address: companyDetails.address,
+        financialYear: financialYear || fyOptions[0],
+        pan: companyDetails.pan,
+        cin: companyDetails.cin
+      };
+      
+      const doc = generateIncomeExpenditurePDF(companyInfo, incomeExpenditureData);
+      doc.save(`Income_Expenditure_${companyDetails.companyName.replace(/\s+/g, '_')}_${financialYear || fyOptions[0]}.pdf`);
+      toast.success('Income & Expenditure PDF generated successfully');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Failed to generate PDF');
+    }
+  };
+  
+  const handleGenerateJournalAuditPDF = () => {
+    if (!companyDetails.companyName) {
+      toast.error('Please fill in company name');
+      return;
+    }
+    
+    if (!journalsData || journalsData.journals.length === 0) {
+      toast.error('No journal entries available');
+      return;
+    }
+    
+    try {
+      const companyInfo: CompanyInfo = {
+        companyName: companyDetails.companyName,
+        address: companyDetails.address,
+        financialYear: financialYear || fyOptions[0],
+        pan: companyDetails.pan,
+        cin: companyDetails.cin
+      };
+      
+      const doc = generateJournalAuditPDF(
+        companyInfo, 
+        journalsData.journals, 
+        journalsData.lines, 
+        journalsData.accounts
+      );
+      doc.save(`Journal_Audit_${companyDetails.companyName.replace(/\s+/g, '_')}_${financialYear || fyOptions[0]}.pdf`);
+      toast.success('Journal Audit PDF generated successfully');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Failed to generate PDF');
+    }
+  };
+  
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -111,26 +196,30 @@ const FinancialStatements = () => {
       </div>
       
       <Tabs defaultValue="setup" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-2">
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 gap-2">
           <TabsTrigger value="setup" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
-            <span className="hidden md:inline">Company Setup</span>
-            <span className="md:hidden">Setup</span>
+            <span className="hidden md:inline">Setup</span>
           </TabsTrigger>
           <TabsTrigger value="preview" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            <span className="hidden md:inline">Preview Data</span>
-            <span className="md:hidden">Preview</span>
+            <span className="hidden md:inline">Preview</span>
           </TabsTrigger>
           <TabsTrigger value="pnl" className="flex items-center gap-2">
             <Calculator className="h-4 w-4" />
-            <span className="hidden md:inline">P&L Statement</span>
-            <span className="md:hidden">P&L</span>
+            <span className="hidden md:inline">P&L</span>
           </TabsTrigger>
           <TabsTrigger value="balance" className="flex items-center gap-2">
             <BookOpen className="h-4 w-4" />
-            <span className="hidden md:inline">Balance Sheet</span>
-            <span className="md:hidden">Balance</span>
+            <span className="hidden md:inline">Balance</span>
+          </TabsTrigger>
+          <TabsTrigger value="income-expenditure" className="flex items-center gap-2">
+            <ScrollText className="h-4 w-4" />
+            <span className="hidden md:inline">I&E</span>
+          </TabsTrigger>
+          <TabsTrigger value="journal-audit" className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4" />
+            <span className="hidden md:inline">Audit</span>
           </TabsTrigger>
         </TabsList>
         
@@ -549,6 +638,132 @@ const FinancialStatements = () => {
                 <div className="text-center py-12 text-muted-foreground">
                   <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>No data available. Please fetch financial data first.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="income-expenditure" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Income & Expenditure Account</CardTitle>
+              <CardDescription>Generate statutory audit style Income & Expenditure statement from journal entries</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {journalsLoading ? (
+                <div className="text-center py-12">
+                  <Loader2 className="h-8 w-8 mx-auto mb-4 animate-spin" />
+                  <p>Loading journal data...</p>
+                </div>
+              ) : incomeExpenditureData ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="font-bold text-lg mb-4 border-b pb-2">EXPENDITURE</h3>
+                      <div className="space-y-2">
+                        {incomeExpenditureData.expenditure.map((item, idx) => (
+                          <div key={idx} className="flex justify-between py-1">
+                            <span>{item.particulars}</span>
+                            <span>{formatCurrency(item.amount)}</span>
+                          </div>
+                        ))}
+                        {incomeExpenditureData.surplus > 0 && (
+                          <div className="flex justify-between py-1 font-semibold text-green-600 border-t pt-2">
+                            <span>Surplus</span>
+                            <span>{formatCurrency(incomeExpenditureData.surplus)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between py-2 font-bold border-t">
+                          <span>TOTAL</span>
+                          <span>{formatCurrency(incomeExpenditureData.totalIncome)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg mb-4 border-b pb-2">INCOME</h3>
+                      <div className="space-y-2">
+                        {incomeExpenditureData.income.map((item, idx) => (
+                          <div key={idx} className="flex justify-between py-1">
+                            <span>{item.particulars}</span>
+                            <span>{formatCurrency(item.amount)}</span>
+                          </div>
+                        ))}
+                        {incomeExpenditureData.surplus < 0 && (
+                          <div className="flex justify-between py-1 font-semibold text-red-600 border-t pt-2">
+                            <span>Deficit</span>
+                            <span>{formatCurrency(Math.abs(incomeExpenditureData.surplus))}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between py-2 font-bold border-t">
+                          <span>TOTAL</span>
+                          <span>{formatCurrency(incomeExpenditureData.totalIncome)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <Button onClick={handleGenerateIncomeExpenditurePDF} className="w-full md:w-auto">
+                    <Download className="mr-2 h-4 w-4" />
+                    Download Income & Expenditure PDF
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <ScrollText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No journal entries found. Create journal entries first.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="journal-audit" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Journal Audit Report</CardTitle>
+              <CardDescription>Generate a detailed audit report of all journal entries</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {journalsLoading ? (
+                <div className="text-center py-12">
+                  <Loader2 className="h-8 w-8 mx-auto mb-4 animate-spin" />
+                  <p>Loading journal data...</p>
+                </div>
+              ) : journalsData && journalsData.journals.length > 0 ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-muted/50 rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold">{journalsData.journals.length}</p>
+                      <p className="text-sm text-muted-foreground">Total Entries</p>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-green-600">
+                        {journalsData.journals.filter(j => j.status === 'posted').length}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Posted</p>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold">
+                        {formatCurrency(journalsData.journals.reduce((s, j) => s + (Number(j.total_debit) || 0), 0))}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Total Debits</p>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold">
+                        {formatCurrency(journalsData.journals.reduce((s, j) => s + (Number(j.total_credit) || 0), 0))}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Total Credits</p>
+                    </div>
+                  </div>
+                  <Button onClick={handleGenerateJournalAuditPDF} className="w-full md:w-auto">
+                    <Download className="mr-2 h-4 w-4" />
+                    Download Journal Audit PDF
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No journal entries found.</p>
                 </div>
               )}
             </CardContent>
