@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { FileText, Download, Building2, Calculator, BookOpen, FileSpreadsheet, Loader2, ScrollText, ClipboardList } from 'lucide-react';
+import { FileText, Download, Building2, Calculator, BookOpen, FileSpreadsheet, Loader2, ScrollText, ClipboardList, Scale, Wallet } from 'lucide-react';
 import { useEnhancedBusinessData } from '@/hooks/useEnhancedBusinessData';
 import { 
   fetchFinancialData, 
@@ -23,6 +23,14 @@ import {
   IncomeExpenditureData,
   CompanyInfo
 } from '@/utils/incomeExpenditurePDF';
+import {
+  generateReceiptsPaymentsPDF,
+  generateTrialBalancePDF,
+  processJournalsForReceiptsPayments,
+  processJournalsForTrialBalance,
+  ReceiptsPaymentsData,
+  TrialBalanceData
+} from '@/utils/receiptsPaymentsPDF';
 import { useJournalsWithLines } from '@/hooks/useJournals';
 
 const FinancialStatements = () => {
@@ -35,6 +43,8 @@ const FinancialStatements = () => {
   const [loading, setLoading] = useState(false);
   const [financialData, setFinancialData] = useState<FinancialData | null>(null);
   const [incomeExpenditureData, setIncomeExpenditureData] = useState<IncomeExpenditureData | null>(null);
+  const [receiptsPaymentsData, setReceiptsPaymentsData] = useState<ReceiptsPaymentsData | null>(null);
+  const [trialBalanceData, setTrialBalanceData] = useState<TrialBalanceData | null>(null);
   
   // Company details form
   const [companyDetails, setCompanyDetails] = useState<CompanyDetails>({
@@ -52,7 +62,7 @@ const FinancialStatements = () => {
   
   const fyOptions = getFinancialYearOptions();
   
-  // Process journals for Income & Expenditure when data is available
+  // Process journals for Income & Expenditure, Receipts & Payments, and Trial Balance
   useEffect(() => {
     if (journalsData && journalsData.journals.length > 0) {
       const ieData = processJournalsForIncomeExpenditure(
@@ -61,6 +71,20 @@ const FinancialStatements = () => {
         journalsData.accounts
       );
       setIncomeExpenditureData(ieData);
+      
+      const rpData = processJournalsForReceiptsPayments(
+        journalsData.journals,
+        journalsData.lines,
+        journalsData.accounts
+      );
+      setReceiptsPaymentsData(rpData);
+      
+      const tbData = processJournalsForTrialBalance(
+        journalsData.journals,
+        journalsData.lines,
+        journalsData.accounts
+      );
+      setTrialBalanceData(tbData);
     }
   }, [journalsData]);
   
@@ -179,6 +203,64 @@ const FinancialStatements = () => {
     }
   };
   
+  const handleGenerateReceiptsPaymentsPDF = () => {
+    if (!companyDetails.companyName) {
+      toast.error('Please fill in company name');
+      return;
+    }
+    
+    if (!receiptsPaymentsData) {
+      toast.error('No receipts/payments data available');
+      return;
+    }
+    
+    try {
+      const companyInfo: CompanyInfo = {
+        companyName: companyDetails.companyName,
+        address: companyDetails.address,
+        financialYear: financialYear || fyOptions[0],
+        pan: companyDetails.pan,
+        cin: companyDetails.cin
+      };
+      
+      const doc = generateReceiptsPaymentsPDF(companyInfo, receiptsPaymentsData);
+      doc.save(`Receipts_Payments_${companyDetails.companyName.replace(/\s+/g, '_')}_${financialYear || fyOptions[0]}.pdf`);
+      toast.success('Receipts & Payments PDF generated successfully');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Failed to generate PDF');
+    }
+  };
+  
+  const handleGenerateTrialBalancePDF = () => {
+    if (!companyDetails.companyName) {
+      toast.error('Please fill in company name');
+      return;
+    }
+    
+    if (!trialBalanceData) {
+      toast.error('No trial balance data available');
+      return;
+    }
+    
+    try {
+      const companyInfo: CompanyInfo = {
+        companyName: companyDetails.companyName,
+        address: companyDetails.address,
+        financialYear: financialYear || fyOptions[0],
+        pan: companyDetails.pan,
+        cin: companyDetails.cin
+      };
+      
+      const doc = generateTrialBalancePDF(companyInfo, trialBalanceData);
+      doc.save(`Trial_Balance_${companyDetails.companyName.replace(/\s+/g, '_')}_${financialYear || fyOptions[0]}.pdf`);
+      toast.success('Trial Balance PDF generated successfully');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Failed to generate PDF');
+    }
+  };
+  
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -196,7 +278,7 @@ const FinancialStatements = () => {
       </div>
       
       <Tabs defaultValue="setup" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 gap-2">
+        <TabsList className="grid w-full grid-cols-4 md:grid-cols-8 gap-2">
           <TabsTrigger value="setup" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             <span className="hidden md:inline">Setup</span>
@@ -213,9 +295,17 @@ const FinancialStatements = () => {
             <BookOpen className="h-4 w-4" />
             <span className="hidden md:inline">Balance</span>
           </TabsTrigger>
+          <TabsTrigger value="trial-balance" className="flex items-center gap-2">
+            <Scale className="h-4 w-4" />
+            <span className="hidden md:inline">Trial Bal</span>
+          </TabsTrigger>
           <TabsTrigger value="income-expenditure" className="flex items-center gap-2">
             <ScrollText className="h-4 w-4" />
             <span className="hidden md:inline">I&E</span>
+          </TabsTrigger>
+          <TabsTrigger value="receipts-payments" className="flex items-center gap-2">
+            <Wallet className="h-4 w-4" />
+            <span className="hidden md:inline">R&P</span>
           </TabsTrigger>
           <TabsTrigger value="journal-audit" className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4" />
@@ -764,6 +854,155 @@ const FinancialStatements = () => {
                 <div className="text-center py-12 text-muted-foreground">
                   <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>No journal entries found.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="trial-balance" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Trial Balance</CardTitle>
+              <CardDescription>Generate trial balance with opening, period, and closing balances from journal entries</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {journalsLoading ? (
+                <div className="text-center py-12">
+                  <Loader2 className="h-8 w-8 mx-auto mb-4 animate-spin" />
+                  <p>Loading journal data...</p>
+                </div>
+              ) : trialBalanceData && trialBalanceData.accounts.length > 0 ? (
+                <div className="space-y-6">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="bg-muted/50">
+                          <th className="border p-2 text-left" rowSpan={2}>Account</th>
+                          <th className="border p-2 text-center" colSpan={2}>Opening Balance</th>
+                          <th className="border p-2 text-center" colSpan={2}>During Period</th>
+                          <th className="border p-2 text-center" colSpan={2}>Closing Balance</th>
+                        </tr>
+                        <tr className="bg-muted/30">
+                          <th className="border p-2 text-right">Debit</th>
+                          <th className="border p-2 text-right">Credit</th>
+                          <th className="border p-2 text-right">Debit</th>
+                          <th className="border p-2 text-right">Credit</th>
+                          <th className="border p-2 text-right">Debit</th>
+                          <th className="border p-2 text-right">Credit</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {trialBalanceData.accounts.slice(0, 15).map((acc, idx) => (
+                          <tr key={idx} className="border-b hover:bg-muted/20">
+                            <td className="border p-2">{acc.accountName}</td>
+                            <td className="border p-2 text-right">{acc.openingDebit > 0 ? formatCurrency(acc.openingDebit) : '-'}</td>
+                            <td className="border p-2 text-right">{acc.openingCredit > 0 ? formatCurrency(acc.openingCredit) : '-'}</td>
+                            <td className="border p-2 text-right">{acc.periodDebit > 0 ? formatCurrency(acc.periodDebit) : '-'}</td>
+                            <td className="border p-2 text-right">{acc.periodCredit > 0 ? formatCurrency(acc.periodCredit) : '-'}</td>
+                            <td className="border p-2 text-right">{acc.closingDebit > 0 ? formatCurrency(acc.closingDebit) : '-'}</td>
+                            <td className="border p-2 text-right">{acc.closingCredit > 0 ? formatCurrency(acc.closingCredit) : '-'}</td>
+                          </tr>
+                        ))}
+                        <tr className="bg-muted/50 font-bold">
+                          <td className="border p-2">TOTAL</td>
+                          <td className="border p-2 text-right">{formatCurrency(trialBalanceData.totals.openingDebit)}</td>
+                          <td className="border p-2 text-right">{formatCurrency(trialBalanceData.totals.openingCredit)}</td>
+                          <td className="border p-2 text-right">{formatCurrency(trialBalanceData.totals.periodDebit)}</td>
+                          <td className="border p-2 text-right">{formatCurrency(trialBalanceData.totals.periodCredit)}</td>
+                          <td className="border p-2 text-right">{formatCurrency(trialBalanceData.totals.closingDebit)}</td>
+                          <td className="border p-2 text-right">{formatCurrency(trialBalanceData.totals.closingCredit)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="flex flex-wrap gap-4 items-center">
+                    <Button onClick={handleGenerateTrialBalancePDF} className="w-full md:w-auto">
+                      <Download className="mr-2 h-4 w-4" />
+                      Download Trial Balance PDF
+                    </Button>
+                    <div className="text-sm text-muted-foreground">
+                      {trialBalanceData.totals.closingDebit === trialBalanceData.totals.closingCredit ? (
+                        <span className="text-green-600">✓ Trial Balance is balanced</span>
+                      ) : (
+                        <span className="text-red-600">⚠ Trial Balance has difference of {formatCurrency(Math.abs(trialBalanceData.totals.closingDebit - trialBalanceData.totals.closingCredit))}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Scale className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No journal entries found. Create journal entries first.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="receipts-payments" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Receipts & Payments Account</CardTitle>
+              <CardDescription>Generate cash-based Receipts & Payments statement for non-profit accounting</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {journalsLoading ? (
+                <div className="text-center py-12">
+                  <Loader2 className="h-8 w-8 mx-auto mb-4 animate-spin" />
+                  <p>Loading journal data...</p>
+                </div>
+              ) : receiptsPaymentsData ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="font-bold text-lg mb-4 border-b pb-2">RECEIPTS</h3>
+                      <div className="space-y-2">
+                        <div className="flex justify-between py-1 font-semibold bg-muted/30 px-2 rounded">
+                          <span>Opening Balance (Cash/Bank)</span>
+                          <span>{formatCurrency(receiptsPaymentsData.openingBalance)}</span>
+                        </div>
+                        {receiptsPaymentsData.receipts.map((item, idx) => (
+                          <div key={idx} className="flex justify-between py-1">
+                            <span>To {item.particulars}</span>
+                            <span>{formatCurrency(item.amount)}</span>
+                          </div>
+                        ))}
+                        <div className="flex justify-between py-2 font-bold border-t">
+                          <span>TOTAL</span>
+                          <span>{formatCurrency(receiptsPaymentsData.openingBalance + receiptsPaymentsData.totalReceipts)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg mb-4 border-b pb-2">PAYMENTS</h3>
+                      <div className="space-y-2">
+                        {receiptsPaymentsData.payments.map((item, idx) => (
+                          <div key={idx} className="flex justify-between py-1">
+                            <span>By {item.particulars}</span>
+                            <span>{formatCurrency(item.amount)}</span>
+                          </div>
+                        ))}
+                        <div className="flex justify-between py-1 font-semibold bg-muted/30 px-2 rounded">
+                          <span>Closing Balance (Cash/Bank)</span>
+                          <span>{formatCurrency(receiptsPaymentsData.closingBalance)}</span>
+                        </div>
+                        <div className="flex justify-between py-2 font-bold border-t">
+                          <span>TOTAL</span>
+                          <span>{formatCurrency(receiptsPaymentsData.totalPayments + receiptsPaymentsData.closingBalance)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <Button onClick={handleGenerateReceiptsPaymentsPDF} className="w-full md:w-auto">
+                    <Download className="mr-2 h-4 w-4" />
+                    Download Receipts & Payments PDF
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Wallet className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No journal entries found. Create journal entries first.</p>
                 </div>
               )}
             </CardContent>
