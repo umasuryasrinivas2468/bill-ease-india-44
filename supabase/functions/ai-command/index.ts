@@ -249,7 +249,7 @@ serve(async (req) => {
           gst_amount: gstAmount,
           gst_rate: gstRate * 100,
           total_amount: totalAmount,
-          status: 'draft',
+          status: 'pending',
           items: [{
             description: 'Services/Products',
             quantity: parsed.data.quantity || 1,
@@ -375,7 +375,7 @@ serve(async (req) => {
           subtotal: subtotal,
           tax_amount: taxAmount,
           total_amount: totalAmount,
-          status: 'draft',
+          status: 'pending',
           validity_period: 30,
           items: [{
             description: 'Products/Services',
