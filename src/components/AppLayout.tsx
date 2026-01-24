@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
+import AICommandBar from '@/components/AICommandBar';
 import { useAuth } from '@/components/ClerkAuthProvider';
 import { useBusinessData } from '@/hooks/useBusinessData';
 import useSimpleBranding from '@/hooks/useSimpleBranding';
@@ -114,6 +115,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         
         {/* Mobile Bottom Navigation */}
         <MobileBottomNav />
+        
+        {/* AI Command Bar - Fixed at bottom, visible across all modules */}
+        <AICommandBar />
       </div>
     </SidebarProvider>
   );
