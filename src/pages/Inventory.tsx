@@ -185,13 +185,34 @@ const Inventory = () => {
       setIsDialogOpen(false);
       resetForm();
       fetchInventory();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving item:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save item.",
-        variant: "destructive",
-      });
+
+      // Friendly handling for common DB constraint issues
+      const errorCode = error?.code;
+      const errorMessage: string = error?.message || '';
+      const errorDetails: string = error?.details || '';
+
+      // Unique constraint on (user_id, sku)
+      if (
+        errorCode === '23505' &&
+        (errorMessage.includes('inventory_user_id_sku_key') ||
+          errorDetails.includes('inventory_user_id_sku_key') ||
+          errorDetails.includes('(user_id, sku)'))
+      ) {
+        toast({
+          title: 'SKU already exists',
+          description:
+            'An inventory item with this SKU already exists. Please use a different SKU, or edit the existing item.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to save item.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
