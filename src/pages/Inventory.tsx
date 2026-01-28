@@ -161,7 +161,6 @@ const Inventory = () => {
       supplier_name: formData.supplier_name || null,
       supplier_contact: formData.supplier_contact || null,
       supplier_email: formData.supplier_email || null,
-      vendor_ids: formData.vendor_ids,
     };
 
     setIsLoading(true);
