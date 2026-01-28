@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, X, Loader2, FileText, Users, BookOpen, FileCheck, ExternalLink } from 'lucide-react';
+import { Send, Sparkles, X, Loader2, FileText, Users, BookOpen, FileCheck, ExternalLink, Package, ShoppingCart, Truck, HelpCircle, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -20,9 +20,11 @@ interface CommandResult {
 
 const EXAMPLE_COMMANDS = [
   "Create an invoice for ABC Traders for ₹25,000 with GST",
-  "Add a client named Ramesh Enterprises from Hyderabad",
-  "Record a journal entry for rent paid ₹10,000 via bank",
-  "Create a quotation for 50 units at ₹500 each"
+  "Add a vendor named XYZ Supplies from Delhi",
+  "Create a sales order for 100 units at ₹200 each",
+  "Show me my P&L report",
+  "What is GST reverse charge?",
+  "Add inventory item Laptop at ₹50000 with 10 units"
 ];
 
 const AICommandBar: React.FC = () => {
@@ -80,6 +82,14 @@ const AICommandBar: React.FC = () => {
           queryClient.invalidateQueries({ queryKey: ['journals'] });
         } else if (commandResult.recordType === 'quotation') {
           queryClient.invalidateQueries({ queryKey: ['quotations'] });
+        } else if (commandResult.recordType === 'vendor') {
+          queryClient.invalidateQueries({ queryKey: ['vendors'] });
+        } else if (commandResult.recordType === 'sales_order') {
+          queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
+        } else if (commandResult.recordType === 'purchase_order') {
+          queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
+        } else if (commandResult.recordType === 'inventory') {
+          queryClient.invalidateQueries({ queryKey: ['inventory'] });
         }
 
         toast({
@@ -117,6 +127,12 @@ const AICommandBar: React.FC = () => {
       case 'client': return <Users className="h-4 w-4" />;
       case 'journal': return <BookOpen className="h-4 w-4" />;
       case 'quotation': return <FileCheck className="h-4 w-4" />;
+      case 'vendor': return <Users className="h-4 w-4" />;
+      case 'sales_order': return <ShoppingCart className="h-4 w-4" />;
+      case 'purchase_order': return <Truck className="h-4 w-4" />;
+      case 'inventory': return <Package className="h-4 w-4" />;
+      case 'answer': return <HelpCircle className="h-4 w-4" />;
+      case 'report': return <BarChart3 className="h-4 w-4" />;
       default: return null;
     }
   };
@@ -127,6 +143,11 @@ const AICommandBar: React.FC = () => {
       case 'client': return '/clients';
       case 'journal': return '/accounting/manual-journals';
       case 'quotation': return '/quotations';
+      case 'vendor': return '/vendors';
+      case 'sales_order': return '/sales-orders';
+      case 'purchase_order': return '/purchase-orders';
+      case 'inventory': return '/inventory';
+      case 'report': return '/reports';
       default: return null;
     }
   };
