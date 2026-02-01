@@ -1,13 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, X, Loader2, FileText, Users, BookOpen, FileCheck, ExternalLink, Package, ShoppingCart, Truck, HelpCircle, BarChart3 } from 'lucide-react';
+import { Send, Sparkles, X, Loader2, Plus, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/ClerkAuthProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { ChatMessage, ChatMessageData } from '@/components/ai-command/ChatMessage';
+import { ExampleCommands } from '@/components/ai-command/ExampleCommands';
 
 interface CommandResult {
   success: boolean;
@@ -16,24 +19,18 @@ interface CommandResult {
   recordId?: string;
   data?: any;
   error?: string;
+  isQuestion?: boolean;
+  isReport?: boolean;
 }
-
-const EXAMPLE_COMMANDS = [
-  "Create an invoice for ABC Traders for ₹25,000 with GST",
-  "Add a vendor named XYZ Supplies from Delhi",
-  "Create a sales order for 100 units at ₹200 each",
-  "Show me my P&L report",
-  "What is GST reverse charge?",
-  "Add inventory item Laptop at ₹50000 with 10 units"
-];
 
 const AICommandBar: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isChatMode, setIsChatMode] = useState(false);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<CommandResult | null>(null);
-  const [showExamples, setShowExamples] = useState(false);
+  const [messages, setMessages] = useState<ChatMessageData[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -44,6 +41,12 @@ const AICommandBar: React.FC = () => {
       inputRef.current.focus();
     }
   }, [isExpanded]);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -58,8 +61,16 @@ const AICommandBar: React.FC = () => {
       return;
     }
 
+    const userMessage: ChatMessageData = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: input.trim(),
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
     setIsLoading(true);
-    setResult(null);
 
     try {
       const { data, error } = await supabase.functions.invoke('ai-command', {
@@ -69,45 +80,60 @@ const AICommandBar: React.FC = () => {
       if (error) throw error;
 
       const commandResult = data as CommandResult;
-      setResult(commandResult);
 
-      if (commandResult.success) {
-        // Invalidate relevant queries to refresh data
-        if (commandResult.recordType === 'invoice') {
-          queryClient.invalidateQueries({ queryKey: ['invoices'] });
-          queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-        } else if (commandResult.recordType === 'client') {
-          queryClient.invalidateQueries({ queryKey: ['clients'] });
-        } else if (commandResult.recordType === 'journal') {
-          queryClient.invalidateQueries({ queryKey: ['journals'] });
-        } else if (commandResult.recordType === 'quotation') {
-          queryClient.invalidateQueries({ queryKey: ['quotations'] });
-        } else if (commandResult.recordType === 'vendor') {
-          queryClient.invalidateQueries({ queryKey: ['vendors'] });
-        } else if (commandResult.recordType === 'sales_order') {
-          queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
-        } else if (commandResult.recordType === 'purchase_order') {
-          queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
-        } else if (commandResult.recordType === 'inventory') {
-          queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      // Expand to chat mode if it's a question or conversation
+      if (commandResult.isQuestion || commandResult.isReport || messages.length > 0) {
+        setIsChatMode(true);
+      }
+
+      const assistantMessage: ChatMessageData = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: commandResult.message,
+        timestamp: new Date(),
+        recordType: commandResult.recordType,
+        recordId: commandResult.recordId,
+        success: commandResult.success
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+
+      if (commandResult.success && commandResult.recordType) {
+        // Invalidate relevant queries
+        const queryMap: Record<string, string[]> = {
+          invoice: ['invoices', 'dashboard-stats'],
+          client: ['clients'],
+          journal: ['journals'],
+          quotation: ['quotations'],
+          vendor: ['vendors'],
+          sales_order: ['sales-orders'],
+          purchase_order: ['purchase-orders'],
+          inventory: ['inventory']
+        };
+
+        const queries = queryMap[commandResult.recordType] || [];
+        queries.forEach(key => queryClient.invalidateQueries({ queryKey: [key] }));
+
+        if (!commandResult.isQuestion && !commandResult.isReport) {
+          toast({
+            title: "Success!",
+            description: commandResult.message,
+          });
         }
-
-        toast({
-          title: "Success!",
-          description: commandResult.message,
-        });
-
-        setInput('');
       }
     } catch (err) {
       console.error('AI Command error:', err);
-      setResult({
-        success: false,
-        message: err instanceof Error ? err.message : 'Failed to process command'
-      });
+      const errorMessage: ChatMessageData = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: err instanceof Error ? err.message : 'Failed to process command. Please try again.',
+        timestamp: new Date(),
+        success: false
+      };
+      setMessages(prev => [...prev, errorMessage]);
       toast({
         title: "Error",
-        description: "Failed to process your command. Please try again.",
+        description: "Failed to process your command.",
         variant: "destructive"
       });
     } finally {
@@ -117,61 +143,43 @@ const AICommandBar: React.FC = () => {
 
   const handleExampleClick = (example: string) => {
     setInput(example);
-    setShowExamples(false);
     inputRef.current?.focus();
   };
 
-  const getRecordIcon = (type?: string) => {
-    switch (type) {
-      case 'invoice': return <FileText className="h-4 w-4" />;
-      case 'client': return <Users className="h-4 w-4" />;
-      case 'journal': return <BookOpen className="h-4 w-4" />;
-      case 'quotation': return <FileCheck className="h-4 w-4" />;
-      case 'vendor': return <Users className="h-4 w-4" />;
-      case 'sales_order': return <ShoppingCart className="h-4 w-4" />;
-      case 'purchase_order': return <Truck className="h-4 w-4" />;
-      case 'inventory': return <Package className="h-4 w-4" />;
-      case 'answer': return <HelpCircle className="h-4 w-4" />;
-      case 'report': return <BarChart3 className="h-4 w-4" />;
-      default: return null;
-    }
+  const handleNavigate = (path: string) => {
+    navigate(path);
+    handleMinimize();
   };
 
-  const getRecordPath = (type?: string) => {
-    switch (type) {
-      case 'invoice': return '/invoices';
-      case 'client': return '/clients';
-      case 'journal': return '/accounting/manual-journals';
-      case 'quotation': return '/quotations';
-      case 'vendor': return '/vendors';
-      case 'sales_order': return '/sales-orders';
-      case 'purchase_order': return '/purchase-orders';
-      case 'inventory': return '/inventory';
-      case 'report': return '/reports';
-      default: return null;
-    }
+  const handleNewChat = () => {
+    setMessages([]);
+    setIsChatMode(false);
+    setInput('');
+    inputRef.current?.focus();
   };
 
-  const handleViewRecord = () => {
-    if (result?.recordType) {
-      const path = getRecordPath(result.recordType);
-      if (path) {
-        navigate(path);
-        setIsExpanded(false);
-        setResult(null);
-      }
-    }
+  const handleMinimize = () => {
+    setIsExpanded(false);
+    setIsChatMode(false);
   };
 
+  const handleClose = () => {
+    setIsExpanded(false);
+    setIsChatMode(false);
+    setMessages([]);
+    setInput('');
+  };
+
+  // Collapsed pill button
   if (!isExpanded) {
     return (
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 md:bottom-6">
         <Button
           onClick={() => setIsExpanded(true)}
-          className="h-12 px-6 rounded-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl transition-all duration-300 gap-2"
+          className="h-12 px-6 rounded-full bg-gradient-to-r from-orange-500 to-blue-600 hover:from-orange-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 gap-2 text-white border-0"
         >
           <Sparkles className="h-4 w-4" />
-          <span className="hidden sm:inline">Ask AI to create invoice, client, journal…</span>
+          <span className="hidden sm:inline">Ask AI to create invoice, client, or ask questions…</span>
           <span className="sm:hidden">AI Command</span>
         </Button>
       </div>
@@ -179,47 +187,52 @@ const AICommandBar: React.FC = () => {
   }
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-2xl md:bottom-6">
-      <div className="bg-background border border-border rounded-2xl shadow-2xl overflow-hidden">
-        {/* Result Display */}
-        {result && (
-          <div className={cn(
-            "px-4 py-3 border-b border-border",
-            result.success ? "bg-green-50 dark:bg-green-950/30" : "bg-red-50 dark:bg-red-950/30"
-          )}>
-            <div className="flex items-start gap-3">
-              {result.recordType && (
-                <div className={cn(
-                  "p-2 rounded-lg",
-                  result.success ? "bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400" : "bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400"
-                )}>
-                  {getRecordIcon(result.recordType)}
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className={cn(
-                  "text-sm whitespace-pre-line",
-                  result.success ? "text-green-800 dark:text-green-200" : "text-red-800 dark:text-red-200"
-                )}>
-                  {result.message}
-                </p>
-                {result.success && result.recordType && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleViewRecord}
-                    className="mt-2 h-7 px-2 text-xs gap-1"
-                  >
-                    View {result.recordType}
-                    <ExternalLink className="h-3 w-3" />
-                  </Button>
-                )}
+    <div className={cn(
+      "fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-2xl md:bottom-6",
+      "transition-all duration-300 ease-out"
+    )}>
+      <div className={cn(
+        "bg-background/95 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl overflow-hidden",
+        "transition-all duration-300 ease-out",
+        isChatMode ? "h-[500px]" : "h-auto"
+      )}>
+        {/* Header - Only show in chat mode */}
+        {isChatMode && (
+          <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-orange-500 to-blue-600 text-white">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
+                <Sparkles className="h-4 w-4" />
               </div>
+              <div>
+                <h3 className="text-sm font-semibold">AI Assistant</h3>
+                <p className="text-[10px] text-white/70">Ask anything about your business</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
-                size="sm"
-                onClick={() => setResult(null)}
-                className="h-6 w-6 p-0 shrink-0"
+                size="icon"
+                onClick={handleNewChat}
+                className="h-8 w-8 text-white hover:bg-white/20 rounded-full"
+                title="New chat"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleMinimize}
+                className="h-8 w-8 text-white hover:bg-white/20 rounded-full"
+                title="Minimize"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleClose}
+                className="h-8 w-8 text-white hover:bg-white/20 rounded-full"
+                title="Close"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -227,42 +240,63 @@ const AICommandBar: React.FC = () => {
           </div>
         )}
 
-        {/* Examples Dropdown */}
-        {showExamples && (
-          <div className="px-4 py-3 border-b border-border bg-muted/50">
-            <p className="text-xs text-muted-foreground mb-2 font-medium">Try these examples:</p>
-            <div className="space-y-1">
-              {EXAMPLE_COMMANDS.map((example, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleExampleClick(example)}
-                  className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-accent transition-colors"
-                >
-                  {example}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Chat Content */}
+        <div className={cn(
+          "flex flex-col",
+          isChatMode ? "h-[calc(500px-120px)]" : "max-h-[400px]"
+        )}>
+          {messages.length === 0 && !isChatMode ? (
+            <ExampleCommands onSelect={handleExampleClick} disabled={isLoading} />
+          ) : (
+            <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+              <div className="space-y-4">
+                {messages.map((message) => (
+                  <ChatMessage
+                    key={message.id}
+                    message={message}
+                    onNavigate={handleNavigate}
+                  />
+                ))}
+                {isLoading && (
+                  <div className="flex gap-3 justify-start animate-in fade-in-0">
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-orange-500 to-blue-600 flex items-center justify-center shrink-0">
+                      <Sparkles className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="bg-muted/80 rounded-2xl px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="text-sm text-muted-foreground">Thinking...</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          )}
+        </div>
 
         {/* Input Area */}
-        <form onSubmit={handleSubmit} className="flex items-center gap-2 p-3">
+        <form onSubmit={handleSubmit} className="flex items-center gap-2 p-3 border-t border-border/50 bg-background/50">
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => setShowExamples(!showExamples)}
-            className="h-8 w-8 p-0 shrink-0"
+            onClick={() => setIsChatMode(!isChatMode)}
+            className={cn(
+              "h-9 w-9 p-0 shrink-0 rounded-full",
+              "bg-gradient-to-r from-orange-500/10 to-blue-600/10",
+              "hover:from-orange-500/20 hover:to-blue-600/20"
+            )}
           >
-            <Sparkles className="h-4 w-4 text-primary" />
+            <Sparkles className="h-4 w-4 text-orange-500" />
           </Button>
           
           <Input
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask AI to create invoice, client, journal…"
-            className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
+            placeholder={isChatMode ? "Ask a follow-up question..." : "Ask AI to create invoice, client, or ask questions…"}
+            className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-sm placeholder:text-muted-foreground/60"
             disabled={isLoading}
           />
           
@@ -270,29 +304,31 @@ const AICommandBar: React.FC = () => {
             type="submit"
             size="sm"
             disabled={!input.trim() || isLoading}
-            className="h-8 w-8 p-0 shrink-0 rounded-full"
+            className={cn(
+              "h-9 w-9 p-0 shrink-0 rounded-full",
+              "bg-gradient-to-r from-orange-500 to-blue-600",
+              "hover:from-orange-600 hover:to-blue-700",
+              "disabled:opacity-50"
+            )}
           >
             {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin text-white" />
             ) : (
-              <Send className="h-4 w-4" />
+              <Send className="h-4 w-4 text-white" />
             )}
           </Button>
           
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setIsExpanded(false);
-              setResult(null);
-              setInput('');
-              setShowExamples(false);
-            }}
-            className="h-8 w-8 p-0 shrink-0"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          {!isChatMode && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleClose}
+              className="h-9 w-9 p-0 shrink-0 rounded-full hover:bg-muted"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </form>
       </div>
     </div>
