@@ -2,17 +2,6 @@
 export { useAuthorization, usePermission, usePermissions } from '@/hooks/useAuthorization';
 export type { AppRole, UserRole, Permission, AuthorizationState } from '@/hooks/useAuthorization';
 
-export { useOrganization, useOrganizationState } from '@/hooks/useOrganization';
-export type { Organization, UserOrganization, OrganizationState } from '@/hooks/useOrganization';
-
-export { 
-  useCreateOrganization,
-  useInviteUser,
-  useOrganizationRoles,
-  useCAClientAssignment,
-  useAuditLogs
-} from '@/hooks/useOrganizationManagement';
-
 export { useConcurrentUserManagement, useSessionExpiry } from '@/hooks/useConcurrentUserManagement';
 export type { SessionInfo, ConcurrentUser } from '@/hooks/useConcurrentUserManagement';
 

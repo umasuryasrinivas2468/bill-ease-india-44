@@ -55,7 +55,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { OrganizationSwitcher } from "@/components/auth/OrganizationSwitcher";
 import { CAClientSwitcher } from "@/components/auth/CAClientSwitcher";
 import { PlanAwareMenuItem } from "@/components/PlanAwareMenuItem";
 
@@ -97,7 +96,6 @@ const caToolsMenuItems = [
   { title: "Chart of Accounts", url: "/accounting/chart-of-accounts", icon: ListTree },
   { title: "Profit & Loss", url: "/accounting/profit-loss", icon: TrendingUp },
   { title: "Financial Statements", url: "/accounting/financial-statements", icon: FileText },
-  { title: "Audit Logs", url: "/audit-logs", icon: Shield },
 ];
 
 export function AppSidebar() {
@@ -159,11 +157,10 @@ export function AppSidebar() {
           <SidebarTrigger className="h-6 w-6" />
         </div>
         
-        {/* Organization & CA Client Switchers */}
-        {!isCollapsed && (
+        {/* CA Client Switcher */}
+        {!isCollapsed && isCA && (
           <div className="p-2 space-y-2 border-b border-sidebar-border">
-            <OrganizationSwitcher className="w-full" />
-            {isCA && <CAClientSwitcher className="w-full" />}
+            <CAClientSwitcher className="w-full" />
           </div>
         )}
       </div>

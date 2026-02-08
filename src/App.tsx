@@ -8,7 +8,6 @@ import Aiva from "@/components/Aiva";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/components/ClerkAuthProvider";
 import { SupabaseAuthProvider } from "@/components/SupabaseAuthProvider";
-import { OrganizationProvider } from "@/components/auth/OrganizationProvider";
 import ProtectedRoute from './components/ProtectedRoute';
 import AppLayout from "./components/AppLayout";
 import Index from "./pages/Index";
@@ -72,7 +71,7 @@ import TrialBalance from "./pages/accounting/TrialBalance";
 import ProfitLoss from "./pages/accounting/ProfitLoss";
 import ManualJournals from "./pages/accounting/ManualJournals";
 import FinancialStatements from "./pages/FinancialStatements";
-import AuditLogs from "./pages/AuditLogs";
+
 const queryClient = new QueryClient();
 
 // Create plan-restricted route components
@@ -119,7 +118,6 @@ function App() {
       <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
         <AuthProvider>
           <SupabaseAuthProvider>
-          <OrganizationProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -191,7 +189,6 @@ function App() {
                         <Route path="/accounting/profit-loss" element={<ProfitLoss />} />
                         <Route path="/accounting/manual-journals" element={<ManualJournals />} />
                         <Route path="/accounting/financial-statements" element={<FinancialStatements />} />
-                        <Route path="/audit-logs" element={<AuditLogs />} />
                         <Route path="/expenses" element={<Expenses />} />
                         <Route path="/reports/tds" element={<TDS />} />
                       </Route>
@@ -206,7 +203,6 @@ function App() {
               </Routes>
             </BrowserRouter>
           </TooltipProvider>
-          </OrganizationProvider>
           </SupabaseAuthProvider>
         </AuthProvider>
       </ThemeProvider>
