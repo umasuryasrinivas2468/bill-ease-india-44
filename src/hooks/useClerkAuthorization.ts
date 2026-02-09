@@ -5,20 +5,21 @@
  */
 
 import { useAuth, useUser, useOrganization } from '@clerk/clerk-react';
-import { useRef, useMemo } from 'react';
+import { useMemo } from 'react';
 
 // Role hierarchy: higher = more permissions
-export type UserRole = 'org:admin' | 'manager' | 'accountant' | 'viewer';
+export type UserRole = 'org:admin' | 'org:member' | 'manager' | 'accountant' | 'viewer';
 
-const ROLE_HIERARCHY: Record<UserRole, number> = {
+const ROLE_HIERARCHY: Record<string, number> = {
   'org:admin': 4,
   'manager': 3,
+  'org:member': 2,
   'accountant': 2,
   'viewer': 1,
 };
 
 // Permissions by role
-const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
+const ROLE_PERMISSIONS: Record<string, string[]> = {
   'org:admin': [
     // Organization
     'org:read',
@@ -49,6 +50,12 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     // Settings
     'settings:read',
     'settings:update',
+
+    // Invoices
+    'invoices:create',
+    'invoices:read',
+    'invoices:update',
+    'invoices:delete',
   ],
   
   'manager': [
@@ -61,6 +68,21 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'report:read',
     'report:generate',
     'report:export',
+    'invoices:create',
+    'invoices:read',
+    'invoices:update',
+  ],
+
+  'org:member': [
+    'org:read',
+    'branch:read',
+    'bill:create',
+    'bill:read',
+    'bill:update',
+    'report:read',
+    'invoices:create',
+    'invoices:read',
+    'invoices:update',
   ],
   
   'accountant': [
@@ -70,6 +92,8 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'bill:read',
     'bill:update',
     'report:read',
+    'invoices:create',
+    'invoices:read',
   ],
   
   'viewer': [
@@ -77,13 +101,14 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'branch:read',
     'bill:read',
     'report:read',
+    'invoices:read',
   ],
 };
 
 export interface AuthorizationContext {
   userId: string | null;
   orgId: string | null;
-  userRole: UserRole | null;
+  userRole: string | null;
   branchId: string | null;
   isOrgAdmin: boolean;
   isManager: boolean;
@@ -98,27 +123,24 @@ export interface AuthorizationContext {
 export function useClerkAuthorization(): AuthorizationContext {
   const { userId } = useAuth();
   const { user } = useUser();
-  const { organization } = useOrganization();
+  const { organization, membership } = useOrganization();
 
-  // Get user's role in current organization
-  const userRole = useMemo<UserRole | null>(() => {
-    if (!organization) return null;
+  // Get user's role in current organization from membership
+  const userRole = useMemo<string | null>(() => {
+    if (!organization || !membership) return null;
     
     // Clerk returns roles as: 'org:admin', 'org:member', etc.
-    // Map to our role structure
-    const clerkRole = organization.members?.find(
-      m => m.userId === userId
-    )?.role;
+    const clerkRole = membership.role;
 
     if (clerkRole === 'org:admin') return 'org:admin';
     if (clerkRole === 'org:member') {
       // Check custom role in publicMetadata
       const customRole = user?.publicMetadata?.role as string;
-      return (customRole as UserRole) || 'accountant';
+      return customRole || 'org:member';
     }
     
-    return null;
-  }, [organization, userId, user?.publicMetadata?.role]);
+    return clerkRole || null;
+  }, [organization, membership, user?.publicMetadata?.role]);
 
   // Get active branch from session
   const branchId = useMemo(() => {
@@ -127,7 +149,7 @@ export function useClerkAuthorization(): AuthorizationContext {
   }, [organization]);
 
   const permissions = useMemo(
-    () => (userRole ? ROLE_PERMISSIONS[userRole] : []),
+    () => (userRole ? ROLE_PERMISSIONS[userRole] || ROLE_PERMISSIONS['org:member'] || [] : []),
     [userRole]
   );
 
@@ -158,7 +180,7 @@ export function useClerkAuthorization(): AuthorizationContext {
   };
 
   const getRoleLevel = (): number => {
-    return userRole ? ROLE_HIERARCHY[userRole] : 0;
+    return userRole ? ROLE_HIERARCHY[userRole] || 0 : 0;
   };
 
   return {

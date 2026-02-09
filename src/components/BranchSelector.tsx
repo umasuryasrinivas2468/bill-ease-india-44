@@ -1,7 +1,7 @@
 /**
  * Branch Selector Component
  * Allows users to switch between branches within active organization
- * Branches are defined in Clerk organization metadata
+ * Branches are defined in Clerk organization publicMetadata
  */
 
 import React, { useMemo } from 'react';
@@ -28,7 +28,7 @@ interface BranchSelectorProps {
 
 /**
  * Branch Selector - Switch between organization branches
- * Reads branches from Clerk organization metadata
+ * Reads branches from Clerk organization publicMetadata (not privateMetadata)
  */
 export const BranchSelector: React.FC<BranchSelectorProps> = ({
   className,
@@ -38,7 +38,8 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
 
   const branches: Branch[] = useMemo(() => {
     if (!organization) return [];
-    const metadata = organization.privateMetadata || {};
+    // Use publicMetadata instead of privateMetadata (client-side accessible)
+    const metadata = organization.publicMetadata || {};
     return (metadata.branches as Branch[]) || [];
   }, [organization]);
 
@@ -52,8 +53,6 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
     if (organization) {
       sessionStorage.setItem(`active-branch-${organization.id}`, branchId);
       onBranchChange?.(branchId);
-      // Optionally reload to refresh data for new branch context
-      // window.location.reload();
     }
   };
 

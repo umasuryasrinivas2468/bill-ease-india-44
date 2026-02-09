@@ -4,8 +4,8 @@
  * Supports multi-org users with enforced single session context
  */
 
-import { useOrganization, useAuth } from '@clerk/clerk-react';
-import { useEffect, useState } from 'react';
+import { useOrganization, useOrganizationList, useAuth } from '@clerk/clerk-react';
+import { useEffect, useState, useCallback } from 'react';
 
 export interface Branch {
   id: string;
@@ -27,16 +27,21 @@ export interface ClerkOrgContext {
   isAccountant: boolean;
   error: string | null;
   switchBranch: (branchId: string) => void;
+  switchOrganization: (orgId: string) => Promise<void>;
+  organizations: any[];
 }
 
 export function useClerkOrganization(): ClerkOrgContext {
-  const { organization, isLoaded } = useOrganization();
-  const { sessionId } = useAuth();
+  const { organization, isLoaded, membership } = useOrganization();
+  const { userMemberships, setActive, isLoaded: listLoaded } = useOrganizationList({
+    userMemberships: { infinite: true }
+  });
+  const { userId } = useAuth();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [activeBranch, setActiveBranch] = useState<Branch | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Extract branches from org metadata
+  // Extract branches from org public metadata (privateMetadata is not accessible client-side)
   useEffect(() => {
     if (!organization) {
       setBranches([]);
@@ -45,8 +50,8 @@ export function useClerkOrganization(): ClerkOrgContext {
     }
 
     try {
-      // Branches stored in organization metadata: { branches: [...] }
-      const orgMetadata = organization.privateMetadata || {};
+      // Branches stored in organization publicMetadata: { branches: [...] }
+      const orgMetadata = organization.publicMetadata || {};
       const branchesData = (orgMetadata.branches as Branch[]) || [];
       
       setBranches(branchesData);
@@ -74,10 +79,29 @@ export function useClerkOrganization(): ClerkOrgContext {
     }
   };
 
-  // Get user's role in current organization
-  const userRole = organization?.members
-    ?.find(m => m.userId === organization.verifySession?.userId)
-    ?.role || null;
+  const switchOrganization = useCallback(async (orgId: string) => {
+    if (setActive) {
+      try {
+        await setActive({ organization: orgId });
+        // Reload to refresh all data for new org context
+        window.location.reload();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to switch organization');
+      }
+    }
+  }, [setActive]);
+
+  // Get user's role in current organization from membership
+  const userRole = membership?.role || null;
+
+  // Map user memberships to organization list
+  const organizations = userMemberships?.data?.map(item => ({
+    id: item.organization.id,
+    name: item.organization.name,
+    slug: item.organization.slug,
+    imageUrl: item.organization.imageUrl,
+    role: item.role,
+  })) || [];
 
   return {
     organization,
@@ -87,12 +111,14 @@ export function useClerkOrganization(): ClerkOrgContext {
     userRole,
     branches,
     activeBranch,
-    isLoading: !isLoaded,
-    isAdmin: userRole === 'admin' || userRole === 'org:admin',
-    isManager: ['admin', 'org:admin', 'org:member'].includes(userRole || ''),
+    isLoading: !isLoaded || !listLoaded,
+    isAdmin: userRole === 'org:admin',
+    isManager: ['org:admin', 'org:member'].includes(userRole || ''),
     isAccountant: userRole !== null,
     error,
     switchBranch,
+    switchOrganization,
+    organizations,
   };
 }
 

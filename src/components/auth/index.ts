@@ -24,4 +24,3 @@ export { CAClientSwitcher } from './CAClientSwitcher';
 export { PermissionGate, AccessDenied } from './PermissionGate';
 export { withPermission, createPermissionRestrictedRoute } from './withPermission';
 export { AuditLogViewer } from './AuditLogViewer';
-
