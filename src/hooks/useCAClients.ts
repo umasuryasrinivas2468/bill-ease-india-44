@@ -1,7 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/ClerkAuthProvider';
 import { useSupabase } from '@/components/SupabaseAuthProvider';
-import { Organization } from './useOrganization';
+
+// Organization type definition (moved from useOrganization)
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  gstin?: string;
+  pan?: string;
+  email?: string;
+  phone?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  address?: string;
+  logo_url?: string;
+  is_active?: boolean;
+  settings?: Record<string, any>;
+  created_at?: string;
+  updated_at?: string;
+}
 
 export interface CAClientAssignment {
   id: string;

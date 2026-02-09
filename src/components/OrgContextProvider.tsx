@@ -1,7 +1,7 @@
 /**
  * Organization Context Provider
  * Enforces single active organization context using Clerk
- * Handles organization selection, branch management, and session state
+ * Handles organization selection and session state
  */
 
 import React, { useEffect, useState } from 'react';
@@ -12,7 +12,7 @@ import { AlertTriangle, Loader2 } from 'lucide-react';
 
 interface OrgContextProviderProps {
   children: React.ReactNode;
-  requiredRole?: 'org:admin' | 'manager' | 'accountant';
+  requiredRole?: 'org:admin' | 'org:member' | 'any';
   redirectTo?: string;
 }
 
@@ -24,11 +24,11 @@ interface OrgContextProviderProps {
  */
 export const OrgContextProvider: React.FC<OrgContextProviderProps> = ({
   children,
-  requiredRole = 'accountant',
+  requiredRole = 'any',
   redirectTo = '/onboarding',
 }) => {
-  const { isLoaded, userId, sessionId } = useAuth();
-  const { organization, isLoaded: orgLoaded, setActive: setActiveOrg } = useOrganization();
+  const { isLoaded, userId } = useAuth();
+  const { organization, isLoaded: orgLoaded, membership } = useOrganization();
   const navigate = useNavigate();
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,33 +51,33 @@ export const OrgContextProvider: React.FC<OrgContextProviderProps> = ({
     }
 
     // Validate user role meets minimum requirement
-    const userRole = organization.members?.find(m => m.userId === userId)?.role;
+    const userRole = membership?.role;
     
-    // Check role hierarchy
-    const roleHierarchy: Record<string, number> = {
-      'org:admin': 3,
-      'manager': 2,
-      'accountant': 1,
-      'viewer': 0,
-    };
+    if (requiredRole !== 'any') {
+      // Check role hierarchy
+      const roleHierarchy: Record<string, number> = {
+        'org:admin': 3,
+        'org:member': 1,
+      };
 
-    const userLevel = roleHierarchy[userRole || ''] || 0;
-    const requiredLevel = roleHierarchy[requiredRole] || 0;
+      const userLevel = roleHierarchy[userRole || ''] || 0;
+      const requiredLevel = roleHierarchy[requiredRole] || 0;
 
-    if (userLevel < requiredLevel) {
-      setError(`Insufficient permissions. Required role: ${requiredRole}`);
-      return;
+      if (userLevel < requiredLevel) {
+        setError(`Insufficient permissions. Required role: ${requiredRole}`);
+        return;
+      }
     }
 
     // Store active org in session
-    if (organization.id && sessionId) {
+    if (organization.id) {
       sessionStorage.setItem('active-org-id', organization.id);
       sessionStorage.setItem('active-org-slug', organization.slug || '');
       sessionStorage.setItem('user-role', userRole || '');
     }
 
     setIsInitialized(true);
-  }, [isLoaded, orgLoaded, userId, organization, sessionId, requiredRole, navigate, redirectTo]);
+  }, [isLoaded, orgLoaded, userId, organization, membership, requiredRole, navigate, redirectTo]);
 
   // Show loading state
   if (!isInitialized) {

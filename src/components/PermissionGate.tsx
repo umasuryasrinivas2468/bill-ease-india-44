@@ -16,7 +16,7 @@ interface PermissionGateProps {
   permissions?: string[];
   
   // Role options (OR logic - any match succeeds)
-  roles?: Array<'org:admin' | 'manager' | 'accountant' | 'viewer'>;
+  roles?: string[];
   
   // Branch access
   branch?: string;
@@ -75,7 +75,7 @@ export const PermissionGate: React.FC<PermissionGateProps> = ({
   // Check roles
   let rolesGranted = true;
   if (roles.length > 0) {
-    rolesGranted = roles.includes(auth.userRole!);
+    rolesGranted = auth.userRole ? roles.includes(auth.userRole) : false;
   }
 
   // Check branch access
@@ -102,6 +102,23 @@ export const PermissionGate: React.FC<PermissionGateProps> = ({
   }
 
   return <>{children}</>;
+};
+
+/**
+ * Access Denied Component
+ * Displays a full-page access denied message
+ */
+export const AccessDenied: React.FC<{ message?: string }> = ({ message }) => {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <Alert variant="destructive" className="max-w-md">
+        <Lock className="h-4 w-4" />
+        <AlertDescription>
+          {message || 'You do not have permission to access this page'}
+        </AlertDescription>
+      </Alert>
+    </div>
+  );
 };
 
 export default PermissionGate;

@@ -104,7 +104,12 @@ export function useConcurrentUserManagement(organizationId?: string) {
         .eq('is_active', true)
         .gt('expires_at', new Date().toISOString());
 
-      if (error) throw error;
+      if (error) {
+        // Table might not exist - log but don't throw
+        console.warn('[useConcurrentUserManagement] Session table unavailable:', error.message);
+        setIsLoading(false);
+        return;
+      }
 
       // Group by user_id and count sessions
       const userMap = new Map<string, ConcurrentUser>();
@@ -294,7 +299,7 @@ export function useSessionExpiry(organizationId?: string) {
       setIsExpiring(false);
       setTimeRemaining(null);
       // Re-authenticate or redirect to login
-      window.location.href = '/auth/login';
+      window.location.href = '/login';
     }, IDLE_TIMEOUT);
   }, []);
 
