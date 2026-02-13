@@ -4,12 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Sparkles, User, ExternalLink, FileText, Users, BookOpen, FileCheck, Package, ShoppingCart, Truck, HelpCircle, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface ActionLink {
-  label: string;
-  path: string;
-  icon: string;
-}
-
 export interface ChatMessageData {
   id: string;
   role: 'user' | 'assistant';
@@ -18,6 +12,7 @@ export interface ChatMessageData {
   recordType?: string;
   recordId?: string;
   success?: boolean;
+  imageUrl?: string | null;
 }
 
 interface ChatMessageProps {
@@ -75,12 +70,24 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onNavigate })
 
       <div className={cn(
         "max-w-[80%] rounded-2xl px-4 py-3 text-sm",
-        isUser 
-          ? "bg-gradient-to-r from-orange-500 to-blue-600 text-white" 
+        isUser
+          ? "bg-gradient-to-r from-orange-500 to-blue-600 text-white"
           : "bg-muted/80 backdrop-blur-sm"
       )}>
         <div className="whitespace-pre-wrap leading-relaxed">{message.content}</div>
-        
+
+        {/* AI Generated Image */}
+        {!isUser && message.imageUrl && (
+          <div className="mt-3 rounded-xl overflow-hidden border border-border/30">
+            <img
+              src={message.imageUrl}
+              alt="AI generated illustration"
+              className="w-full max-h-48 object-cover"
+              loading="lazy"
+            />
+          </div>
+        )}
+
         {!isUser && message.recordType && message.success && path && (
           <Button
             variant="ghost"

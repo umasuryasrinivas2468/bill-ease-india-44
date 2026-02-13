@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { ChatMessage, ChatMessageData } from '@/components/ai-command/ChatMessage';
 import { ExampleCommands } from '@/components/ai-command/ExampleCommands';
+import { VoiceInput } from '@/components/ai-command/VoiceInput';
 
 interface CommandResult {
   success: boolean;
@@ -21,6 +22,7 @@ interface CommandResult {
   error?: string;
   isQuestion?: boolean;
   isReport?: boolean;
+  imageUrl?: string | null;
 }
 
 const AICommandBar: React.FC = () => {
@@ -93,7 +95,8 @@ const AICommandBar: React.FC = () => {
         timestamp: new Date(),
         recordType: commandResult.recordType,
         recordId: commandResult.recordId,
-        success: commandResult.success
+        success: commandResult.success,
+        imageUrl: commandResult.imageUrl || null
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -144,6 +147,15 @@ const AICommandBar: React.FC = () => {
   const handleExampleClick = (example: string) => {
     setInput(example);
     inputRef.current?.focus();
+  };
+
+  const handleVoiceTranscript = (text: string) => {
+    setInput(text);
+    // Auto-submit after voice input
+    setTimeout(() => {
+      const form = document.getElementById('ai-command-form') as HTMLFormElement;
+      if (form) form.requestSubmit();
+    }, 100);
   };
 
   const handleNavigate = (path: string) => {
@@ -276,20 +288,8 @@ const AICommandBar: React.FC = () => {
         </div>
 
         {/* Input Area */}
-        <form onSubmit={handleSubmit} className="flex items-center gap-2 p-3 border-t border-border/50 bg-background/50">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsChatMode(!isChatMode)}
-            className={cn(
-              "h-9 w-9 p-0 shrink-0 rounded-full",
-              "bg-gradient-to-r from-orange-500/10 to-blue-600/10",
-              "hover:from-orange-500/20 hover:to-blue-600/20"
-            )}
-          >
-            <Sparkles className="h-4 w-4 text-orange-500" />
-          </Button>
+        <form id="ai-command-form" onSubmit={handleSubmit} className="flex items-center gap-2 p-3 border-t border-border/50 bg-background/50">
+          <VoiceInput onTranscript={handleVoiceTranscript} disabled={isLoading} />
           
           <Input
             ref={inputRef}
