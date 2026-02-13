@@ -200,13 +200,13 @@ const AICommandBar: React.FC = () => {
 
   return (
     <div className={cn(
-      "fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-2xl md:bottom-6",
+      "fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-3xl md:bottom-6",
       "transition-all duration-300 ease-out"
     )}>
       <div className={cn(
         "bg-background/95 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl overflow-hidden",
         "transition-all duration-300 ease-out",
-        isChatMode ? "h-[500px]" : "h-auto"
+        isChatMode ? "h-[80vh]" : "h-auto"
       )}>
         {/* Header - Only show in chat mode */}
         {isChatMode && (
@@ -255,7 +255,7 @@ const AICommandBar: React.FC = () => {
         {/* Chat Content */}
         <div className={cn(
           "flex flex-col",
-          isChatMode ? "h-[calc(500px-120px)]" : "max-h-[400px]"
+          isChatMode ? "h-[calc(80vh-120px)]" : "max-h-[400px]"
         )}>
           {messages.length === 0 && !isChatMode ? (
             <ExampleCommands onSelect={handleExampleClick} disabled={isLoading} />
