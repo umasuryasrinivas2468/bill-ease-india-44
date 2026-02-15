@@ -1,0 +1,7 @@
+project_id = "vhntnkvtzmerpdhousfr"
+
+[functions.financial-advisor]
+verify_jwt = false
+
+[functions.ai-command]
+verify_jwt = false
