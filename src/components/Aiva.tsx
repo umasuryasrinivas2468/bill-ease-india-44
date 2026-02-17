@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ const suggestedQuestions = [
 export const Aiva = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -46,6 +48,10 @@ export const Aiva = () => {
   const performanceData = usePerformanceData();
 
   // Note: chat bubble is visible by default. Use localStorage('aiva_enabled') if you want to gate it later.
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -143,22 +149,27 @@ export const Aiva = () => {
 
   // Always render the chat bubble so user can open the chat.
 
+  if (!isMounted) {
+    return null;
+  }
+
   if (!isOpen) {
-    return (
+    return createPortal(
       <Button
         onClick={() => setIsOpen(true)}
         size="lg"
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 bg-gradient-to-r from-[#5D62F2] to-[#FD7C52] hover:shadow-xl transition-all"
+        className="fixed bottom-20 right-4 md:bottom-6 md:right-6 h-14 w-14 rounded-full shadow-lg z-[100] bg-gradient-to-r from-[#5D62F2] to-[#FD7C52] hover:shadow-xl transition-all"
       >
         <Sparkles className="h-6 w-6" />
-      </Button>
+      </Button>,
+      document.body
     );
   }
 
-  return (
+  return createPortal(
     <div className={cn(
-      "fixed bottom-6 right-6 z-50 transition-all",
-      isMinimized ? "w-64" : "w-96"
+      "fixed bottom-20 right-4 md:bottom-6 md:right-6 z-[100] transition-all",
+      isMinimized ? "w-64" : "w-[calc(100vw-2rem)] max-w-96"
     )}>
       <Card className={cn(
         "shadow-2xl transition-all",
@@ -244,7 +255,8 @@ export const Aiva = () => {
           </CardContent>
         )}
       </Card>
-    </div>
+    </div>,
+    document.body
   );
 };
 

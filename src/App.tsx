@@ -4,7 +4,6 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Aiva from "@/components/Aiva";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/components/ClerkAuthProvider";
 import { SupabaseAuthProvider } from "@/components/SupabaseAuthProvider";
@@ -135,9 +134,6 @@ function App() {
                 {/* Routes with AppLayout (sidebar) */}
                 <Route path="/*" element={
                   <AppLayout>
-                    <div className="hidden md:block">
-                      <Aiva />
-                    </div>
                     <Routes>
                       <Route path="/" element={<Index />} />
                       <Route path="/login" element={<Login />} />

@@ -11,7 +11,10 @@ interface ParsedCommand {
   recordType: string | null;
   data: Record<string, any>;
   message: string;
+<<<<<<< HEAD
   speechMessage?: string | null;
+=======
+>>>>>>> 7f97e0412f3ac49196d8e918c115962dee548218
   isQuestion: boolean;
   isReport: boolean;
   generateImage?: boolean;
@@ -30,10 +33,14 @@ serve(async (req) => {
   }
 
   try {
+<<<<<<< HEAD
     const { prompt, userId, voiceLanguage: requestedVoiceLanguage } = await req.json();
     const voiceLanguage = requestedVoiceLanguage === "hindi" || requestedVoiceLanguage === "telugu" || requestedVoiceLanguage === "english"
       ? requestedVoiceLanguage
       : "english";
+=======
+    const { prompt, userId } = await req.json();
+>>>>>>> 7f97e0412f3ac49196d8e918c115962dee548218
 
     console.log("[AI-Command] Processing prompt:", prompt);
     console.log("[AI-Command] User ID:", userId);
@@ -52,7 +59,11 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Use Lovable AI (Gemini) for better accuracy
+<<<<<<< HEAD
     const result = await processWithLovableAI(prompt, LOVABLE_API_KEY, voiceLanguage);
+=======
+    const result = await processWithLovableAI(prompt, LOVABLE_API_KEY);
+>>>>>>> 7f97e0412f3ac49196d8e918c115962dee548218
     console.log("[AI-Command] Parsed result:", JSON.stringify(result));
 
     let recordId: string | undefined;
@@ -87,9 +98,12 @@ serve(async (req) => {
         message: createSuccess
           ? result.message
           : `Failed to create ${result.recordType}: ${createError}`,
+<<<<<<< HEAD
         speechMessage: createSuccess
           ? (result.speechMessage || result.message)
           : `Failed to create ${result.recordType}: ${createError}`,
+=======
+>>>>>>> 7f97e0412f3ac49196d8e918c115962dee548218
         recordType: result.recordType,
         recordId: recordId,
         data: result.data,
@@ -484,6 +498,7 @@ async function createRecord(
   }
 }
 
+<<<<<<< HEAD
 async function processWithLovableAI(prompt: string, apiKey: string, voiceLanguage: "english" | "hindi" | "telugu"): Promise<ParsedCommand> {
   const speechLanguageInstruction =
     voiceLanguage === "hindi"
@@ -492,6 +507,9 @@ async function processWithLovableAI(prompt: string, apiKey: string, voiceLanguag
         ? 'Return "speechMessage" in Telugu script, concise and natural for voice.'
         : 'Return "speechMessage" in English.';
 
+=======
+async function processWithLovableAI(prompt: string, apiKey: string): Promise<ParsedCommand> {
+>>>>>>> 7f97e0412f3ac49196d8e918c115962dee548218
   const systemPrompt = `You are an intelligent accounting assistant for BillEase, an Indian accounting and GST management application.
 
 **RESPONSE STYLE - CRITICAL:**
@@ -501,8 +519,11 @@ async function processWithLovableAI(prompt: string, apiKey: string, voiceLanguag
 - Get straight to the point. Direct facts only.
 - Example: "GST rate for software services: 18% under SAC 998314. File in GSTR-1 under B2B if registered buyer."
 - NOT: "That's a great question! Let me explain about GST rates for software services. The applicable rate is..."
+<<<<<<< HEAD
 - Always return the "message" field in English only, regardless of the user's input language.
 - ${speechLanguageInstruction}
+=======
+>>>>>>> 7f97e0412f3ac49196d8e918c115962dee548218
 
 **DOMAIN RESTRICTION:**
 Only operate within finance, banking, accounting, taxation, compliance, and business operations. Reinterpret non-finance queries using financial language.
@@ -553,8 +574,12 @@ When creating records, extract ALL possible fields from the user's input:
   "action": "create" | "answer" | "report",
   "recordType": "invoice" | "client" | "vendor" | "quotation" | "sales_order" | "purchase_order" | "inventory" | "journal" | "report" | "answer" | null,
   "data": {},
+<<<<<<< HEAD
   "message": "English only. Short, direct answer. Max 2-3 bullet points. No fluff.",
   "speechMessage": "Same meaning as message, but in requested speech language.",
+=======
+  "message": "Short, direct answer. Max 2-3 bullet points. No fluff.",
+>>>>>>> 7f97e0412f3ac49196d8e918c115962dee548218
   "isQuestion": true/false,
   "isReport": true/false,
   "generateImage": true/false,
@@ -623,7 +648,10 @@ When creating records, extract ALL possible fields from the user's input:
       recordType: parsed.recordType || null,
       data: parsed.data || {},
       message: parsed.message || "Command processed successfully",
+<<<<<<< HEAD
       speechMessage: parsed.speechMessage || parsed.message || "Command processed successfully",
+=======
+>>>>>>> 7f97e0412f3ac49196d8e918c115962dee548218
       isQuestion: parsed.isQuestion || parsed.action === "answer",
       isReport: parsed.isReport || parsed.action === "report",
       generateImage: parsed.generateImage || false,
@@ -636,7 +664,10 @@ When creating records, extract ALL possible fields from the user's input:
       recordType: "answer",
       data: {},
       message: content,
+<<<<<<< HEAD
       speechMessage: content,
+=======
+>>>>>>> 7f97e0412f3ac49196d8e918c115962dee548218
       isQuestion: true,
       isReport: false,
       generateImage: false,

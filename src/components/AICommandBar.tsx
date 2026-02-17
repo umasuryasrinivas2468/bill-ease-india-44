@@ -1,507 +1,381 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Sparkles, X, Loader2, Plus, ChevronDown, Volume2, VolumeX } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Sparkles, Send, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/ClerkAuthProvider';
-import { useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
-import { ChatMessage, ChatMessageData } from '@/components/ai-command/ChatMessage';
-import { ExampleCommands } from '@/components/ai-command/ExampleCommands';
-import { VoiceInput } from '@/components/ai-command/VoiceInput';
+import { usePerformanceData } from '@/hooks/usePerformanceData';
+import VoiceInput from '@/components/ai-command/VoiceInput';
+import ExampleCommands from '@/components/ai-command/ExampleCommands';
+import ChatMessage, { type ChatMessageData } from '@/components/ai-command/ChatMessage';
 
-interface CommandResult {
-  success: boolean;
-  message: string;
-  recordType?: string;
-  recordId?: string;
-  data?: unknown;
-  error?: string;
-  isQuestion?: boolean;
-  isReport?: boolean;
-  imageUrl?: string | null;
-}
+const CREATE_INVOICE_RE = /\b(create|make|add|generate)\b.*\binvoice\b/i;
+const CREATE_CLIENT_RE = /\b(create|make|add)\b.*\b(client|customer)\b/i;
+const CREATE_VENDOR_RE = /\b(create|make|add)\b.*\b(vendor|supplier)\b/i;
 
-type VoiceLanguage = 'english' | 'hindi' | 'telugu';
+const createId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-const VOICE_LANGUAGE_CONFIG: Record<VoiceLanguage, { label: string; lang: string; rate: number; pitch: number }> = {
-  english: { label: 'English', lang: 'en-IN', rate: 0.92, pitch: 1.12 },
-  hindi: { label: 'Hindi', lang: 'hi-IN', rate: 0.9, pitch: 1.02 },
-  telugu: { label: 'Telugu', lang: 'te-IN', rate: 0.9, pitch: 1.02 },
+const normalizeResponseText = (content: string) =>
+  (content || '')
+    .replace(/^\s*\*\s+/gm, '- ')
+    .replace(/\r\n/g, '\n')
+    .trim();
+
+const tryExtractAmount = (text: string): number => {
+  const lakh = text.match(/(\d+(?:\.\d+)?)\s*(lakh|lac|l)\b/i);
+  if (lakh) return Math.round(Number(lakh[1]) * 100000);
+
+  const k = text.match(/(\d+(?:\.\d+)?)\s*k\b/i);
+  if (k) return Math.round(Number(k[1]) * 1000);
+
+  const money = text.match(/(?:inr|rs\.?|rupees?)\s*([\d,]+(?:\.\d+)?)/i) || text.match(/\b(\d[\d,]*(?:\.\d+)?)\b/);
+  if (!money) return 0;
+  return Number(money[1].replace(/,/g, '')) || 0;
 };
 
-const TRANSLATION_TARGET: Record<VoiceLanguage, string> = {
-  english: 'en',
-  hindi: 'hi',
-  telugu: 'te',
+const tryExtractGSTRate = (text: string): number => {
+  const match = text.match(/(\d{1,2})\s*%?\s*gst/i);
+  if (!match) return 18;
+  const value = Number(match[1]);
+  return [0, 3, 5, 12, 18, 28].includes(value) ? value : 18;
+};
+
+const tryExtractName = (text: string, fallback: string): string => {
+  const patterns = [
+    /for\s+([a-zA-Z0-9&.,\-\s]+?)(?:\s+(?:for|with|amount|inr|rs\.|gst)\b|$)/i,
+    /named\s+([a-zA-Z0-9&.,\-\s]+?)(?:\s+(?:from|with|at|email|phone)\b|$)/i,
+    /(client|customer|vendor|supplier)\s+([a-zA-Z0-9&.,\-\s]+?)(?:\s+(?:from|with|at|email|phone)\b|$)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (!match) continue;
+    const raw = (match[2] || match[1] || '').trim();
+    if (raw) return raw.replace(/\s{2,}/g, ' ');
+  }
+  return fallback;
+};
+
+const tryExtractEmail = (text: string): string | null => {
+  const match = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  return match ? match[0] : null;
+};
+
+const tryExtractPhone = (text: string): string | null => {
+  const match = text.match(/(\+91[\s-]?)?[6-9]\d{9}/);
+  return match ? match[0].replace(/\s+/g, '') : null;
+};
+
+const tryExtractGSTNumber = (text: string): string | null => {
+  const match = text.match(/\b\d{2}[A-Z]{5}\d{4}[A-Z]\d[Zz][A-Z0-9]\b/);
+  return match ? match[0].toUpperCase() : null;
 };
 
 const AICommandBar: React.FC = () => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isChatMode, setIsChatMode] = useState(false);
-  const [isFullScreenMode, setIsFullScreenMode] = useState(false);
-  const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
-  const [voiceLanguage, setVoiceLanguage] = useState<VoiceLanguage>(() => {
-    if (typeof window === 'undefined') return 'english';
-    const saved = window.localStorage.getItem('cherry_voice_language');
-    if (saved === 'english' || saved === 'hindi' || saved === 'telugu') {
-      return saved;
-    }
-    return 'english';
-  });
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessageData[]>([]);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
+
   const { toast } = useToast();
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const performanceData = usePerformanceData();
 
-  const translateForUiAndSpeech = useCallback(async (text: string, language: VoiceLanguage): Promise<string> => {
-    if (!text.trim() || language === 'english') return text;
-    try {
-      const target = TRANSLATION_TARGET[language];
-      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${target}&dt=t&q=${encodeURIComponent(text)}`;
-      const response = await fetch(url);
-      if (!response.ok) return text;
-      const data = await response.json();
-      if (!Array.isArray(data) || !Array.isArray(data[0])) return text;
-      const translated = data[0]
-        .map((part: any[]) => (Array.isArray(part) ? (part[0] ?? '') : ''))
-        .join('')
-        .trim();
-      return translated || text;
-    } catch {
-      return text;
+  const hasMessages = useMemo(() => messages.length > 0, [messages.length]);
+
+  const addUserMessage = (content: string) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: createId(),
+        role: 'user',
+        content,
+        timestamp: new Date(),
+      },
+    ]);
+  };
+
+  const addAssistantMessage = (payload: {
+    content: string;
+    recordType?: string | null;
+    recordId?: string | null;
+    success?: boolean;
+    imageUrl?: string | null;
+  }) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: createId(),
+        role: 'assistant',
+        content: normalizeResponseText(payload.content),
+        timestamp: new Date(),
+        recordType: payload.recordType || undefined,
+        recordId: payload.recordId || undefined,
+        success: payload.success,
+        imageUrl: payload.imageUrl || null,
+      },
+    ]);
+  };
+
+  const handleLocalCreate = async (prompt: string) => {
+    if (!user?.id) return { handled: false };
+
+    if (CREATE_INVOICE_RE.test(prompt)) {
+      const { count } = await supabase
+        .from('invoices')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+      const today = new Date();
+      const due = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const invoiceNumber = `INV-${today.getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
+      const amount = tryExtractAmount(prompt);
+      const gstRate = tryExtractGSTRate(prompt);
+      const gstAmount = Math.round((amount * gstRate) / 100);
+      const totalAmount = amount + gstAmount;
+
+      const { data, error } = await supabase
+        .from('invoices')
+        .insert({
+          user_id: user.id,
+          invoice_number: invoiceNumber,
+          client_name: tryExtractName(prompt, 'Unknown Client'),
+          client_email: tryExtractEmail(prompt),
+          client_gst_number: tryExtractGSTNumber(prompt),
+          amount,
+          gst_rate: gstRate,
+          gst_amount: gstAmount,
+          total_amount: totalAmount,
+          invoice_date: today.toISOString().split('T')[0],
+          due_date: due.toISOString().split('T')[0],
+          status: 'pending',
+          items: [],
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+
+      return {
+        handled: true,
+        recordType: 'invoice',
+        recordId: data.id,
+        message: `**Invoice created successfully**\n- Invoice No: ${data.invoice_number}\n- Client: ${data.client_name}\n- Total: INR ${Number(data.total_amount || 0).toLocaleString('en-IN')}`,
+      };
     }
-  }, []);
 
-  const getCherryVoice = useCallback((language: VoiceLanguage) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
+    if (CREATE_CLIENT_RE.test(prompt)) {
+      const { data, error } = await supabase
+        .from('clients')
+        .insert({
+          user_id: user.id,
+          name: tryExtractName(prompt, 'New Client'),
+          email: tryExtractEmail(prompt),
+          phone: tryExtractPhone(prompt),
+          gst_number: tryExtractGSTNumber(prompt),
+        })
+        .select()
+        .single();
 
-    const allVoices = voicesRef.current.length > 0
-      ? voicesRef.current
-      : window.speechSynthesis.getVoices();
+      if (error) throw error;
 
-    const languageConfig = VOICE_LANGUAGE_CONFIG[language];
-    const normalizedTargetLang = languageConfig.lang.toLowerCase();
-    const primaryLang = normalizedTargetLang.split('-')[0];
-    const nameHints: Record<VoiceLanguage, string[]> = {
-      english: ['english', 'india', 'en-in'],
-      hindi: ['hindi', 'hi-in', 'devanagari'],
-      telugu: ['telugu', 'te-in'],
-    };
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
 
-    const voicesInLanguage = allVoices.filter((voice) => {
-      const voiceLang = voice.lang.toLowerCase();
-      return voiceLang === normalizedTargetLang || voiceLang.startsWith(`${primaryLang}-`) || voiceLang === primaryLang;
-    });
-    const namedLanguageVoices = allVoices.filter((voice) => {
-      const name = voice.name.toLowerCase();
-      return nameHints[language].some((hint) => name.includes(hint));
-    });
-
-    const femaleVoice = [...voicesInLanguage, ...namedLanguageVoices].find((voice) => {
-      const name = voice.name.toLowerCase();
-      return (
-        name.includes('female') ||
-        name.includes('zira') ||
-        name.includes('samantha') ||
-        name.includes('karen') ||
-        name.includes('serena') ||
-        name.includes('aria')
-      );
-    });
-
-    const exactVoice = [...voicesInLanguage, ...namedLanguageVoices].find((voice) => voice.lang.toLowerCase() === normalizedTargetLang);
-    const firstLanguageVoice = voicesInLanguage[0] || namedLanguageVoices[0];
-    if (firstLanguageVoice && language !== 'english') {
-      return femaleVoice || exactVoice || firstLanguageVoice;
+      return {
+        handled: true,
+        recordType: 'client',
+        recordId: data.id,
+        message: `**Client created successfully**\n- Name: ${data.name}\n- Email: ${data.email || 'Not provided'}\n- Phone: ${data.phone || 'Not provided'}`,
+      };
     }
-    const englishIndianVoice = allVoices.find((voice) => voice.lang.toLowerCase().includes('en-in'));
-    return femaleVoice || exactVoice || firstLanguageVoice || englishIndianVoice || allVoices[0] || null;
-  }, []);
 
-  const speakAsCherry = useCallback((text: string) => {
-    if (!isVoiceEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    if (CREATE_VENDOR_RE.test(prompt)) {
+      const { data, error } = await supabase
+        .from('vendors')
+        .insert({
+          user_id: user.id,
+          name: tryExtractName(prompt, 'New Vendor'),
+          email: tryExtractEmail(prompt),
+          phone: tryExtractPhone(prompt),
+          gst_number: tryExtractGSTNumber(prompt),
+        })
+        .select()
+        .single();
 
-    const languageConfig = VOICE_LANGUAGE_CONFIG[voiceLanguage];
-    const utterance = new SpeechSynthesisUtterance(text);
-    const selectedVoice = getCherryVoice(voiceLanguage);
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+
+      return {
+        handled: true,
+        recordType: 'vendor',
+        recordId: data.id,
+        message: `**Vendor created successfully**\n- Name: ${data.name}\n- Email: ${data.email || 'Not provided'}\n- Phone: ${data.phone || 'Not provided'}`,
+      };
     }
-    utterance.lang = selectedVoice?.lang || languageConfig.lang;
-    utterance.rate = languageConfig.rate;
-    utterance.pitch = languageConfig.pitch;
-    utterance.volume = 0.85;
 
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
-  }, [getCherryVoice, isVoiceEnabled, voiceLanguage]);
+    return { handled: false };
+  };
 
-  useEffect(() => {
-    if (isExpanded && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isExpanded]);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-
-    const loadVoices = () => {
-      voicesRef.current = window.speechSynthesis.getVoices();
-    };
-
-    loadVoices();
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-
-    return () => {
-      window.speechSynthesis.onvoiceschanged = null;
-      window.speechSynthesis.cancel();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem('cherry_voice_language', voiceLanguage);
-  }, [voiceLanguage]);
-
-  const handleSubmit = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    
-    if (!input.trim() || isLoading) return;
+  const runCommand = async (promptText: string) => {
+    const prompt = promptText.trim();
+    if (!prompt || isLoading) return;
     if (!user?.id) {
       toast({
-        title: "Not authenticated",
-        description: "Please log in to use the command bar.",
-        variant: "destructive"
+        title: 'Sign in required',
+        description: 'Please sign in to use AI command.',
+        variant: 'destructive',
       });
       return;
     }
 
-    const userMessage: ChatMessageData = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: input.trim(),
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
+    addUserMessage(prompt);
     setInput('');
+    setIsOpen(true);
     setIsLoading(true);
 
     try {
       const { data, error } = await supabase.functions.invoke('ai-command', {
-        body: { prompt: input.trim(), userId: user.id }
+        body: { prompt, userId: user.id },
       });
-
       if (error) throw error;
 
-      const commandResult = data as CommandResult;
-      const localizedAssistantText = await translateForUiAndSpeech(commandResult.message, voiceLanguage);
-
-      // Expand to chat mode if it's a question or conversation
-      if (commandResult.isQuestion || commandResult.isReport || messages.length > 0) {
-        setIsChatMode(true);
-      }
-      if (commandResult.isQuestion || commandResult.isReport) {
-        setIsFullScreenMode(true);
-      }
-
-      const assistantMessage: ChatMessageData = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: localizedAssistantText,
-        timestamp: new Date(),
-        recordType: commandResult.recordType,
-        recordId: commandResult.recordId,
-        success: commandResult.success,
-        imageUrl: commandResult.imageUrl || null
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
-      speakAsCherry(localizedAssistantText);
-
-      if (commandResult.success && commandResult.recordType) {
-        // Invalidate relevant queries
-        const queryMap: Record<string, string[]> = {
-          invoice: ['invoices', 'dashboard-stats'],
-          client: ['clients'],
-          journal: ['journals'],
-          quotation: ['quotations'],
-          vendor: ['vendors'],
-          sales_order: ['sales-orders'],
-          purchase_order: ['purchase-orders'],
-          inventory: ['inventory']
-        };
-
-        const queries = queryMap[commandResult.recordType] || [];
-        queries.forEach(key => queryClient.invalidateQueries({ queryKey: [key] }));
-
-        if (!commandResult.isQuestion && !commandResult.isReport) {
-          toast({
-            title: "Success!",
-            description: localizedAssistantText,
-          });
-        }
-      }
-    } catch (err) {
-      console.error('AI Command error:', err);
-      const errorMessage: ChatMessageData = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: err instanceof Error ? err.message : 'Failed to process command. Please try again.',
-        timestamp: new Date(),
-        success: false
-      };
-      setMessages(prev => [...prev, errorMessage]);
-      speakAsCherry(errorMessage.content);
-      toast({
-        title: "Error",
-        description: "Failed to process your command.",
-        variant: "destructive"
+      addAssistantMessage({
+        content: data?.message || 'Command processed.',
+        recordType: data?.recordType,
+        recordId: data?.recordId,
+        success: data?.success !== false,
+        imageUrl: data?.imageUrl || null,
       });
+    } catch (err: any) {
+      try {
+        const localResult = await handleLocalCreate(prompt);
+        if (localResult.handled) {
+          addAssistantMessage({
+            content: localResult.message,
+            recordType: localResult.recordType,
+            recordId: localResult.recordId,
+            success: true,
+          });
+          return;
+        }
+
+        const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke('financial-advisor', {
+          body: {
+            question: prompt,
+            dataContext: performanceData,
+          },
+        });
+        if (fallbackError) throw fallbackError;
+
+        const shouldGenerateImage =
+          !/(create|add|make|generate)\b/i.test(prompt) &&
+          /(gst|tax|tds|report|p&l|profit|loss|cash flow|analysis|explain|what|how|why|\?)/i.test(prompt);
+
+        addAssistantMessage({
+          content: fallbackData?.response || 'Command processed.',
+          recordType: 'answer',
+          success: true,
+          imageUrl: shouldGenerateImage
+            ? `https://image.pollinations.ai/prompt/${encodeURIComponent(`Professional finance infographic about: ${prompt}`)}`
+            : null,
+        });
+      } catch (fallbackErr: any) {
+        const errorText = fallbackErr?.message || err?.message || 'Failed to process AI command.';
+        addAssistantMessage({ content: errorText, success: false });
+        toast({
+          title: 'AI command failed',
+          description: errorText,
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleExampleClick = (example: string) => {
-    setInput(example);
-    inputRef.current?.focus();
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void runCommand(input);
   };
-
-  const handleVoiceTranscript = (text: string) => {
-    setInput(text);
-    // Auto-submit after voice input
-    setTimeout(() => {
-      const form = document.getElementById('ai-command-form') as HTMLFormElement;
-      if (form) form.requestSubmit();
-    }, 100);
-  };
-
-  const handleNavigate = (path: string) => {
-    navigate(path);
-    handleMinimize();
-  };
-
-  const handleNewChat = () => {
-    setMessages([]);
-    setIsChatMode(false);
-    setIsFullScreenMode(false);
-    setInput('');
-    inputRef.current?.focus();
-  };
-
-  const handleMinimize = () => {
-    setIsExpanded(false);
-    setIsChatMode(false);
-    setIsFullScreenMode(false);
-  };
-
-  const handleClose = () => {
-    setIsExpanded(false);
-    setIsChatMode(false);
-    setIsFullScreenMode(false);
-    setMessages([]);
-    setInput('');
-  };
-
-  // Collapsed pill button
-  if (!isExpanded) {
-    return (
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 md:bottom-6">
-        <Button
-          onClick={() => setIsExpanded(true)}
-          className="h-12 px-6 rounded-full bg-gradient-to-r from-orange-500 to-blue-600 hover:from-orange-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 gap-2 text-white border-0"
-        >
-          <Sparkles className="h-4 w-4" />
-          <span className="hidden sm:inline">Ask AI to create invoice, client, or ask questions…</span>
-          <span className="sm:hidden">AI Command</span>
-        </Button>
-      </div>
-    );
-  }
 
   return (
-    <div className={cn(
-      isFullScreenMode
-        ? "fixed inset-0 z-50 bg-background/90 backdrop-blur-sm p-3 md:p-6"
-        : "fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-3xl md:bottom-6",
-      "transition-all duration-300 ease-out"
-    )}>
-      <div className={cn(
-        isFullScreenMode ? "mx-auto h-full w-full max-w-5xl" : "",
-        "bg-background/95 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl overflow-hidden",
-        "transition-all duration-300 ease-out",
-        isFullScreenMode ? "h-full flex flex-col" : isChatMode ? "h-[80vh]" : "h-auto"
-      )}>
-        {/* Header - Only show in chat mode */}
-        {(isChatMode || isFullScreenMode) && (
-          <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-orange-500 to-blue-600 text-white">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
-                <Sparkles className="h-4 w-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Cherry</h3>
-                <p className="text-[10px] text-white/70">Soft voice AI assistant for your business</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1">
-              <select
-                value={voiceLanguage}
-                onChange={(e) => {
-                  setVoiceLanguage(e.target.value as VoiceLanguage);
-                  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-                    window.speechSynthesis.cancel();
-                  }
-                }}
-                className="h-8 rounded-md border border-white/40 bg-white/10 px-2 text-xs text-white outline-none"
-                title="Voice language"
-              >
-                {Object.entries(VOICE_LANGUAGE_CONFIG).map(([key, config]) => (
-                  <option key={key} value={key} className="text-black">
-                    {config.label}
-                  </option>
-                ))}
-              </select>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsVoiceEnabled((prev) => {
-                  const next = !prev;
-                  if (!next && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-                    window.speechSynthesis.cancel();
-                  }
-                  return next;
-                })}
-                className="h-8 w-8 text-white hover:bg-white/20 rounded-full"
-                title={isVoiceEnabled ? "Mute Cherry voice" : "Enable Cherry voice"}
-              >
-                {isVoiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleNewChat}
-                className="h-8 w-8 text-white hover:bg-white/20 rounded-full"
-                title="New chat"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleMinimize}
-                className="h-8 w-8 text-white hover:bg-white/20 rounded-full"
-                title="Minimize"
-              >
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleClose}
-                className="h-8 w-8 text-white hover:bg-white/20 rounded-full"
-                title="Close"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Chat Content */}
-        <div className={cn(
-          "flex flex-col min-h-0",
-          isFullScreenMode || isChatMode ? "flex-1" : "max-h-[400px]"
-        )}>
-          {messages.length === 0 && !isChatMode ? (
-            <ExampleCommands onSelect={handleExampleClick} disabled={isLoading} />
-          ) : (
-            <ScrollArea className={cn("flex-1", isFullScreenMode ? "p-6 md:p-8" : "p-4")} ref={scrollRef}>
-              <div className="space-y-4">
-                {messages.map((message) => (
-                  <ChatMessage
-                    key={message.id}
-                    message={message}
-                    onNavigate={handleNavigate}
-                  />
-                ))}
-                {isLoading && (
-                  <div className="flex gap-3 justify-start animate-in fade-in-0">
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-orange-500 to-blue-600 flex items-center justify-center shrink-0">
-                      <Sparkles className="h-4 w-4 text-white" />
-                    </div>
-                    <div className="bg-muted/80 rounded-2xl px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm text-muted-foreground">Thinking...</span>
-                      </div>
+    <div className="fixed left-0 right-0 bottom-16 md:bottom-3 z-[90] pointer-events-none">
+      <div className="max-w-5xl mx-auto px-2 md:px-4 pointer-events-auto">
+        <div
+          className={cn(
+            'mb-2 overflow-hidden rounded-2xl border bg-background/95 backdrop-blur shadow-2xl transition-all',
+            isOpen ? 'max-h-[60vh]' : 'max-h-0 border-transparent shadow-none'
+          )}
+        >
+          <div className="border-b px-3 py-2 text-xs text-muted-foreground">AI Command Output</div>
+          <ScrollArea className="h-[42vh] p-3">
+            <div className="space-y-3">
+              {!hasMessages && <ExampleCommands onSelect={(text) => void runCommand(text)} disabled={isLoading} />}
+              {messages.map((message) => (
+                <ChatMessage key={message.id} message={message} onNavigate={navigate} />
+              ))}
+              {isLoading && (
+                <div className="flex gap-3 justify-start">
+                  <div className="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-orange-500 to-blue-600 flex items-center justify-center">
+                    <Sparkles className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="max-w-[80%] rounded-2xl px-4 py-3 text-sm bg-muted/80 backdrop-blur-sm">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Thinking...</span>
                     </div>
                   </div>
-                )}
-              </div>
-            </ScrollArea>
-          )}
+                </div>
+              )}
+            </div>
+          </ScrollArea>
         </div>
 
-        {/* Input Area */}
-        <form id="ai-command-form" onSubmit={handleSubmit} className="flex items-center gap-2 p-3 border-t border-border/50 bg-background/50">
-          <VoiceInput onTranscript={handleVoiceTranscript} disabled={isLoading} />
-          
+        <form
+          onSubmit={handleSubmit}
+          className="flex items-center gap-2 rounded-2xl border bg-background/95 px-2 py-2 shadow-xl backdrop-blur"
+        >
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-9 w-9 p-0 shrink-0"
+            onClick={() => setIsOpen((prev) => !prev)}
+            title={isOpen ? 'Collapse AI command panel' : 'Expand AI command panel'}
+          >
+            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+          </Button>
+
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-r from-orange-500 to-blue-600 shrink-0">
+            <Sparkles className="h-4 w-4 text-white" />
+          </div>
+
           <Input
-            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={isChatMode ? "Ask a follow-up question..." : "Ask AI to create invoice, client, or ask questions…"}
-            className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-sm placeholder:text-muted-foreground/60"
+            placeholder="Ask or command: Create invoice for ABC INR 25000 with GST"
             disabled={isLoading}
+            className="border-0 bg-transparent focus-visible:ring-0"
           />
-          
-          <Button
-            type="submit"
-            size="sm"
-            disabled={!input.trim() || isLoading}
-            className={cn(
-              "h-9 w-9 p-0 shrink-0 rounded-full",
-              "bg-gradient-to-r from-orange-500 to-blue-600",
-              "hover:from-orange-600 hover:to-blue-700",
-              "disabled:opacity-50"
-            )}
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-white" />
-            ) : (
-              <Send className="h-4 w-4 text-white" />
-            )}
+
+          <VoiceInput onTranscript={(text) => setInput(text)} disabled={isLoading} />
+
+          <Button type="submit" size="sm" disabled={isLoading || !input.trim()} className="shrink-0">
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
-          
-          {!isChatMode && !isFullScreenMode && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleClose}
-              className="h-9 w-9 p-0 shrink-0 rounded-full hover:bg-muted"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
         </form>
       </div>
     </div>

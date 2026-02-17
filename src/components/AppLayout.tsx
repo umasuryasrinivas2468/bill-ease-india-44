@@ -108,15 +108,15 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               </a>
             </div>
           </header>
-          <main className="flex-1 w-full pb-16 md:pb-0">
+          <main className="flex-1 w-full pb-36 md:pb-28">
             {children}
           </main>
         </SidebarInset>
         
         {/* Mobile Bottom Navigation */}
         <MobileBottomNav />
-        
-        {/* AI Command Bar - Fixed at bottom, visible across all modules */}
+
+        {/* AI Command Bar */}
         <AICommandBar />
       </div>
     </SidebarProvider>
