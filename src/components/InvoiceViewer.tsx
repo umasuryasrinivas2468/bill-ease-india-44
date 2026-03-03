@@ -102,7 +102,7 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
               )}
               <div>
                 <h1 className="text-2xl font-bold text-primary">{businessInfo?.businessName || 'Your Business'}</h1>
-                <p className="text-sm text-muted-foreground">Professional Invoice Services</p>
+                <p className="text-sm text-muted-foreground">India</p>
               </div>
             </div>
             <div className="text-right">
