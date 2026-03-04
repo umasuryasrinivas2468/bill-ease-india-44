@@ -451,7 +451,7 @@ export const generateProfessionalInvoicePDF = (
 
           <!-- Transport & Grand Total -->
           <div class="transport-row">
-            Transport: _______________
+            Transport/Delivery: _______________
           </div>
           <div class="grand-total-row">
             Grand Total: ₹${Number(invoice.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -467,7 +467,7 @@ export const generateProfessionalInvoicePDF = (
           <!-- Signature Section -->
           <div class="signature-section">
             <div class="signature-left">
-              <div style="margin-bottom: 10px;">Material received in good condition</div>
+              <div style="margin-bottom: 10px;">Goods/Services received and accepted as per agreed terms.</div>
               <div class="signature-label">Signature</div>
             </div>
             <div class="signature-right">
