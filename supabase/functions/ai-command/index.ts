@@ -11,10 +11,7 @@ interface ParsedCommand {
   recordType: string | null;
   data: Record<string, any>;
   message: string;
-<<<<<<< HEAD
   speechMessage?: string | null;
-=======
->>>>>>> 7f97e0412f3ac49196d8e918c115962dee548218
   isQuestion: boolean;
   isReport: boolean;
   generateImage?: boolean;
