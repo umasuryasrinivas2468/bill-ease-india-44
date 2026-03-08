@@ -87,6 +87,7 @@ const reportsMenuItems = [
 
 const caToolsMenuItems = [
   { title: "CA Dashboard", url: "/ca", icon: Calculator },
+  { title: "Recurring Invoices", url: "/ca/recurring-invoices", icon: RefreshCw },
   { title: "Expenses", url: "/expenses", icon: Receipt },
   { title: "Vendors", url: "/vendors", icon: Users },
   { title: "TDS Management", url: "/reports/tds", icon: Percent },
