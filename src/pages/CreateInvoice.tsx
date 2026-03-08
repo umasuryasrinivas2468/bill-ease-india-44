@@ -14,6 +14,8 @@ import { useUser } from '@clerk/clerk-react';
 import ClientSelector from '@/components/ClientSelector';
 import { Client } from '@/hooks/useClients';
 import InventoryItemSelector from '@/components/InventoryItemSelector';
+import { CurrencySelector, CurrencyDisplay } from '@/components/CurrencySelector';
+import { formatCurrencyAmount } from '@/utils/currencyUtils';
 import { useInventory } from '@/hooks/useInventory';
 import { supabase } from '@/lib/supabase';
 import { useSettingsValidation } from '@/hooks/useSettingsValidation';
