@@ -108,6 +108,7 @@ const Inventory = () => {
       selling_price: '',
       stock_quantity: '',
       reorder_level: '',
+      uom: 'pcs',
       supplier_name: '',
       supplier_contact: '',
       supplier_email: '',
