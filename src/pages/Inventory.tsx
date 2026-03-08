@@ -374,7 +374,8 @@ const Inventory = () => {
                   </SelectContent>
                 </Select>
               </div>
-
+              <div className="space-y-2">
+                <Label htmlFor="purchase_price">Purchase Price (₹)</Label>
                 <Input
                   id="purchase_price"
                   type="number"
