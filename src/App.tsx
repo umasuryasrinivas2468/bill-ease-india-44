@@ -51,6 +51,7 @@ import Payroll from "./pages/Payroll";
 import TDS from "./pages/TDS";
 import DeliveryChallans from "./pages/DeliveryChallans";
 import ITR6Filing from "./pages/ITR6Filing";
+import RecurringInvoices from "./pages/RecurringInvoices";
 
 // License pages
 import StarterPage from "./pages/StarterPage";
@@ -168,6 +169,7 @@ function App() {
                         <Route path="/notifications" element={<Notifications />} />
                         <Route path="/ca" element={<CA />} />
                         <Route path="/ca/itr6" element={<ITR6Filing />} />
+                        <Route path="/ca/recurring-invoices" element={<RecurringInvoices />} />
                         <Route path="/payout" element={<Payout />} />
                         <Route path="/quotations" element={<QuotationsInfo />} />
                         <Route path="/quotations/create" element={<Quotations />} />

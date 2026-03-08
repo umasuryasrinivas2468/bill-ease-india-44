@@ -6,12 +6,14 @@ import { useToast } from '@/hooks/use-toast';
 
 interface VoiceInputProps {
   onTranscript: (text: string) => void;
+  onLanguageDetected?: (lang: 'en' | 'hi') => void;
   disabled?: boolean;
 }
 
-export const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, disabled }) => {
+export const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, onLanguageDetected, disabled }) => {
   const [isListening, setIsListening] = useState(false);
   const [volume, setVolume] = useState(0);
+  const [voiceLang, setVoiceLang] = useState<'en-IN' | 'hi-IN'>('en-IN');
   const recognitionRef = useRef<any>(null);
   const animFrameRef = useRef<number>();
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -70,10 +72,15 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, disabled }
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.lang = 'en-IN';
+      recognition.lang = voiceLang;
 
       recognition.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
+        // Detect Hindi characters
+        const hasHindi = /[\u0900-\u097F]/.test(transcript);
+        if (onLanguageDetected) {
+          onLanguageDetected(hasHindi ? 'hi' : 'en');
+        }
         onTranscript(transcript);
         stopListening();
       };
@@ -105,7 +112,7 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, disabled }
         variant: "destructive",
       });
     }
-  }, [onTranscript, stopListening, toast]);
+  }, [onTranscript, onLanguageDetected, stopListening, toast, voiceLang]);
 
   useEffect(() => {
     return () => {
@@ -134,6 +141,18 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, disabled }
           />
         </>
       )}
+      {/* Language toggle */}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => setVoiceLang(prev => prev === 'en-IN' ? 'hi-IN' : 'en-IN')}
+        disabled={disabled || isListening}
+        className="relative z-10 h-6 px-1.5 text-[10px] font-bold rounded-md"
+        title={voiceLang === 'en-IN' ? 'Switch to Hindi' : 'Switch to English'}
+      >
+        {voiceLang === 'en-IN' ? 'EN' : 'हि'}
+      </Button>
       <Button
         type="button"
         variant="ghost"
@@ -146,7 +165,7 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, disabled }
             ? "bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/30"
             : "bg-gradient-to-r from-orange-500/10 to-blue-600/10 hover:from-orange-500/20 hover:to-blue-600/20"
         )}
-        title={isListening ? "Stop recording" : "Voice input"}
+        title={isListening ? "Stop recording" : `Voice input (${voiceLang === 'en-IN' ? 'English' : 'Hindi'})`}
       >
         {isListening ? (
           <MicOff className="h-4 w-4" />

@@ -1,582 +1,345 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Progress } from '@/components/ui/progress';
-import { 
-  Brain, 
-  Calculator, 
-  FileText, 
-  Download, 
-  AlertCircle, 
-  CheckCircle, 
-  TrendingUp,
-  DollarSign,
-  FileCheck,
-  Clock,
-  Lightbulb,
-  Shield,
-  RefreshCw,
-  ExternalLink,
-  Calendar
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Brain, Calculator, FileText, AlertCircle, CheckCircle, TrendingUp,
+  Shield, RefreshCw, Calendar, Loader2, IndianRupee, Receipt, FileCheck
 } from 'lucide-react';
-import { useAITaxAdvisor } from '@/hooks/useAITaxAdvisor';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { ExportAnalysisDialog } from '@/components/ExportAnalysisDialog';
-import type { TaxDeduction, TaxOptimizationSuggestion, AITaxAnalysisResult } from '@/types/aiTaxAdvisor';
+import { useUser } from '@clerk/clerk-react';
+import { normalizeUserId, isValidUserId } from '@/lib/userUtils';
+import { FinancialDataService } from '@/services/financialDataService';
+import { supabase } from '@/lib/supabase';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 
 const AIBusinessTaxAdvisor = () => {
-  const [selectedFinancialYear, setSelectedFinancialYear] = useState('2024-25');
-  const [activeTab, setActiveTab] = useState('generate');
-  const [selectedAnalysis, setSelectedAnalysis] = useState<AITaxAnalysisResult | null>(null);
-  
-  const {
-    useFinancialData,
-    useAnalysisHistory,
-    useGenerateAnalysis,
-    getFinancialYearOptions
-  } = useAITaxAdvisor();
+  const { user } = useUser();
+  const { toast } = useToast();
+  const [selectedFY, setSelectedFY] = useState('2024-25');
+  const [activeTab, setActiveTab] = useState('tax_saving');
+  const [results, setResults] = useState<Record<string, any>>({});
 
-  const { data: financialData, isLoading: loadingFinancialData } = useFinancialData(selectedFinancialYear);
-  const { data: analysisHistory, isLoading: loadingHistory } = useAnalysisHistory();
-  const generateAnalysis = useGenerateAnalysis();
+  const userId = user ? normalizeUserId(user.id) : null;
 
-  const financialYearOptions = getFinancialYearOptions();
+  const { data: financialData, isLoading: loadingData } = useQuery({
+    queryKey: ['financial-data', userId, selectedFY],
+    queryFn: async () => {
+      if (!userId || !isValidUserId(user!.id)) throw new Error('Not authenticated');
+      return FinancialDataService.aggregateFinancialData(userId, selectedFY);
+    },
+    enabled: !!userId && isValidUserId(user?.id || ''),
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const handleGenerateAnalysis = async () => {
-    if (!financialData) {
-      return;
-    }
+  const analysisMutation = useMutation({
+    mutationFn: async (type: string) => {
+      const { data, error } = await supabase.functions.invoke('ai-tax-advisor', {
+        body: { type, financialData, financialYear: selectedFY, language: 'en' },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return { type, result: data?.data || data };
+    },
+    onSuccess: ({ type, result }) => {
+      setResults(prev => ({ ...prev, [type]: result }));
+      toast({ title: 'Analysis complete', description: `${type.replace('_', ' ')} report generated.` });
+    },
+    onError: (e: any) => {
+      toast({ title: 'Analysis failed', description: e.message, variant: 'destructive' });
+    },
+  });
 
-    generateAnalysis.mutate({
-      financialSummary: financialData,
-      financialYear: selectedFinancialYear
-    });
+  const formatINR = (amt: number) => `₹${(amt || 0).toLocaleString('en-IN')}`;
+
+  const fyOptions = ['2023-24', '2024-25', '2025-26'];
+
+  const renderTaxSaving = () => {
+    const data = results.tax_saving;
+    if (!data) return <EmptyState type="tax_saving" onGenerate={() => analysisMutation.mutate('tax_saving')} loading={analysisMutation.isPending} />;
+
+    return (
+      <div className="space-y-4">
+        {/* Tax Calculation Summary */}
+        {data.tax_calculation && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <StatCard label="Gross Income" value={formatINR(data.tax_calculation.gross_income)} icon={IndianRupee} />
+            <StatCard label="Deductions" value={formatINR(data.tax_calculation.total_deductions)} icon={Calculator} />
+            <StatCard label="Taxable Income" value={formatINR(data.tax_calculation.taxable_income)} icon={TrendingUp} />
+            <StatCard label="Tax Liability" value={formatINR(data.tax_calculation.tax_liability)} icon={Receipt} variant="destructive" />
+          </div>
+        )}
+
+        {/* Deductions */}
+        {data.deductions?.length > 0 && (
+          <Card>
+            <CardHeader><CardTitle className="text-base">Eligible Deductions</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {data.deductions.map((d: any, i: number) => (
+                <div key={i} className="border rounded-lg p-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <Badge variant="outline" className="mb-1">{d.section}</Badge>
+                      <h4 className="font-medium">{d.title}</h4>
+                      <p className="text-sm text-muted-foreground">{d.description}</p>
+                    </div>
+                    <span className="font-bold text-primary">{formatINR(d.eligible_amount)}</span>
+                  </div>
+                  {d.recommendation && <p className="text-xs text-muted-foreground mt-2">💡 {d.recommendation}</p>}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Suggestions */}
+        {data.suggestions?.length > 0 && (
+          <Card>
+            <CardHeader><CardTitle className="text-base">Optimization Suggestions</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {data.suggestions.map((s: any, i: number) => (
+                <div key={i} className="border rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant={s.priority === 'high' ? 'destructive' : s.priority === 'medium' ? 'default' : 'secondary'}>
+                      {s.priority}
+                    </Badge>
+                    <span className="font-medium text-sm">{s.title}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{s.description}</p>
+                  {s.potential_savings > 0 && (
+                    <p className="text-xs font-medium text-green-600 mt-1">Potential savings: {formatINR(s.potential_savings)}</p>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {data.insights && (
+          <Alert><AlertCircle className="h-4 w-4" /><AlertDescription>{data.insights}</AlertDescription></Alert>
+        )}
+      </div>
+    );
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount);
+  const renderGSTGuidance = () => {
+    const data = results.gst_guidance;
+    if (!data) return <EmptyState type="gst_guidance" onGenerate={() => analysisMutation.mutate('gst_guidance')} loading={analysisMutation.isPending} />;
+
+    return (
+      <div className="space-y-4">
+        {data.gst_summary && (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <StatCard label="Output GST" value={formatINR(data.gst_summary.total_output_gst)} icon={TrendingUp} />
+            <StatCard label="Input GST" value={formatINR(data.gst_summary.total_input_gst)} icon={Calculator} />
+            <StatCard label="Net Payable" value={formatINR(data.gst_summary.net_gst_payable)} icon={IndianRupee} variant="destructive" />
+            <StatCard label="ITC Available" value={formatINR(data.gst_summary.itc_available)} icon={CheckCircle} />
+            <StatCard label="RCM Liability" value={formatINR(data.gst_summary.rcm_liability)} icon={Shield} />
+          </div>
+        )}
+
+        {data.filing_checklist?.length > 0 && (
+          <Card>
+            <CardHeader><CardTitle className="text-base">Filing Checklist</CardTitle></CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {data.filing_checklist.map((f: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between border rounded-lg p-3">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={f.status === 'filed' ? 'default' : f.status === 'overdue' ? 'destructive' : 'secondary'}>
+                        {f.return_type}
+                      </Badge>
+                      <span className="text-sm">{f.status}</span>
+                    </div>
+                    <span className="text-sm text-muted-foreground">Due: {f.due_date}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {data.compliance_risks?.length > 0 && (
+          <Card>
+            <CardHeader><CardTitle className="text-base">Compliance Risks</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {data.compliance_risks.map((r: any, i: number) => (
+                <Alert key={i} variant={r.severity === 'high' ? 'destructive' : 'default'}>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>{r.risk}</strong><br />
+                    <span className="text-xs">{r.mitigation}</span>
+                  </AlertDescription>
+                </Alert>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {data.insights && (
+          <Alert><AlertCircle className="h-4 w-4" /><AlertDescription>{data.insights}</AlertDescription></Alert>
+        )}
+      </div>
+    );
   };
 
-  const formatPercentage = (percentage: number) => {
-    return `${percentage.toFixed(2)}%`;
-  };
+  const renderTDSAlerts = () => {
+    const data = results.tds_alerts;
+    if (!data) return <EmptyState type="tds_alerts" onGenerate={() => analysisMutation.mutate('tds_alerts')} loading={analysisMutation.isPending} />;
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800 border-red-200';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'low': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
+    return (
+      <div className="space-y-4">
+        {data.tds_summary && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <StatCard label="TDS Deducted" value={formatINR(data.tds_summary.total_tds_deducted)} icon={Calculator} />
+            <StatCard label="TDS Deposited" value={formatINR(data.tds_summary.total_tds_deposited)} icon={CheckCircle} />
+            <StatCard label="Pending Deposit" value={formatINR(data.tds_summary.pending_deposit)} icon={AlertCircle} variant="destructive" />
+            <StatCard label="Next Due" value={data.tds_summary.next_due_date || 'N/A'} icon={Calendar} />
+          </div>
+        )}
+
+        {data.compliance_alerts?.length > 0 && (
+          <Card>
+            <CardHeader><CardTitle className="text-base">Compliance Alerts</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {data.compliance_alerts.map((a: any, i: number) => (
+                <Alert key={i} variant={a.severity === 'critical' ? 'destructive' : 'default'}>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <Badge variant={a.severity === 'critical' ? 'destructive' : 'secondary'}>{a.section}</Badge>
+                        <p className="text-sm mt-1">{a.description}</p>
+                      </div>
+                      {a.amount > 0 && <span className="font-bold">{formatINR(a.amount)}</span>}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{a.action_required}</p>
+                  </AlertDescription>
+                </Alert>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {data.missed_deductions?.length > 0 && (
+          <Card>
+            <CardHeader><CardTitle className="text-base">Missed TDS Deductions</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {data.missed_deductions.map((m: any, i: number) => (
+                <div key={i} className="border rounded-lg p-3">
+                  <div className="flex justify-between">
+                    <div>
+                      <p className="font-medium text-sm">{m.vendor || m.transaction_type}</p>
+                      <p className="text-xs text-muted-foreground">{m.applicable_section} @ {m.tds_rate}%</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm">Amt: {formatINR(m.amount)}</p>
+                      <p className="text-xs font-medium text-destructive">TDS: {formatINR(m.tds_amount)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {data.insights && (
+          <Alert><AlertCircle className="h-4 w-4" /><AlertDescription>{data.insights}</AlertDescription></Alert>
+        )}
+      </div>
+    );
   };
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="space-y-2">
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Brain className="h-6 w-6 text-primary" />
-          <h1 className="text-3xl font-bold">AI Business Tax Advisor</h1>
+          <SidebarTrigger />
+          <div>
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <Brain className="h-6 w-6 text-primary" /> AI Business Tax Advisor
+            </h1>
+            <p className="text-sm text-muted-foreground">AI-powered tax savings, GST guidance & TDS compliance</p>
+          </div>
         </div>
-        <p className="text-muted-foreground">
-          Get AI-powered tax deduction recommendations and optimization strategies for your business
-        </p>
+        <Select value={selectedFY} onValueChange={setSelectedFY}>
+          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {fyOptions.map(fy => <SelectItem key={fy} value={fy}>FY {fy}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Financial Year Selector */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Select Financial Year
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Select value={selectedFinancialYear} onValueChange={setSelectedFinancialYear}>
-            <SelectTrigger className="w-64">
-              <SelectValue placeholder="Select financial year" />
-            </SelectTrigger>
-            <SelectContent>
-              {financialYearOptions.map((year) => (
-                <SelectItem key={year} value={year}>
-                  FY {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
+      {loadingData && (
+        <Alert><Loader2 className="h-4 w-4 animate-spin" /><AlertDescription>Loading financial data...</AlertDescription></Alert>
+      )}
 
-      {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="generate">Generate Analysis</TabsTrigger>
-          <TabsTrigger value="history">Analysis History</TabsTrigger>
-          <TabsTrigger value="insights">Tax Insights</TabsTrigger>
+          <TabsTrigger value="tax_saving" className="flex items-center gap-1">
+            <Calculator className="h-3 w-3" /> Tax Savings
+          </TabsTrigger>
+          <TabsTrigger value="gst_guidance" className="flex items-center gap-1">
+            <FileCheck className="h-3 w-3" /> GST Guidance
+          </TabsTrigger>
+          <TabsTrigger value="tds_alerts" className="flex items-center gap-1">
+            <Shield className="h-3 w-3" /> TDS Alerts
+          </TabsTrigger>
         </TabsList>
 
-        {/* Generate Analysis Tab */}
-        <TabsContent value="generate" className="space-y-6">
-          {/* Financial Summary */}
-          {loadingFinancialData ? (
-            <Card>
-              <CardContent className="flex items-center justify-center p-8">
-                <LoadingSpinner />
-                <span className="ml-2">Loading financial data...</span>
-              </CardContent>
-            </Card>
-          ) : financialData ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calculator className="h-5 w-5" />
-                  Financial Summary - FY {selectedFinancialYear}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">
-                      {formatCurrency(financialData.gross_turnover)}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Gross Turnover</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">
-                      {formatCurrency(financialData.net_profit)}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Net Profit</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600">
-                      {formatCurrency(Object.values(financialData.expenses).reduce((sum, val) => sum + val, 0))}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Total Expenses</div>
-                  </div>
-                </div>
-
-                <Separator className="my-4" />
-
-                <div className="space-y-4">
-                  <h4 className="font-semibold">Key Expense Categories</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <div className="font-medium">Salaries</div>
-                      <div>{formatCurrency(financialData.expenses.salaries)}</div>
-                    </div>
-                    <div>
-                      <div className="font-medium">Rent</div>
-                      <div>{formatCurrency(financialData.expenses.rent)}</div>
-                    </div>
-                    <div>
-                      <div className="font-medium">Utilities</div>
-                      <div>{formatCurrency(financialData.expenses.utilities)}</div>
-                    </div>
-                    <div>
-                      <div className="font-medium">Marketing</div>
-                      <div>{formatCurrency(financialData.expenses.marketing)}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  <Button 
-                    onClick={handleGenerateAnalysis}
-                    disabled={generateAnalysis.isPending}
-                    size="lg"
-                    className="w-full md:w-auto"
-                  >
-                    {generateAnalysis.isPending ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <Brain className="h-4 w-4 mr-2" />
-                        Generate AI Tax Analysis
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                No financial data found for the selected year. Please ensure you have recorded transactions and journals.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* AI Analysis Results */}
-          {generateAnalysis.data && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileCheck className="h-5 w-5" />
-                    Tax Analysis Results
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-orange-600">
-                        {formatCurrency(generateAnalysis.data.tax_calculation.gross_income)}
-                      </div>
-                      <div className="text-sm text-muted-foreground">Gross Income</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">
-                        {formatCurrency(generateAnalysis.data.tax_calculation.total_deductions)}
-                      </div>
-                      <div className="text-sm text-muted-foreground">Total Deductions</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-red-600">
-                        {formatCurrency(generateAnalysis.data.tax_calculation.tax_liability)}
-                      </div>
-                      <div className="text-sm text-muted-foreground">Tax Liability</div>
-                    </div>
-                  </div>
-
-                  <div className="text-center mb-4">
-                    <div className="text-lg">
-                      <span className="text-muted-foreground">Effective Tax Rate: </span>
-                      <span className="font-bold">{formatPercentage(generateAnalysis.data.tax_calculation.effective_tax_rate)}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Eligible Deductions */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5" />
-                    Eligible Tax Deductions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {generateAnalysis.data.deductions.map((deduction, index) => (
-                      <div key={index} className="border rounded-lg p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">{deduction.section}</Badge>
-                              <h4 className="font-semibold">{deduction.title}</h4>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{deduction.description}</p>
-                            <p className="text-sm font-medium">{deduction.recommendation}</p>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-lg font-bold text-green-600">
-                              {formatCurrency(deduction.eligible_amount)}
-                            </div>
-                            {deduction.max_limit && (
-                              <div className="text-xs text-muted-foreground">
-                                Max: {formatCurrency(deduction.max_limit)}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        {deduction.documentation_required.length > 0 && (
-                          <div className="mt-3">
-                            <h5 className="text-xs font-medium text-muted-foreground mb-1">Required Documents:</h5>
-                            <div className="flex flex-wrap gap-1">
-                              {deduction.documentation_required.map((doc, docIndex) => (
-                                <Badge key={docIndex} variant="secondary" className="text-xs">
-                                  {doc}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Optimization Suggestions */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Lightbulb className="h-5 w-5" />
-                    Tax Optimization Suggestions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {generateAnalysis.data.suggestions.map((suggestion, index) => (
-                      <div key={index} className="border rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <Badge className={getPriorityColor(suggestion.priority)}>
-                                {suggestion.priority.toUpperCase()} PRIORITY
-                              </Badge>
-                              <span className="text-sm text-muted-foreground">{suggestion.category}</span>
-                            </div>
-                            <h4 className="font-semibold">{suggestion.title}</h4>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-lg font-bold text-green-600">
-                              ↓ {formatCurrency(suggestion.potential_savings)}
-                            </div>
-                            <div className="text-xs text-muted-foreground">Potential Savings</div>
-                          </div>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-3">{suggestion.description}</p>
-                        <div>
-                          <h5 className="text-sm font-medium mb-2">Implementation Steps:</h5>
-                          <ul className="text-sm space-y-1">
-                            {suggestion.implementation_steps.map((step, stepIndex) => (
-                              <li key={stepIndex} className="flex items-start gap-2">
-                                <div className="w-1 h-1 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-                                <span>{step}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                        {suggestion.deadline && (
-                          <div className="mt-2">
-                            <Badge variant="outline" className="text-xs">
-                              <Clock className="h-3 w-3 mr-1" />
-                              {suggestion.deadline}
-                            </Badge>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* AI Insights */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Brain className="h-5 w-5" />
-                    AI Insights & Recommendations
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm leading-relaxed">{generateAnalysis.data.insights}</p>
-                  
-                  <Separator className="my-4" />
-                  
-                  <h4 className="font-semibold mb-2">Compliance Notes:</h4>
-                  <ul className="space-y-1">
-                    {generateAnalysis.data.compliance_notes.map((note, index) => (
-                      <li key={index} className="flex items-start gap-2 text-sm">
-                        <Shield className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                        <span>{note}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-
-              {/* Export Options */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Download className="h-5 w-5" />
-                    Export Analysis
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex gap-4">
-                    <ExportAnalysisDialog 
-                      analysis={{
-                        ...generateAnalysis.data,
-                        id: 'current',
-                        user_id: 'current',
-                        financial_year: selectedFinancialYear,
-                        analysis_date: new Date().toISOString().split('T')[0],
-                        financial_summary: financialData!,
-                        eligible_deductions: generateAnalysis.data.deductions,
-                        optimization_suggestions: generateAnalysis.data.suggestions,
-                        ai_insights: generateAnalysis.data.insights,
-                        compliance_notes: generateAnalysis.data.compliance_notes,
-                        disclaimer: "This is AI-generated tax advice for business deductions under the Indian Income Tax Act. Please consult a Chartered Accountant before filing returns.",
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString(),
-                      }}
-                      trigger={
-                        <Button variant="outline">
-                          <Download className="h-4 w-4 mr-2" />
-                          Export Analysis
-                        </Button>
-                      }
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+        <TabsContent value="tax_saving">
+          <ScrollArea className="h-[calc(100vh-280px)]">{renderTaxSaving()}</ScrollArea>
         </TabsContent>
-
-        {/* Analysis History Tab */}
-        <TabsContent value="history">
-          <Card>
-            <CardHeader>
-              <CardTitle>Previous Tax Analyses</CardTitle>
-              <CardDescription>View and compare your historical tax analyses</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loadingHistory ? (
-                <div className="flex items-center justify-center p-8">
-                  <LoadingSpinner />
-                  <span className="ml-2">Loading analysis history...</span>
-                </div>
-              ) : analysisHistory && analysisHistory.length > 0 ? (
-                <div className="space-y-4">
-                  {analysisHistory.map((analysis) => (
-                    <div key={analysis.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-semibold">FY {analysis.financial_year}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            Generated on {new Date(analysis.analysis_date).toLocaleDateString('en-IN')}
-                          </p>
-                          <div className="mt-2 flex gap-4 text-sm">
-                            <span>Tax Liability: <strong>{formatCurrency(analysis.tax_calculation.tax_liability)}</strong></span>
-                            <span>Total Deductions: <strong>{formatCurrency(analysis.tax_calculation.total_deductions)}</strong></span>
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm">
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          View Details
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Brain className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Analyses Yet</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Generate your first AI tax analysis to see it here.
-                  </p>
-                  <Button onClick={() => setActiveTab('generate')}>
-                    <Brain className="h-4 w-4 mr-2" />
-                    Generate Analysis
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <TabsContent value="gst_guidance">
+          <ScrollArea className="h-[calc(100vh-280px)]">{renderGSTGuidance()}</ScrollArea>
         </TabsContent>
-
-        {/* Tax Insights Tab */}
-        <TabsContent value="insights">
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Key Tax Planning Tips</CardTitle>
-                <CardDescription>General tax planning strategies for businesses in India</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <h4 className="font-semibold flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      Section 80C Benefits
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      Maximize Employee Provident Fund contributions up to ₹1.5 lakhs for tax savings.
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <h4 className="font-semibold flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      Business Expense Deductions
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      Ensure all legitimate business expenses like rent, utilities, and salaries are properly claimed.
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <h4 className="font-semibold flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      Depreciation Claims
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      Claim depreciation on all business assets as per IT Act rates to reduce taxable income.
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <h4 className="font-semibold flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      Section 35 R&D Expenses
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      Research and development expenses can be claimed as weighted deductions.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Important Deadlines</CardTitle>
-                <CardDescription>Don't miss these critical tax filing dates</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <div>
-                      <h4 className="font-semibold">Income Tax Return Filing</h4>
-                      <p className="text-sm text-muted-foreground">For businesses and individuals</p>
-                    </div>
-                    <Badge variant="outline">July 31st</Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <div>
-                      <h4 className="font-semibold">GST Returns</h4>
-                      <p className="text-sm text-muted-foreground">Monthly GST filing</p>
-                    </div>
-                    <Badge variant="outline">20th of every month</Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
-                    <div>
-                      <h4 className="font-semibold">Advance Tax Payments</h4>
-                      <p className="text-sm text-muted-foreground">Quarterly installments</p>
-                    </div>
-                    <Badge variant="outline">15th Jun, Sep, Dec, Mar</Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+        <TabsContent value="tds_alerts">
+          <ScrollArea className="h-[calc(100vh-280px)]">{renderTDSAlerts()}</ScrollArea>
         </TabsContent>
       </Tabs>
-
-      {/* Disclaimer */}
-      <Alert className="border-yellow-200 bg-yellow-50">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          <strong>Disclaimer:</strong> This is AI-generated tax advice for business deductions under the Indian Income Tax Act. 
-          Please consult a Chartered Accountant before making any tax-related decisions or filing returns.
-        </AlertDescription>
-      </Alert>
     </div>
+  );
+};
+
+const StatCard = ({ label, value, icon: Icon, variant }: { label: string; value: string; icon: any; variant?: string }) => (
+  <Card>
+    <CardContent className="pt-4 pb-3">
+      <div className="flex items-center gap-2">
+        <Icon className={`h-4 w-4 ${variant === 'destructive' ? 'text-destructive' : 'text-primary'}`} />
+        <div>
+          <p className={`text-lg font-bold ${variant === 'destructive' ? 'text-destructive' : ''}`}>{value}</p>
+          <p className="text-xs text-muted-foreground">{label}</p>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const EmptyState = ({ type, onGenerate, loading }: { type: string; onGenerate: () => void; loading: boolean }) => {
+  const labels: Record<string, { title: string; desc: string }> = {
+    tax_saving: { title: 'Tax Saving Analysis', desc: 'Get AI-powered recommendations for maximizing deductions under IT Act 1961' },
+    gst_guidance: { title: 'GST Filing Guidance', desc: 'AI analysis of your GST obligations, ITC, and filing checklist' },
+    tds_alerts: { title: 'TDS Compliance Alerts', desc: 'Check for missed TDS deductions and filing deadlines' },
+  };
+  const l = labels[type] || labels.tax_saving;
+  
+  return (
+    <Card className="border-dashed">
+      <CardContent className="flex flex-col items-center justify-center py-12">
+        <Brain className="h-12 w-12 text-muted-foreground mb-4" />
+        <h3 className="text-lg font-semibold">{l.title}</h3>
+        <p className="text-sm text-muted-foreground text-center max-w-md mb-4">{l.desc}</p>
+        <Button onClick={onGenerate} disabled={loading}>
+          {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Brain className="h-4 w-4 mr-2" />}
+          {loading ? 'Analyzing...' : 'Generate Analysis'}
+        </Button>
+      </CardContent>
+    </Card>
   );
 };
 
