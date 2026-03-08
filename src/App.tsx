@@ -51,6 +51,7 @@ import Payroll from "./pages/Payroll";
 import TDS from "./pages/TDS";
 import DeliveryChallans from "./pages/DeliveryChallans";
 import ITR6Filing from "./pages/ITR6Filing";
+import RecurringInvoices from "./pages/RecurringInvoices";
 
 // License pages
 import StarterPage from "./pages/StarterPage";
