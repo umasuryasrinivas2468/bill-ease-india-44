@@ -20,6 +20,7 @@ interface QuotationItem {
   quantity: number;
   price: number;
   amount: number;
+  uom?: string;
 }
 
 const Quotations = () => {
