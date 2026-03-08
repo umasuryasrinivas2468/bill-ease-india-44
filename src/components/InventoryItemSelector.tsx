@@ -36,7 +36,7 @@ const InventoryItemSelector: React.FC<InventoryItemSelectorProps> = ({
       console.log('InventoryItemSelector - Selected item:', selectedItem);
       
       if (selectedItem) {
-        onChange(selectedValue, selectedItem.selling_price);
+        onChange(selectedValue, selectedItem.selling_price, (selectedItem as any).uom || 'pcs');
       } else {
         // Handle manual entry case
         onChange(selectedValue);

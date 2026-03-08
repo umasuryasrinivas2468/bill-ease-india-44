@@ -18,7 +18,7 @@ const InvoiceItemSelector: React.FC<InvoiceItemSelectorProps> = ({
 
   const handleValueChange = (selectedValue: string) => {
     const selectedItem = inventoryItems.find(item => item.product_name === selectedValue);
-    onChange(selectedValue, selectedItem?.selling_price);
+    onChange(selectedValue, selectedItem?.selling_price, (selectedItem as any)?.uom || 'pcs');
   };
 
   return (

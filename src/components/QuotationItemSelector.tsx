@@ -26,7 +26,7 @@ const QuotationItemSelector: React.FC<QuotationItemSelectorProps> = ({
 
     const selectedItem = inventoryItems.find(item => item.id === selectedProductId);
     if (selectedItem) {
-      onChange(selectedItem.id, { name: selectedItem.product_name, price: Number(selectedItem.selling_price) });
+      onChange(selectedItem.id, { name: selectedItem.product_name, price: Number(selectedItem.selling_price), uom: (selectedItem as any).uom || 'pcs' });
     }
   };
 
