@@ -22,6 +22,8 @@ export interface PurchaseBill {
   status: 'paid' | 'pending' | 'overdue' | 'partially_paid';
   paid_amount?: number;
   notes?: string;
+  is_rcm: boolean;
+  itc_eligible: boolean;
   created_at: string;
 }
 

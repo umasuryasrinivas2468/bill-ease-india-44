@@ -7,7 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { FileText, Download, Building2, Calculator, BookOpen, FileSpreadsheet, Loader2, ScrollText, ClipboardList, Scale, Wallet } from 'lucide-react';
+import { FileText, Download, Building2, Calculator, BookOpen, FileSpreadsheet, Loader2, ScrollText, ClipboardList, Scale, Wallet, Receipt, ArrowLeftRight, BarChart3 } from 'lucide-react';
+import ITCReport from '@/components/reports/ITCReport';
+import RCMLiabilityReport from '@/components/reports/RCMLiabilityReport';
+import GSTSummaryReport from '@/components/reports/GSTSummaryReport';
 import { useEnhancedBusinessData } from '@/hooks/useEnhancedBusinessData';
 import { 
   fetchFinancialData, 
@@ -278,7 +281,7 @@ const FinancialStatements = () => {
       </div>
       
       <Tabs defaultValue="setup" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 md:grid-cols-8 gap-2">
+        <TabsList className="grid w-full grid-cols-4 md:grid-cols-11 gap-2">
           <TabsTrigger value="setup" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             <span className="hidden md:inline">Setup</span>
@@ -310,6 +313,18 @@ const FinancialStatements = () => {
           <TabsTrigger value="journal-audit" className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4" />
             <span className="hidden md:inline">Audit</span>
+          </TabsTrigger>
+          <TabsTrigger value="itc-report" className="flex items-center gap-2">
+            <Receipt className="h-4 w-4" />
+            <span className="hidden md:inline">ITC</span>
+          </TabsTrigger>
+          <TabsTrigger value="rcm-report" className="flex items-center gap-2">
+            <ArrowLeftRight className="h-4 w-4" />
+            <span className="hidden md:inline">RCM</span>
+          </TabsTrigger>
+          <TabsTrigger value="gst-summary" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden md:inline">GST</span>
           </TabsTrigger>
         </TabsList>
         
@@ -1007,6 +1022,18 @@ const FinancialStatements = () => {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="itc-report">
+          <ITCReport />
+        </TabsContent>
+
+        <TabsContent value="rcm-report">
+          <RCMLiabilityReport />
+        </TabsContent>
+
+        <TabsContent value="gst-summary">
+          <GSTSummaryReport />
         </TabsContent>
       </Tabs>
     </div>
