@@ -133,13 +133,69 @@ const AICommandBar: React.FC = () => {
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id);
 
+      // Fetch inventory to match product names from prompt
+      const { data: inventoryItems } = await supabase
+        .from('inventory')
+        .select('*')
+        .eq('user_id', user.id);
+
       const today = new Date();
       const due = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
       const invoiceNumber = `INV-${today.getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
-      const amount = tryExtractAmount(prompt);
       const gstRate = tryExtractGSTRate(prompt);
+
+      // Try to match inventory items from prompt
+      const matchedItems: Array<{
+        description: string;
+        product_id: string;
+        hsn_sac: string;
+        quantity: number;
+        rate: number;
+        amount: number;
+        uom: string;
+      }> = [];
+
+      if (inventoryItems && inventoryItems.length > 0) {
+        const lowerPrompt = prompt.toLowerCase();
+        for (const inv of inventoryItems) {
+          if (lowerPrompt.includes(inv.product_name.toLowerCase()) || lowerPrompt.includes(inv.sku.toLowerCase())) {
+            // Extract quantity for this item: look for pattern like "5 [product]" or "[product] x 5"
+            const qtyBefore = prompt.match(new RegExp(`(\\d+)\\s+${inv.product_name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i'));
+            const qtyAfter = prompt.match(new RegExp(`${inv.product_name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[x×]\\s*(\\d+)`, 'i'));
+            const qty = Number(qtyBefore?.[1] || qtyAfter?.[1]) || 1;
+            const rate = inv.selling_price || 0;
+            matchedItems.push({
+              description: inv.product_name,
+              product_id: inv.id,
+              hsn_sac: inv.category || '',
+              quantity: qty,
+              rate,
+              amount: qty * rate,
+              uom: inv.uom || 'pcs',
+            });
+
+            // Deduct stock
+            await supabase
+              .from('inventory')
+              .update({ stock_quantity: Math.max(0, (inv.stock_quantity || 0) - qty) })
+              .eq('id', inv.id);
+          }
+        }
+      }
+
+      // Calculate amounts from matched items or fallback to extracted amount
+      const manualAmount = tryExtractAmount(prompt);
+      const itemsTotal = matchedItems.reduce((sum, i) => sum + i.amount, 0);
+      const amount = matchedItems.length > 0 ? itemsTotal : manualAmount;
       const gstAmount = Math.round((amount * gstRate) / 100);
       const totalAmount = amount + gstAmount;
+
+      const itemsJson = matchedItems.length > 0
+        ? matchedItems.map(({ product_id, ...rest }) => rest)
+        : [];
+      const itemsWithProductId = matchedItems.length > 0
+        ? matchedItems
+        : [];
 
       const { data, error } = await supabase
         .from('invoices')
@@ -156,7 +212,8 @@ const AICommandBar: React.FC = () => {
           invoice_date: today.toISOString().split('T')[0],
           due_date: due.toISOString().split('T')[0],
           status: 'pending',
-          items: [],
+          items: itemsJson,
+          items_with_product_id: itemsWithProductId,
         })
         .select()
         .single();
@@ -165,12 +222,17 @@ const AICommandBar: React.FC = () => {
 
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+
+      const itemLines = matchedItems.length > 0
+        ? matchedItems.map(i => `  - ${i.description} × ${i.quantity} ${i.uom} @ ₹${i.rate.toLocaleString('en-IN')}`).join('\n')
+        : '  - No inventory items matched';
 
       return {
         handled: true,
         recordType: 'invoice',
         recordId: data.id,
-        message: `**Invoice created successfully**\n- Invoice No: ${data.invoice_number}\n- Client: ${data.client_name}\n- Total: INR ${Number(data.total_amount || 0).toLocaleString('en-IN')}`,
+        message: `**Invoice created successfully**\n- Invoice No: ${data.invoice_number}\n- Client: ${data.client_name}\n- Items:\n${itemLines}\n- Total: INR ${Number(data.total_amount || 0).toLocaleString('en-IN')}`,
       };
     }
 
