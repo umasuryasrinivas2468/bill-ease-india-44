@@ -435,6 +435,15 @@ const Quotations = () => {
                   </div>
                   
                   <div>
+                    <Label>UOM</Label>
+                    <Input
+                      value={item.uom || 'pcs'}
+                      readOnly
+                      className="bg-muted/50 uppercase text-xs"
+                    />
+                  </div>
+                  
+                  <div>
                     <Label htmlFor={`quantity-${index}`}>Quantity *</Label>
                     <Input
                       id={`quantity-${index}`}
