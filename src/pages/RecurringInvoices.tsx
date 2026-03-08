@@ -251,7 +251,13 @@ const RecurringInvoices = () => {
             <div className="space-y-4 mt-4">
               <div>
                 <Label>Client</Label>
-                <ClientSelector selectedClient={selectedClient} onSelect={setSelectedClient} />
+                <ClientSelector
+                  selectedClientId={selectedClientId}
+                  onClientSelect={(client) => {
+                    setSelectedClient(client);
+                    setSelectedClientId(client?.id);
+                  }}
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
