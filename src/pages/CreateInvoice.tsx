@@ -48,7 +48,7 @@ const CreateInvoice = () => {
   const [discountPercentage, setDiscountPercentage] = useState(0);
   const [roundoff, setRoundoff] = useState(0);
   const [items, setItems] = useState<InvoiceItem[]>([
-    { description: '', product_id: null, hsn_sac: '', quantity: 1, rate: 0, amount: 0 }
+    { description: '', product_id: null, hsn_sac: '', quantity: 1, rate: 0, amount: 0, uom: 'pcs' }
   ]);
 
   const addItem = () => {
