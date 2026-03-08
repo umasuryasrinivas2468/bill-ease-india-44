@@ -127,6 +127,7 @@ const Inventory = () => {
       selling_price: item.selling_price.toString(),
       stock_quantity: item.stock_quantity.toString(),
       reorder_level: item.reorder_level.toString(),
+      uom: (item as any).uom || 'pcs',
       supplier_name: item.supplier_name || '',
       supplier_contact: item.supplier_contact || '',
       supplier_email: item.supplier_email || '',
