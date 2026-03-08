@@ -553,12 +553,8 @@ When creating records, extract ALL possible fields from the user's input:
   "action": "create" | "answer" | "report",
   "recordType": "invoice" | "client" | "vendor" | "quotation" | "sales_order" | "purchase_order" | "inventory" | "journal" | "report" | "answer" | null,
   "data": {},
-<<<<<<< HEAD
   "message": "English only. Short, direct answer. Max 2-3 bullet points. No fluff.",
   "speechMessage": "Same meaning as message, but in requested speech language.",
-=======
-  "message": "Short, direct answer. Max 2-3 bullet points. No fluff.",
->>>>>>> 7f97e0412f3ac49196d8e918c115962dee548218
   "isQuestion": true/false,
   "isReport": true/false,
   "generateImage": true/false,
