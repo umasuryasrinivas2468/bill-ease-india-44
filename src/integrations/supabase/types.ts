@@ -821,6 +821,7 @@ export type Database = {
           client_gst_number: string | null
           client_name: string
           created_at: string | null
+          currency: string
           discount: number | null
           due_date: string
           from_email: string | null
@@ -846,6 +847,7 @@ export type Database = {
           client_gst_number?: string | null
           client_name: string
           created_at?: string | null
+          currency?: string
           discount?: number | null
           due_date: string
           from_email?: string | null
@@ -871,6 +873,7 @@ export type Database = {
           client_gst_number?: string | null
           client_name?: string
           created_at?: string | null
+          currency?: string
           discount?: number | null
           due_date?: string
           from_email?: string | null
@@ -1332,6 +1335,7 @@ export type Database = {
           client_name: string
           client_phone: string | null
           created_at: string | null
+          currency: string
           discount: number | null
           id: string
           items: Json
@@ -1353,6 +1357,7 @@ export type Database = {
           client_name: string
           client_phone?: string | null
           created_at?: string | null
+          currency?: string
           discount?: number | null
           id?: string
           items?: Json
@@ -1374,6 +1379,7 @@ export type Database = {
           client_name?: string
           client_phone?: string | null
           created_at?: string | null
+          currency?: string
           discount?: number | null
           id?: string
           items?: Json
@@ -1458,6 +1464,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      recurring_invoices: {
+        Row: {
+          amount: number
+          client_email: string | null
+          client_gst_number: string | null
+          client_name: string
+          created_at: string | null
+          cron_expression: string | null
+          frequency: string | null
+          gst_rate: number | null
+          id: string
+          is_active: boolean | null
+          items: Json | null
+          last_run_date: string | null
+          next_run_date: string
+          notes: string | null
+          total_generated: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          client_email?: string | null
+          client_gst_number?: string | null
+          client_name: string
+          created_at?: string | null
+          cron_expression?: string | null
+          frequency?: string | null
+          gst_rate?: number | null
+          id?: string
+          is_active?: boolean | null
+          items?: Json | null
+          last_run_date?: string | null
+          next_run_date: string
+          notes?: string | null
+          total_generated?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          client_email?: string | null
+          client_gst_number?: string | null
+          client_name?: string
+          created_at?: string | null
+          cron_expression?: string | null
+          frequency?: string | null
+          gst_rate?: number | null
+          id?: string
+          is_active?: boolean | null
+          items?: Json | null
+          last_run_date?: string | null
+          next_run_date?: string
+          notes?: string | null
+          total_generated?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       reminder_responses: {
         Row: {
