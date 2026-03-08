@@ -41,7 +41,7 @@ const Quotations = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [items, setItems] = useState<QuotationItem[]>([
-    { product_id: '', name: '', description: '', quantity: 1, price: 0, amount: 0 }
+    { product_id: '', name: '', description: '', quantity: 1, price: 0, amount: 0, uom: 'pcs' }
   ]);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
