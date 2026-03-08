@@ -10,7 +10,7 @@ interface VoiceInputProps {
   disabled?: boolean;
 }
 
-export const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, disabled }) => {
+export const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, onLanguageDetected, disabled }) => {
   const [isListening, setIsListening] = useState(false);
   const [volume, setVolume] = useState(0);
   const recognitionRef = useRef<any>(null);
