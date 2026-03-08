@@ -7,7 +7,7 @@ interface QuotationItemSelectorProps {
   // The selected product_id
   value: string;
   // onChange with productId and meta (name, price)
-  onChange: (productId: string, meta?: { name: string; price: number }) => void;
+  onChange: (productId: string, meta?: { name: string; price: number; uom?: string }) => void;
   placeholder?: string;
   disabled?: boolean;
 }
