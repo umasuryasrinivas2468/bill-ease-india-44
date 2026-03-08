@@ -281,7 +281,7 @@ const FinancialStatements = () => {
       </div>
       
       <Tabs defaultValue="setup" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 md:grid-cols-8 gap-2">
+        <TabsList className="grid w-full grid-cols-4 md:grid-cols-11 gap-2">
           <TabsTrigger value="setup" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             <span className="hidden md:inline">Setup</span>
@@ -313,6 +313,18 @@ const FinancialStatements = () => {
           <TabsTrigger value="journal-audit" className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4" />
             <span className="hidden md:inline">Audit</span>
+          </TabsTrigger>
+          <TabsTrigger value="itc-report" className="flex items-center gap-2">
+            <Receipt className="h-4 w-4" />
+            <span className="hidden md:inline">ITC</span>
+          </TabsTrigger>
+          <TabsTrigger value="rcm-report" className="flex items-center gap-2">
+            <ArrowLeftRight className="h-4 w-4" />
+            <span className="hidden md:inline">RCM</span>
+          </TabsTrigger>
+          <TabsTrigger value="gst-summary" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden md:inline">GST</span>
           </TabsTrigger>
         </TabsList>
         
