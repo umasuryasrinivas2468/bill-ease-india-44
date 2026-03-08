@@ -104,7 +104,7 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({ onClientSelect, selecte
           <SelectTrigger className="flex-1">
             <SelectValue placeholder="Choose a client..." />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="z-[9999]" position="popper" sideOffset={4}>
             {clients.map((client) => (
               <SelectItem key={client.id} value={client.id}>
                 {client.name} {client.email && `(${client.email})`}
