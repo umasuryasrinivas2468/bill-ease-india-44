@@ -374,7 +374,7 @@ const CreateInvoice = () => {
           <CardContent>
             <div className="space-y-4">
               {items.map((item, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-7 gap-4 p-4 border rounded-lg">
+                <div key={index} className="grid grid-cols-1 md:grid-cols-8 gap-4 p-4 border rounded-lg">
                   <div className="md:col-span-2">
                     <Label htmlFor={`description-${index}`}>Item from Inventory</Label>
                     <InventoryItemSelector
