@@ -5,7 +5,7 @@ import { useInventory } from '@/hooks/useInventory';
 
 interface InvoiceItemSelectorProps {
   value: string;
-  onChange: (value: string, price?: number) => void;
+  onChange: (value: string, price?: number, uom?: string) => void;
   placeholder?: string;
 }
 
