@@ -52,11 +52,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Use Lovable AI (Gemini) for better accuracy
-<<<<<<< HEAD
     const result = await processWithLovableAI(prompt, LOVABLE_API_KEY, voiceLanguage);
-=======
-    const result = await processWithLovableAI(prompt, LOVABLE_API_KEY);
->>>>>>> 7f97e0412f3ac49196d8e918c115962dee548218
     console.log("[AI-Command] Parsed result:", JSON.stringify(result));
 
     let recordId: string | undefined;
