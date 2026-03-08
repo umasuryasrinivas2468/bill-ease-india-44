@@ -161,6 +161,7 @@ const Inventory = () => {
       selling_price: parseFloat(formData.selling_price),
       stock_quantity: formData.type === 'services' ? null : (parseInt(formData.stock_quantity) || 0),
       reorder_level: formData.type === 'services' ? null : (parseInt(formData.reorder_level) || 10),
+      uom: formData.uom || 'pcs',
       supplier_name: formData.supplier_name || null,
       supplier_contact: formData.supplier_contact || null,
       supplier_email: formData.supplier_email || null,
