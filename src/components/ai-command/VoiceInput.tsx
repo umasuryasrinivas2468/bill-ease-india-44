@@ -73,10 +73,15 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, onLanguage
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.lang = 'en-IN';
+      recognition.lang = voiceLang;
 
       recognition.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
+        // Detect Hindi characters
+        const hasHindi = /[\u0900-\u097F]/.test(transcript);
+        if (onLanguageDetected) {
+          onLanguageDetected(hasHindi ? 'hi' : 'en');
+        }
         onTranscript(transcript);
         stopListening();
       };
