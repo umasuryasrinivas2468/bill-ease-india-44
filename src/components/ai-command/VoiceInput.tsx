@@ -113,7 +113,7 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, onLanguage
         variant: "destructive",
       });
     }
-  }, [onTranscript, stopListening, toast]);
+  }, [onTranscript, onLanguageDetected, stopListening, toast, voiceLang]);
 
   useEffect(() => {
     return () => {
