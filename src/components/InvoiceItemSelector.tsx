@@ -33,7 +33,7 @@ const InvoiceItemSelector: React.FC<InvoiceItemSelectorProps> = ({
             value={item.product_name} 
             className="hover:bg-gray-100 cursor-pointer"
           >
-            {`${item.product_name} — ₹${item.selling_price} (Stock: ${item.stock_quantity})`}
+            {`${item.product_name} — ₹${item.selling_price} (${item.stock_quantity} ${(item as any).uom || 'pcs'})`}
           </SelectItem>
         ))}
         {inventoryItems.length === 0 && (
