@@ -46,7 +46,7 @@ const Quotations = () => {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const addItem = () => {
-    setItems([...items, { product_id: '', name: '', description: '', quantity: 1, price: 0, amount: 0 }]);
+    setItems([...items, { product_id: '', name: '', description: '', quantity: 1, price: 0, amount: 0, uom: 'pcs' }]);
   };
 
   const removeItem = (index: number) => {
