@@ -92,6 +92,7 @@ const RecurringInvoices = () => {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<string | undefined>(undefined);
   const [amount, setAmount] = useState('');
   const [gstRate, setGstRate] = useState('18');
   const [frequency, setFrequency] = useState('monthly_1st');
