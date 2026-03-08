@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface VoiceInputProps {
   onTranscript: (text: string) => void;
+  onLanguageDetected?: (lang: 'en' | 'hi') => void;
   disabled?: boolean;
 }
 
