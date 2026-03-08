@@ -347,7 +347,34 @@ const Inventory = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="purchase_price">Purchase Price (₹)</Label>
+                <Label htmlFor="uom">Unit of Measurement</Label>
+                <Select value={formData.uom} onValueChange={(value) => setFormData({ ...formData, uom: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select UOM" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pcs">Pieces (pcs)</SelectItem>
+                    <SelectItem value="kg">Kilograms (kg)</SelectItem>
+                    <SelectItem value="g">Grams (g)</SelectItem>
+                    <SelectItem value="l">Litres (l)</SelectItem>
+                    <SelectItem value="ml">Millilitres (ml)</SelectItem>
+                    <SelectItem value="m">Metres (m)</SelectItem>
+                    <SelectItem value="cm">Centimetres (cm)</SelectItem>
+                    <SelectItem value="ft">Feet (ft)</SelectItem>
+                    <SelectItem value="in">Inches (in)</SelectItem>
+                    <SelectItem value="box">Box</SelectItem>
+                    <SelectItem value="pack">Pack</SelectItem>
+                    <SelectItem value="dozen">Dozen</SelectItem>
+                    <SelectItem value="pair">Pair</SelectItem>
+                    <SelectItem value="set">Set</SelectItem>
+                    <SelectItem value="sqft">Sq. Feet (sqft)</SelectItem>
+                    <SelectItem value="sqm">Sq. Metres (sqm)</SelectItem>
+                    <SelectItem value="hrs">Hours (hrs)</SelectItem>
+                    <SelectItem value="nos">Numbers (nos)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
                 <Input
                   id="purchase_price"
                   type="number"
