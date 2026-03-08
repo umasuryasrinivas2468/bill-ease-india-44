@@ -726,6 +726,7 @@ export type Database = {
           supplier_email: string | null
           supplier_name: string | null
           type: string
+          uom: string
           updated_at: string | null
           user_id: string
         }
@@ -743,6 +744,7 @@ export type Database = {
           supplier_email?: string | null
           supplier_name?: string | null
           type: string
+          uom?: string
           updated_at?: string | null
           user_id: string
         }
@@ -760,6 +762,7 @@ export type Database = {
           supplier_email?: string | null
           supplier_name?: string | null
           type?: string
+          uom?: string
           updated_at?: string | null
           user_id?: string
         }
