@@ -696,6 +696,7 @@ const Inventory = () => {
                         {item.type}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-xs text-muted-foreground uppercase">{(item as any).uom || 'pcs'}</TableCell>
                     <TableCell className="text-right">
                       {item.type === 'services' ? (
                         <span className="text-muted-foreground">-</span>
