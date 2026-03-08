@@ -1023,6 +1023,18 @@ const FinancialStatements = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="itc-report">
+          <ITCReport />
+        </TabsContent>
+
+        <TabsContent value="rcm-report">
+          <RCMLiabilityReport />
+        </TabsContent>
+
+        <TabsContent value="gst-summary">
+          <GSTSummaryReport />
+        </TabsContent>
       </Tabs>
     </div>
   );
