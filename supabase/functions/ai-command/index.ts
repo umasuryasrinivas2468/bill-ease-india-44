@@ -623,10 +623,7 @@ When creating records, extract ALL possible fields from the user's input:
       recordType: parsed.recordType || null,
       data: parsed.data || {},
       message: parsed.message || "Command processed successfully",
-<<<<<<< HEAD
       speechMessage: parsed.speechMessage || parsed.message || "Command processed successfully",
-=======
->>>>>>> 7f97e0412f3ac49196d8e918c115962dee548218
       isQuestion: parsed.isQuestion || parsed.action === "answer",
       isReport: parsed.isReport || parsed.action === "report",
       generateImage: parsed.generateImage || false,
