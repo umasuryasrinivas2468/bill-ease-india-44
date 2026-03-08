@@ -353,18 +353,21 @@ const CreateInvoice = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="gstRate">GST Rate (%)</Label>
-                <Select value={gstRate.toString()} onValueChange={(value) => setGstRate(Number(value))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select GST Rate" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="5">5%</SelectItem>
-                    <SelectItem value="12">12%</SelectItem>
-                    <SelectItem value="18">18%</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="gstRate">GST Rate (%)</Label>
+                  <Select value={gstRate.toString()} onValueChange={(value) => setGstRate(Number(value))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select GST Rate" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5%</SelectItem>
+                      <SelectItem value="12">12%</SelectItem>
+                      <SelectItem value="18">18%</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <CurrencySelector value={currency} onChange={setCurrency} label="Currency" />
               </div>
             </CardContent>
           </Card>
