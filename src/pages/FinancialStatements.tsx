@@ -7,7 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { FileText, Download, Building2, Calculator, BookOpen, FileSpreadsheet, Loader2, ScrollText, ClipboardList, Scale, Wallet } from 'lucide-react';
+import { FileText, Download, Building2, Calculator, BookOpen, FileSpreadsheet, Loader2, ScrollText, ClipboardList, Scale, Wallet, Receipt, ArrowLeftRight, BarChart3 } from 'lucide-react';
+import ITCReport from '@/components/reports/ITCReport';
+import RCMLiabilityReport from '@/components/reports/RCMLiabilityReport';
+import GSTSummaryReport from '@/components/reports/GSTSummaryReport';
 import { useEnhancedBusinessData } from '@/hooks/useEnhancedBusinessData';
 import { 
   fetchFinancialData, 
