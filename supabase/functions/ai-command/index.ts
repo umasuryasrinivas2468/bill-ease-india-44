@@ -636,10 +636,7 @@ When creating records, extract ALL possible fields from the user's input:
       recordType: "answer",
       data: {},
       message: content,
-<<<<<<< HEAD
       speechMessage: content,
-=======
->>>>>>> 7f97e0412f3ac49196d8e918c115962dee548218
       isQuestion: true,
       isReport: false,
       generateImage: false,
