@@ -13,6 +13,8 @@ interface VoiceInputProps {
 export const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, onLanguageDetected, disabled }) => {
   const [isListening, setIsListening] = useState(false);
   const [volume, setVolume] = useState(0);
+  const [voiceLang, setVoiceLang] = useState<'en-IN' | 'hi-IN'>('en-IN');
+  const [volume, setVolume] = useState(0);
   const recognitionRef = useRef<any>(null);
   const animFrameRef = useRef<number>();
   const analyserRef = useRef<AnalyserNode | null>(null);
