@@ -501,11 +501,8 @@ async function processWithLovableAI(prompt: string, apiKey: string, voiceLanguag
 - Get straight to the point. Direct facts only.
 - Example: "GST rate for software services: 18% under SAC 998314. File in GSTR-1 under B2B if registered buyer."
 - NOT: "That's a great question! Let me explain about GST rates for software services. The applicable rate is..."
-<<<<<<< HEAD
 - Always return the "message" field in English only, regardless of the user's input language.
 - ${speechLanguageInstruction}
-=======
->>>>>>> 7f97e0412f3ac49196d8e918c115962dee548218
 
 **DOMAIN RESTRICTION:**
 Only operate within finance, banking, accounting, taxation, compliance, and business operations. Reinterpret non-finance queries using financial language.
