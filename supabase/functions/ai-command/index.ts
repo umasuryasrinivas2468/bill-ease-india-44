@@ -87,12 +87,9 @@ serve(async (req) => {
         message: createSuccess
           ? result.message
           : `Failed to create ${result.recordType}: ${createError}`,
-<<<<<<< HEAD
         speechMessage: createSuccess
           ? (result.speechMessage || result.message)
           : `Failed to create ${result.recordType}: ${createError}`,
-=======
->>>>>>> 7f97e0412f3ac49196d8e918c115962dee548218
         recordType: result.recordType,
         recordId: recordId,
         data: result.data,
