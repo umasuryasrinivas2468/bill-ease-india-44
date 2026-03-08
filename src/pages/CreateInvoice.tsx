@@ -52,7 +52,7 @@ const CreateInvoice = () => {
   ]);
 
   const addItem = () => {
-    setItems([...items, { description: '', product_id: null, hsn_sac: '', quantity: 1, rate: 0, amount: 0 }]);
+    setItems([...items, { description: '', product_id: null, hsn_sac: '', quantity: 1, rate: 0, amount: 0, uom: 'pcs' }]);
   };
 
   const removeItem = (index: number) => {
