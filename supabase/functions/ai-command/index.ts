@@ -30,14 +30,10 @@ serve(async (req) => {
   }
 
   try {
-<<<<<<< HEAD
     const { prompt, userId, voiceLanguage: requestedVoiceLanguage } = await req.json();
     const voiceLanguage = requestedVoiceLanguage === "hindi" || requestedVoiceLanguage === "telugu" || requestedVoiceLanguage === "english"
       ? requestedVoiceLanguage
       : "english";
-=======
-    const { prompt, userId } = await req.json();
->>>>>>> 7f97e0412f3ac49196d8e918c115962dee548218
 
     console.log("[AI-Command] Processing prompt:", prompt);
     console.log("[AI-Command] User ID:", userId);
