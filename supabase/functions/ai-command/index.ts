@@ -484,7 +484,6 @@ async function createRecord(
   }
 }
 
-<<<<<<< HEAD
 async function processWithLovableAI(prompt: string, apiKey: string, voiceLanguage: "english" | "hindi" | "telugu"): Promise<ParsedCommand> {
   const speechLanguageInstruction =
     voiceLanguage === "hindi"
@@ -493,9 +492,6 @@ async function processWithLovableAI(prompt: string, apiKey: string, voiceLanguag
         ? 'Return "speechMessage" in Telugu script, concise and natural for voice.'
         : 'Return "speechMessage" in English.';
 
-=======
-async function processWithLovableAI(prompt: string, apiKey: string): Promise<ParsedCommand> {
->>>>>>> 7f97e0412f3ac49196d8e918c115962dee548218
   const systemPrompt = `You are an intelligent accounting assistant for BillEase, an Indian accounting and GST management application.
 
 **RESPONSE STYLE - CRITICAL:**
