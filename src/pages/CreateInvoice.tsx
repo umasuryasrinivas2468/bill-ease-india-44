@@ -26,6 +26,7 @@ interface InvoiceItem {
   quantity: number;
   rate: number;
   amount: number;
+  uom: string;
 }
 
 const CreateInvoice = () => {
