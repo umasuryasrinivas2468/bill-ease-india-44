@@ -674,6 +674,7 @@ const Inventory = () => {
                   <TableHead>SKU</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>UOM</TableHead>
                   <TableHead className="text-right">Stock</TableHead>
                   <TableHead className="text-right">Selling Price</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
