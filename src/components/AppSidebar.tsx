@@ -31,7 +31,8 @@ import {
   Receipt,
   UserCheck,
   Building2,
-  Shield
+  Shield,
+  RefreshCw
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import { useBusinessData } from "@/hooks/useBusinessData";
