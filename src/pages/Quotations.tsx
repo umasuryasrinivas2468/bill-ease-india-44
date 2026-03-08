@@ -402,19 +402,18 @@ const Quotations = () => {
           <CardContent>
             <div className="space-y-4">
               {items.map((item, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border rounded-lg">
+                <div key={index} className="grid grid-cols-1 md:grid-cols-7 gap-4 p-4 border rounded-lg">
                   <div className="md:col-span-2">
                     <Label htmlFor={`item-name-${index}`}>Item *</Label>
                     <QuotationItemSelector
                       value={item.product_id || ''}
                       onChange={(productId, meta) => {
-                        // Update product_id, name, and price from selection
                         const updatedItems = [...items];
                         const current = { ...updatedItems[index] };
                         current.product_id = productId;
                         if (meta?.name) current.name = meta.name;
                         if (typeof meta?.price === 'number') current.price = meta.price;
-                        // recalc amount
+                        if (meta?.uom) current.uom = meta.uom;
                         const qty = Number(current.quantity) || 0;
                         const price = Number(current.price) || 0;
                         current.amount = qty * price;
