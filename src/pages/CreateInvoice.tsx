@@ -14,6 +14,8 @@ import { useUser } from '@clerk/clerk-react';
 import ClientSelector from '@/components/ClientSelector';
 import { Client } from '@/hooks/useClients';
 import InventoryItemSelector from '@/components/InventoryItemSelector';
+import { CurrencySelector, CurrencyDisplay } from '@/components/CurrencySelector';
+import { formatCurrencyAmount } from '@/utils/currencyUtils';
 import { useInventory } from '@/hooks/useInventory';
 import { supabase } from '@/lib/supabase';
 import { useSettingsValidation } from '@/hooks/useSettingsValidation';
@@ -47,6 +49,7 @@ const CreateInvoice = () => {
   const [advance, setAdvance] = useState(0);
   const [discountPercentage, setDiscountPercentage] = useState(0);
   const [roundoff, setRoundoff] = useState(0);
+  const [currency, setCurrency] = useState('INR');
   const [items, setItems] = useState<InvoiceItem[]>([
     { description: '', product_id: null, hsn_sac: '', quantity: 1, rate: 0, amount: 0, uom: 'pcs' }
   ]);
@@ -350,18 +353,21 @@ const CreateInvoice = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="gstRate">GST Rate (%)</Label>
-                <Select value={gstRate.toString()} onValueChange={(value) => setGstRate(Number(value))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select GST Rate" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="5">5%</SelectItem>
-                    <SelectItem value="12">12%</SelectItem>
-                    <SelectItem value="18">18%</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="gstRate">GST Rate (%)</Label>
+                  <Select value={gstRate.toString()} onValueChange={(value) => setGstRate(Number(value))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select GST Rate" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5%</SelectItem>
+                      <SelectItem value="12">12%</SelectItem>
+                      <SelectItem value="18">18%</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <CurrencySelector value={currency} onChange={setCurrency} label="Currency" />
               </div>
             </CardContent>
           </Card>
