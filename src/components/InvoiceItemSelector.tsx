@@ -5,7 +5,7 @@ import { useInventory } from '@/hooks/useInventory';
 
 interface InvoiceItemSelectorProps {
   value: string;
-  onChange: (value: string, price?: number) => void;
+  onChange: (value: string, price?: number, uom?: string) => void;
   placeholder?: string;
 }
 
@@ -18,7 +18,7 @@ const InvoiceItemSelector: React.FC<InvoiceItemSelectorProps> = ({
 
   const handleValueChange = (selectedValue: string) => {
     const selectedItem = inventoryItems.find(item => item.product_name === selectedValue);
-    onChange(selectedValue, selectedItem?.selling_price);
+    onChange(selectedValue, selectedItem?.selling_price, (selectedItem as any)?.uom || 'pcs');
   };
 
   return (
@@ -33,7 +33,7 @@ const InvoiceItemSelector: React.FC<InvoiceItemSelectorProps> = ({
             value={item.product_name} 
             className="hover:bg-gray-100 cursor-pointer"
           >
-            {`${item.product_name} — ₹${item.selling_price} (Stock: ${item.stock_quantity})`}
+            {`${item.product_name} — ₹${item.selling_price} (${item.stock_quantity} ${(item as any).uom || 'pcs'})`}
           </SelectItem>
         ))}
         {inventoryItems.length === 0 && (

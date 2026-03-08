@@ -26,6 +26,7 @@ interface InvoiceItem {
   quantity: number;
   rate: number;
   amount: number;
+  uom: string;
 }
 
 const CreateInvoice = () => {
@@ -47,11 +48,11 @@ const CreateInvoice = () => {
   const [discountPercentage, setDiscountPercentage] = useState(0);
   const [roundoff, setRoundoff] = useState(0);
   const [items, setItems] = useState<InvoiceItem[]>([
-    { description: '', product_id: null, hsn_sac: '', quantity: 1, rate: 0, amount: 0 }
+    { description: '', product_id: null, hsn_sac: '', quantity: 1, rate: 0, amount: 0, uom: 'pcs' }
   ]);
 
   const addItem = () => {
-    setItems([...items, { description: '', product_id: null, hsn_sac: '', quantity: 1, rate: 0, amount: 0 }]);
+    setItems([...items, { description: '', product_id: null, hsn_sac: '', quantity: 1, rate: 0, amount: 0, uom: 'pcs' }]);
   };
 
   const removeItem = (index: number) => {
@@ -373,24 +374,22 @@ const CreateInvoice = () => {
           <CardContent>
             <div className="space-y-4">
               {items.map((item, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-7 gap-4 p-4 border rounded-lg">
+                <div key={index} className="grid grid-cols-1 md:grid-cols-8 gap-4 p-4 border rounded-lg">
                   <div className="md:col-span-2">
                     <Label htmlFor={`description-${index}`}>Item from Inventory</Label>
                     <InventoryItemSelector
                       value={item.description}
-                      onChange={(value, price) => {
-                        console.log('CreateInvoice - Inventory item selected:', value, price);
+                      onChange={(value, price, uom) => {
+                        console.log('CreateInvoice - Inventory item selected:', value, price, uom);
                         
-                        // Find the selected inventory item to get product_id
                         const selectedInventoryItem = inventoryItems.find(inv => inv.product_name === value);
                         
-                        // Update multiple fields at once to prevent clearing
                         const updates: Partial<InvoiceItem> = {
                           description: value,
                           product_id: selectedInventoryItem?.id || null,
+                          uom: uom || 'pcs',
                         };
                         
-                        // Update price if provided
                         if (price && typeof price === 'number' && price > 0) {
                           updates.rate = price;
                         }
@@ -408,6 +407,15 @@ const CreateInvoice = () => {
                       value={item.hsn_sac}
                       onChange={(e) => updateItem(index, 'hsn_sac', e.target.value)}
                       placeholder="HSN/SAC Code"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>UOM</Label>
+                    <Input
+                      value={item.uom || 'pcs'}
+                      readOnly
+                      className="bg-muted/50 uppercase text-xs"
                     />
                   </div>
                   

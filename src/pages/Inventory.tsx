@@ -53,6 +53,7 @@ const Inventory = () => {
     selling_price: '',
     stock_quantity: '',
     reorder_level: '',
+    uom: 'pcs',
     supplier_name: '',
     supplier_contact: '',
     supplier_email: '',
@@ -107,6 +108,7 @@ const Inventory = () => {
       selling_price: '',
       stock_quantity: '',
       reorder_level: '',
+      uom: 'pcs',
       supplier_name: '',
       supplier_contact: '',
       supplier_email: '',
@@ -125,6 +127,7 @@ const Inventory = () => {
       selling_price: item.selling_price.toString(),
       stock_quantity: item.stock_quantity.toString(),
       reorder_level: item.reorder_level.toString(),
+      uom: (item as any).uom || 'pcs',
       supplier_name: item.supplier_name || '',
       supplier_contact: item.supplier_contact || '',
       supplier_email: item.supplier_email || '',
@@ -158,6 +161,7 @@ const Inventory = () => {
       selling_price: parseFloat(formData.selling_price),
       stock_quantity: formData.type === 'services' ? null : (parseInt(formData.stock_quantity) || 0),
       reorder_level: formData.type === 'services' ? null : (parseInt(formData.reorder_level) || 10),
+      uom: formData.uom || 'pcs',
       supplier_name: formData.supplier_name || null,
       supplier_contact: formData.supplier_contact || null,
       supplier_email: formData.supplier_email || null,
@@ -342,6 +346,34 @@ const Inventory = () => {
                 </Select>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="uom">Unit of Measurement</Label>
+                <Select value={formData.uom} onValueChange={(value) => setFormData({ ...formData, uom: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select UOM" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pcs">Pieces (pcs)</SelectItem>
+                    <SelectItem value="kg">Kilograms (kg)</SelectItem>
+                    <SelectItem value="g">Grams (g)</SelectItem>
+                    <SelectItem value="l">Litres (l)</SelectItem>
+                    <SelectItem value="ml">Millilitres (ml)</SelectItem>
+                    <SelectItem value="m">Metres (m)</SelectItem>
+                    <SelectItem value="cm">Centimetres (cm)</SelectItem>
+                    <SelectItem value="ft">Feet (ft)</SelectItem>
+                    <SelectItem value="in">Inches (in)</SelectItem>
+                    <SelectItem value="box">Box</SelectItem>
+                    <SelectItem value="pack">Pack</SelectItem>
+                    <SelectItem value="dozen">Dozen</SelectItem>
+                    <SelectItem value="pair">Pair</SelectItem>
+                    <SelectItem value="set">Set</SelectItem>
+                    <SelectItem value="sqft">Sq. Feet (sqft)</SelectItem>
+                    <SelectItem value="sqm">Sq. Metres (sqm)</SelectItem>
+                    <SelectItem value="hrs">Hours (hrs)</SelectItem>
+                    <SelectItem value="nos">Numbers (nos)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="purchase_price">Purchase Price (₹)</Label>
                 <Input
@@ -642,6 +674,7 @@ const Inventory = () => {
                   <TableHead>SKU</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>UOM</TableHead>
                   <TableHead className="text-right">Stock</TableHead>
                   <TableHead className="text-right">Selling Price</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -663,6 +696,7 @@ const Inventory = () => {
                         {item.type}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-xs text-muted-foreground uppercase">{(item as any).uom || 'pcs'}</TableCell>
                     <TableCell className="text-right">
                       {item.type === 'services' ? (
                         <span className="text-muted-foreground">-</span>

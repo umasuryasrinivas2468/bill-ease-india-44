@@ -7,7 +7,7 @@ interface QuotationItemSelectorProps {
   // The selected product_id
   value: string;
   // onChange with productId and meta (name, price)
-  onChange: (productId: string, meta?: { name: string; price: number }) => void;
+  onChange: (productId: string, meta?: { name: string; price: number; uom?: string }) => void;
   placeholder?: string;
   disabled?: boolean;
 }
@@ -26,7 +26,7 @@ const QuotationItemSelector: React.FC<QuotationItemSelectorProps> = ({
 
     const selectedItem = inventoryItems.find(item => item.id === selectedProductId);
     if (selectedItem) {
-      onChange(selectedItem.id, { name: selectedItem.product_name, price: Number(selectedItem.selling_price) });
+      onChange(selectedItem.id, { name: selectedItem.product_name, price: Number(selectedItem.selling_price), uom: (selectedItem as any).uom || 'pcs' });
     }
   };
 
@@ -67,7 +67,7 @@ const QuotationItemSelector: React.FC<QuotationItemSelectorProps> = ({
               value={item.id} 
               className="hover:bg-gray-100 cursor-pointer"
             >
-              {`${item.product_name} — ₹${item.selling_price} (Stock: ${item.type === 'service' ? 'N/A' : item.stock_quantity})`}
+              {`${item.product_name} — ₹${item.selling_price} (${item.type === 'service' ? 'N/A' : item.stock_quantity} ${(item as any).uom || 'pcs'})`}
             </SelectItem>
           ))
         ) : (

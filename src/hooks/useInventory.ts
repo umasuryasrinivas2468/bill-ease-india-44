@@ -13,6 +13,7 @@ export interface InventoryItem {
   selling_price: number;
   stock_quantity: number;
   reorder_level: number;
+  uom: string;
   supplier_name?: string;
   supplier_contact?: string;
   supplier_email?: string;

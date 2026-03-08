@@ -5,7 +5,7 @@ import { useInventory } from '@/hooks/useInventory';
 
 interface InventoryItemSelectorProps {
   value: string;
-  onChange: (value: string, price?: number) => void;
+  onChange: (value: string, price?: number, uom?: string) => void;
   placeholder?: string;
   disabled?: boolean;
 }
@@ -36,7 +36,7 @@ const InventoryItemSelector: React.FC<InventoryItemSelectorProps> = ({
       console.log('InventoryItemSelector - Selected item:', selectedItem);
       
       if (selectedItem) {
-        onChange(selectedValue, selectedItem.selling_price);
+        onChange(selectedValue, selectedItem.selling_price, (selectedItem as any).uom || 'pcs');
       } else {
         // Handle manual entry case
         onChange(selectedValue);
@@ -84,7 +84,7 @@ const InventoryItemSelector: React.FC<InventoryItemSelectorProps> = ({
               value={item.product_name} 
               className="hover:bg-gray-100 cursor-pointer"
             >
-              {`${item.product_name} — ₹${item.selling_price} (Stock: ${item.type === 'service' ? 'N/A' : item.stock_quantity})`}
+              {`${item.product_name} — ₹${item.selling_price} (${item.type === 'service' ? 'N/A' : item.stock_quantity} ${(item as any).uom || 'pcs'})`}
             </SelectItem>
           ))
         ) : (
