@@ -379,19 +379,17 @@ const CreateInvoice = () => {
                     <Label htmlFor={`description-${index}`}>Item from Inventory</Label>
                     <InventoryItemSelector
                       value={item.description}
-                      onChange={(value, price) => {
-                        console.log('CreateInvoice - Inventory item selected:', value, price);
+                      onChange={(value, price, uom) => {
+                        console.log('CreateInvoice - Inventory item selected:', value, price, uom);
                         
-                        // Find the selected inventory item to get product_id
                         const selectedInventoryItem = inventoryItems.find(inv => inv.product_name === value);
                         
-                        // Update multiple fields at once to prevent clearing
                         const updates: Partial<InvoiceItem> = {
                           description: value,
                           product_id: selectedInventoryItem?.id || null,
+                          uom: uom || 'pcs',
                         };
                         
-                        // Update price if provided
                         if (price && typeof price === 'number' && price > 0) {
                           updates.rate = price;
                         }
