@@ -36,6 +36,7 @@ import Payout from "./pages/Payout";
 import Quotations from "./pages/Quotations";
 import QuotationsInfo from "./pages/QuotationsInfo";
 import NotFound from "./pages/NotFound";
+import AcceptInvite from "./pages/AcceptInvite";
 import CashFlowForecasting from "./pages/CashFlowForecasting";
 
 import AIBusinessTaxAdvisor from "./pages/AIBusinessTaxAdvisor";
