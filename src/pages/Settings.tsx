@@ -342,8 +342,15 @@ const Settings = () => {
           </Card>
         </TabsContent>
 
+        <TabsContent value="team">
+          <TeamManagement />
+        </TabsContent>
+
+        <TabsContent value="ca-clients">
+          <CAClientManager />
+        </TabsContent>
+
         <TabsContent value="branding">
-          {/* Database-based Branding Manager */}
           <SimpleBrandingManager />
         </TabsContent>
         <TabsContent value="support">
