@@ -7,10 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Save, Building, CreditCard } from 'lucide-react';
+import { Save, Building, CreditCard, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import SimpleBrandingManager from '@/components/SimpleBrandingManager';
+import TeamManagement from '@/components/TeamManagement';
+import CAClientManager from '@/components/CAClientManager';
 import Support from './Support';
 
 const Settings = () => {
@@ -140,9 +142,14 @@ const Settings = () => {
       </div>
 
       <Tabs defaultValue="business" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6">
           <TabsTrigger value="business">Business</TabsTrigger>
           <TabsTrigger value="banking">Banking</TabsTrigger>
+          <TabsTrigger value="team">
+            <Users className="h-4 w-4 mr-1" />
+            Team
+          </TabsTrigger>
+          <TabsTrigger value="ca-clients">CA Clients</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="support">Support</TabsTrigger>
         </TabsList>
@@ -335,8 +342,15 @@ const Settings = () => {
           </Card>
         </TabsContent>
 
+        <TabsContent value="team">
+          <TeamManagement />
+        </TabsContent>
+
+        <TabsContent value="ca-clients">
+          <CAClientManager />
+        </TabsContent>
+
         <TabsContent value="branding">
-          {/* Database-based Branding Manager */}
           <SimpleBrandingManager />
         </TabsContent>
         <TabsContent value="support">
