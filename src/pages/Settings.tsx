@@ -142,9 +142,14 @@ const Settings = () => {
       </div>
 
       <Tabs defaultValue="business" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6">
           <TabsTrigger value="business">Business</TabsTrigger>
           <TabsTrigger value="banking">Banking</TabsTrigger>
+          <TabsTrigger value="team">
+            <Users className="h-4 w-4 mr-1" />
+            Team
+          </TabsTrigger>
+          <TabsTrigger value="ca-clients">CA Clients</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="support">Support</TabsTrigger>
         </TabsList>
