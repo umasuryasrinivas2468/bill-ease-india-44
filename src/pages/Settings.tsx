@@ -7,10 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Save, Building, CreditCard } from 'lucide-react';
+import { Save, Building, CreditCard, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import SimpleBrandingManager from '@/components/SimpleBrandingManager';
+import TeamManagement from '@/components/TeamManagement';
+import CAClientManager from '@/components/CAClientManager';
 import Support from './Support';
 
 const Settings = () => {
