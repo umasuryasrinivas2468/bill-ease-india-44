@@ -20,6 +20,7 @@ import { useInventory } from '@/hooks/useInventory';
 import { supabase } from '@/lib/supabase';
 import { useSettingsValidation } from '@/hooks/useSettingsValidation';
 import SettingsPromptDialog from '@/components/SettingsPromptDialog';
+import { postInvoiceJournal } from '@/utils/autoJournalEntry';
 
 interface InvoiceItem {
   description: string;
