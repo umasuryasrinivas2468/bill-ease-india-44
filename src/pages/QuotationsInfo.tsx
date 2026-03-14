@@ -333,6 +333,17 @@ const QuotationsInfo: React.FC = () => {
                             <Send className="h-3 w-3" />
                             Send
                           </Button>
+                          {(q.status === 'accepted' || q.status === 'sent' || q.status === 'draft') && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => handleConvertToSalesOrder(q)}
+                              className="flex items-center gap-1 transition-all hover:scale-105"
+                            >
+                              <ArrowRight className="h-3 w-3" />
+                              → Sales Order
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="min-w-[180px]">
