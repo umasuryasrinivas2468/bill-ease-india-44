@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Check, XCircle, PauseCircle, Plus, Eye, Download, Send, Upload } from 'lucide-react';
+import { Search, Check, XCircle, PauseCircle, Plus, Eye, Download, Send, Upload, ArrowRight } from 'lucide-react';
 import { useQuotations, useUpdateQuotationStatus, Quotation } from '@/hooks/useQuotations';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -19,6 +19,7 @@ import { useUser } from '@clerk/clerk-react';
 import { useQueryClient } from '@tanstack/react-query';
 import ImportDialog from '@/components/ImportDialog';
 import { normalizeUserId } from '@/lib/userUtils';
+import { quotationToSalesOrderData } from '@/utils/autoJournalEntry';
 
 const statusColors: Record<Quotation['status'], string> = {
   draft: 'bg-gray-100 text-gray-800',
