@@ -990,6 +990,20 @@ export default function SalesOrders() {
                             <TooltipContent>Mark Delivered</TooltipContent>
                           </Tooltip>
                         )}
+                        {(order.status === 'confirmed' || order.status === 'delivered') && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => convertToInvoice(order)}
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Convert to Invoice</TooltipContent>
+                          </Tooltip>
+                        )}
                       </div>
                     </TooltipProvider>
                   </TableCell>

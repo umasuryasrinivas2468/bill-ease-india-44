@@ -184,8 +184,22 @@ const CreateInvoice = () => {
         notes: notes,
       };
 
-      await createInvoiceMutation.mutateAsync(invoiceData);
+      const createdInvoice = await createInvoiceMutation.mutateAsync(invoiceData);
       
+      // Auto-create journal entry for the invoice
+      try {
+        await postInvoiceJournal(user!.id, {
+          invoice_number: invoiceNumber,
+          invoice_date: invoiceDate,
+          client_name: selectedClient.name,
+          amount: subtotal,
+          gst_amount: gstAmount,
+          total_amount: total,
+        });
+      } catch (journalErr) {
+        console.error('Auto journal creation failed (invoice still created):', journalErr);
+      }
+
       // Update inventory stock for items that have product_id (only for goods, not services)
       for (const item of items) {
         if (item.product_id) {
