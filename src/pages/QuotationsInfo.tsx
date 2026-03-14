@@ -84,6 +84,28 @@ const QuotationsInfo: React.FC = () => {
     <Badge className={statusColors[status]}>{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>
   );
 
+  const handleConvertToSalesOrder = async (quotation: Quotation) => {
+    try {
+      if (!user?.id) throw new Error('Not authenticated');
+      const uid = normalizeUserId(user.id);
+      const ts = Date.now().toString().slice(-6);
+      const orderNumber = `SO-${ts}`;
+      const soData = quotationToSalesOrderData(uid, quotation, orderNumber);
+
+      const { error } = await supabase.from('sales_orders' as any).insert([soData]);
+      if (error) throw error;
+
+      // Mark quotation as accepted
+      await updateStatus.mutateAsync({ quotationId: quotation.id, status: 'accepted' });
+
+      toast({ title: 'Sales Order Created', description: `${orderNumber} created from ${quotation.quotation_number}` });
+      navigate('/sales-orders');
+    } catch (err: any) {
+      console.error('Convert to SO error:', err);
+      toast({ title: 'Error', description: err.message || 'Failed to convert', variant: 'destructive' });
+    }
+  };
+
   const handleViewQuotation = (quotation: Quotation) => {
     setSelectedQuotation(quotation);
     setIsViewerOpen(true);
