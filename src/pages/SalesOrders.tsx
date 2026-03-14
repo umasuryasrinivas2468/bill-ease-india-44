@@ -430,14 +430,65 @@ export default function SalesOrders() {
     }
   };
 
+  const convertToInvoice = async (order: SalesOrder) => {
+    try {
+      if (!user?.id) throw new Error('Not authenticated');
+      const ts = Date.now().toString().slice(-6);
+      const invoiceNumber = `INV-${ts}`;
+      const invoiceData = salesOrderToInvoiceData(user.id, order, invoiceNumber);
+
+      const { data, error } = await supabase
+        .from('invoices')
+        .insert([invoiceData])
+        .select()
+        .single();
+      if (error) throw error;
+
+      // Auto-create journal entry for the invoice
+      try {
+        await postInvoiceJournal(user.id, {
+          invoice_number: invoiceNumber,
+          invoice_date: invoiceData.invoice_date,
+          client_name: order.client_name,
+          amount: invoiceData.amount,
+          gst_amount: invoiceData.gst_amount,
+          total_amount: invoiceData.total_amount,
+        });
+      } catch (journalErr) {
+        console.error('Auto journal failed (invoice still created):', journalErr);
+      }
+
+      toast({ title: 'Invoice Created', description: `${invoiceNumber} created from ${order.order_number}` });
+    } catch (err: any) {
+      console.error('Convert to invoice error:', err);
+      toast({ title: 'Error', description: err.message || 'Failed to convert', variant: 'destructive' });
+    }
+  };
+
   const markAsPaid = async (orderId: string) => {
     try {
+      const order = orders.find(o => o.id === orderId);
       const { error } = await supabase
         .from('sales_orders' as any)
         .update({ payment_status: 'paid' } as any)
         .eq('id', orderId);
 
       if (error) throw error;
+
+      // Auto-create payment received journal
+      if (order) {
+        try {
+          const { postPaymentReceivedJournal } = await import('@/utils/autoJournalEntry');
+          await postPaymentReceivedJournal(user!.id, {
+            invoice_number: order.order_number,
+            date: new Date().toISOString().split('T')[0],
+            client_name: order.client_name,
+            amount: order.total_amount,
+          });
+        } catch (journalErr) {
+          console.error('Auto journal for payment failed:', journalErr);
+        }
+      }
 
       toast({
         title: 'Success',
