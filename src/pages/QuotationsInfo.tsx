@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Check, XCircle, PauseCircle, Plus, Eye, Download, Send, Upload } from 'lucide-react';
+import { Search, Check, XCircle, PauseCircle, Plus, Eye, Download, Send, Upload, ArrowRight } from 'lucide-react';
 import { useQuotations, useUpdateQuotationStatus, Quotation } from '@/hooks/useQuotations';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -19,6 +19,7 @@ import { useUser } from '@clerk/clerk-react';
 import { useQueryClient } from '@tanstack/react-query';
 import ImportDialog from '@/components/ImportDialog';
 import { normalizeUserId } from '@/lib/userUtils';
+import { quotationToSalesOrderData } from '@/utils/autoJournalEntry';
 
 const statusColors: Record<Quotation['status'], string> = {
   draft: 'bg-gray-100 text-gray-800',
@@ -82,6 +83,28 @@ const QuotationsInfo: React.FC = () => {
   const renderStatusBadge = (status: Quotation['status']) => (
     <Badge className={statusColors[status]}>{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>
   );
+
+  const handleConvertToSalesOrder = async (quotation: Quotation) => {
+    try {
+      if (!user?.id) throw new Error('Not authenticated');
+      const uid = normalizeUserId(user.id);
+      const ts = Date.now().toString().slice(-6);
+      const orderNumber = `SO-${ts}`;
+      const soData = quotationToSalesOrderData(uid, quotation, orderNumber);
+
+      const { error } = await supabase.from('sales_orders' as any).insert([soData]);
+      if (error) throw error;
+
+      // Mark quotation as accepted
+      await updateStatus.mutateAsync({ quotationId: quotation.id, status: 'accepted' });
+
+      toast({ title: 'Sales Order Created', description: `${orderNumber} created from ${quotation.quotation_number}` });
+      navigate('/sales-orders');
+    } catch (err: any) {
+      console.error('Convert to SO error:', err);
+      toast({ title: 'Error', description: err.message || 'Failed to convert', variant: 'destructive' });
+    }
+  };
 
   const handleViewQuotation = (quotation: Quotation) => {
     setSelectedQuotation(quotation);
@@ -310,6 +333,17 @@ const QuotationsInfo: React.FC = () => {
                             <Send className="h-3 w-3" />
                             Send
                           </Button>
+                          {(q.status === 'accepted' || q.status === 'sent' || q.status === 'draft') && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => handleConvertToSalesOrder(q)}
+                              className="flex items-center gap-1 transition-all hover:scale-105"
+                            >
+                              <ArrowRight className="h-3 w-3" />
+                              → Sales Order
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="min-w-[180px]">

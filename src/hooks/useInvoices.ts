@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@clerk/clerk-react';
 import { isValidUserId, normalizeUserId } from '@/lib/userUtils';
+import { postPaymentReceivedJournal } from '@/utils/autoJournalEntry';
 
 export interface Invoice {
   id: string;
@@ -250,6 +251,20 @@ export const useUpdateInvoiceStatus = () => {
         throw error;
       }
       
+      // Auto-create payment journal when marked as paid
+      if (status === 'paid' && data) {
+        try {
+          await postPaymentReceivedJournal(uid, {
+            invoice_number: data.invoice_number,
+            date: new Date().toISOString().split('T')[0],
+            client_name: data.client_name,
+            amount: data.total_amount,
+          });
+        } catch (journalErr) {
+          console.error('Auto payment journal failed:', journalErr);
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
