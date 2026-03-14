@@ -86,6 +86,7 @@ import OrderItemSelector from '@/components/OrderItemSelector';
 import { InventoryItem } from '@/hooks/useInventory';
 import { downloadOrderPDF, getOrderPDFBlob } from '@/utils/orderPDF';
 import { useSimpleBranding } from '@/hooks/useSimpleBranding';
+import { salesOrderToInvoiceData, postInvoiceJournal } from '@/utils/autoJournalEntry';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SalesOrderItem {
