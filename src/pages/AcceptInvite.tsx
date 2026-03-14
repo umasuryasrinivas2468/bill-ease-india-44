@@ -48,7 +48,7 @@ const AcceptInvite: React.FC = () => {
         .eq('token', token)
         .is('accepted_at', null)
         .gt('expires_at', new Date().toISOString())
-        .single();
+        .maybeSingle();
 
       if (findError || !invite) {
         setStatus('error');
@@ -56,7 +56,8 @@ const AcceptInvite: React.FC = () => {
         return;
       }
 
-      setOrgName((invite as any).organizations?.name || 'the organization');
+      const orgDisplayName = (invite as any).organizations?.name || 'the organization';
+      setOrgName(orgDisplayName);
 
       // Check if user is already a member
       const { data: existingMember } = await supabase
@@ -65,7 +66,7 @@ const AcceptInvite: React.FC = () => {
         .eq('user_id', user.id)
         .eq('organization_id', invite.organization_id)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
       if (existingMember) {
         setStatus('error');
@@ -101,7 +102,7 @@ const AcceptInvite: React.FC = () => {
         .eq('id', invite.id);
 
       setStatus('success');
-      setMessage(`You've been added to ${orgName} as ${invite.role}.`);
+      setMessage(`You've been added to ${orgDisplayName} as ${invite.role}.`);
     } catch (err) {
       console.error('Error accepting invitation:', err);
       setStatus('error');
