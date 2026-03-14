@@ -24,7 +24,7 @@ export const useSupabaseUser = () => {
           .from('users')
           .select('*')
           .eq('clerk_id', clerkUser.id)
-          .single();
+          .maybeSingle();
 
         if (error) {
           console.error('Error fetching Supabase user:', error);
