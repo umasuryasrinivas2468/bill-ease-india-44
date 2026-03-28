@@ -247,7 +247,7 @@ const QuotationViewer: React.FC<QuotationViewerProps> = ({ quotation, isOpen, on
                 ${logoUrl ? `<img src="${logoUrl}" alt="Business Logo" class="business-logo" />` : ''}
                 <div>
                   <h1 class="business-name">${businessInfo?.businessName || 'Your Business'}</h1>
-                  <p class="business-tagline">Professional Quotation Services</p>
+                  <p class="business-tagline">India</p>
                 </div>
               </div>
               <div class="quotation-title">
