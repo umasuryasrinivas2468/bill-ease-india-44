@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.ai-tax-advisor]
 verify_jwt = false
+
+[functions.aczen-mcp]
+verify_jwt = false
