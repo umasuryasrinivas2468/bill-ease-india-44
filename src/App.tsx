@@ -27,6 +27,7 @@ import PurchaseOrders from "./pages/PurchaseOrders";
 import Receivables from "./pages/Receivables";
 import Payables from "./pages/Payables";
 import Banking from "./pages/Banking";
+import BankingSuccess from "./pages/BankingSuccess";
 import UPICollections from "./pages/UPICollections";
 import Marketplace from "./pages/Marketplace";
 import Support from "./pages/Support";
@@ -166,6 +167,7 @@ function App() {
                         <Route path="/reports/receivables" element={<Receivables />} />
                         <Route path="/reports/payables" element={<Payables />} />
                         <Route path="/banking" element={<Banking />} />
+                        <Route path="/banking/success" element={<BankingSuccess />} />
                         <Route path="/payroll" element={<Payroll />} />
                         <Route path="/upi-collections" element={<UPICollections />} />
                         <Route path="/marketplace" element={<Marketplace />} />

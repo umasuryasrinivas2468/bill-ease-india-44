@@ -86,6 +86,7 @@ import { InventoryItem } from '@/hooks/useInventory';
 import { downloadOrderPDF, getOrderPDFBlob } from '@/utils/orderPDF';
 import { useSimpleBranding } from '@/hooks/useSimpleBranding';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { GST_TREATMENTS, INDIAN_STATES } from '@/constants/india';
 
 interface PurchaseOrderItem {
   id: string;
@@ -102,9 +103,20 @@ interface PurchaseOrder {
   id: string;
   order_number: string;
   vendor_name: string;
+  vendor_company_name?: string;
   vendor_email?: string;
   vendor_phone?: string;
   vendor_address?: string;
+  vendor_gst?: string;
+  vendor_gst_treatment?: string;
+  vendor_state?: string;
+  vendor_msme_registered?: boolean;
+  vendor_udyam_aadhaar?: string;
+  vendor_bank_account_holder?: string;
+  vendor_bank_account_number?: string;
+  vendor_bank_ifsc?: string;
+  vendor_bank_name?: string;
+  vendor_bank_branch?: string;
   order_date: string;
   due_date: string;
   total_amount: number;
@@ -119,9 +131,20 @@ interface PurchaseOrder {
 interface Vendor {
   id: string;
   name: string;
+  company_name?: string;
   email?: string;
   phone?: string;
   address?: string;
+  gst_number?: string;
+  gst_treatment?: string;
+  state?: string;
+  msme_registered?: boolean;
+  udyam_aadhaar?: string;
+  bank_account_holder?: string;
+  bank_account_number?: string;
+  bank_ifsc?: string;
+  bank_name?: string;
+  bank_branch?: string;
 }
 
 interface BusinessProfile {
@@ -167,9 +190,20 @@ export default function PurchaseOrders() {
   // Form state
   const [formData, setFormData] = useState({
     vendor_name: '',
+    vendor_company_name: '',
     vendor_email: '',
     vendor_phone: '',
     vendor_address: '',
+    vendor_gst: '',
+    vendor_gst_treatment: '',
+    vendor_state: '',
+    vendor_msme_registered: false,
+    vendor_udyam_aadhaar: '',
+    vendor_bank_account_holder: '',
+    vendor_bank_account_number: '',
+    vendor_bank_ifsc: '',
+    vendor_bank_name: '',
+    vendor_bank_branch: '',
     order_date: new Date(),
     due_date: new Date(),
     notes: '',
@@ -289,9 +323,20 @@ export default function PurchaseOrders() {
       setFormData({
         ...formData,
         vendor_name: vendor.name,
+        vendor_company_name: vendor.company_name || '',
         vendor_email: vendor.email || '',
         vendor_phone: vendor.phone || '',
         vendor_address: vendor.address || '',
+        vendor_gst: vendor.gst_number || '',
+        vendor_gst_treatment: vendor.gst_treatment || '',
+        vendor_state: vendor.state || '',
+        vendor_msme_registered: vendor.msme_registered || false,
+        vendor_udyam_aadhaar: vendor.udyam_aadhaar || '',
+        vendor_bank_account_holder: vendor.bank_account_holder || '',
+        vendor_bank_account_number: vendor.bank_account_number || '',
+        vendor_bank_ifsc: vendor.bank_ifsc || '',
+        vendor_bank_name: vendor.bank_name || '',
+        vendor_bank_branch: vendor.bank_branch || '',
       });
     }
   };
@@ -346,9 +391,20 @@ export default function PurchaseOrders() {
   const resetForm = () => {
     setFormData({
       vendor_name: '',
+      vendor_company_name: '',
       vendor_email: '',
       vendor_phone: '',
       vendor_address: '',
+      vendor_gst: '',
+      vendor_gst_treatment: '',
+      vendor_state: '',
+      vendor_msme_registered: false,
+      vendor_udyam_aadhaar: '',
+      vendor_bank_account_holder: '',
+      vendor_bank_account_number: '',
+      vendor_bank_ifsc: '',
+      vendor_bank_name: '',
+      vendor_bank_branch: '',
       order_date: new Date(),
       due_date: new Date(),
       notes: '',
@@ -368,9 +424,20 @@ export default function PurchaseOrders() {
         user_id: user?.id,
         order_number: editingOrder?.order_number || generateOrderNumber(),
         vendor_name: formData.vendor_name,
+        vendor_company_name: formData.vendor_company_name,
         vendor_email: formData.vendor_email,
         vendor_phone: formData.vendor_phone,
         vendor_address: formData.vendor_address,
+        vendor_gst: formData.vendor_gst,
+        vendor_gst_treatment: formData.vendor_gst_treatment || null,
+        vendor_state: formData.vendor_state || null,
+        vendor_msme_registered: formData.vendor_msme_registered,
+        vendor_udyam_aadhaar: formData.vendor_msme_registered ? formData.vendor_udyam_aadhaar : null,
+        vendor_bank_account_holder: formData.vendor_bank_account_holder,
+        vendor_bank_account_number: formData.vendor_bank_account_number,
+        vendor_bank_ifsc: formData.vendor_bank_ifsc,
+        vendor_bank_name: formData.vendor_bank_name,
+        vendor_bank_branch: formData.vendor_bank_branch,
         order_date: formData.order_date.toISOString().split('T')[0],
         due_date: formData.due_date.toISOString().split('T')[0],
         items: orderItems,
@@ -491,9 +558,20 @@ export default function PurchaseOrders() {
     setEditingOrder(order);
     setFormData({
       vendor_name: order.vendor_name,
+      vendor_company_name: order.vendor_company_name || '',
       vendor_email: order.vendor_email || '',
       vendor_phone: order.vendor_phone || '',
       vendor_address: order.vendor_address || '',
+      vendor_gst: order.vendor_gst || '',
+      vendor_gst_treatment: order.vendor_gst_treatment || '',
+      vendor_state: order.vendor_state || '',
+      vendor_msme_registered: order.vendor_msme_registered || false,
+      vendor_udyam_aadhaar: order.vendor_udyam_aadhaar || '',
+      vendor_bank_account_holder: order.vendor_bank_account_holder || '',
+      vendor_bank_account_number: order.vendor_bank_account_number || '',
+      vendor_bank_ifsc: order.vendor_bank_ifsc || '',
+      vendor_bank_name: order.vendor_bank_name || '',
+      vendor_bank_branch: order.vendor_bank_branch || '',
       order_date: new Date(order.order_date),
       due_date: new Date(order.due_date),
       notes: order.notes || '',
@@ -634,6 +712,14 @@ export default function PurchaseOrders() {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="vendor_company_name">Company Name</Label>
+                  <Input
+                    id="vendor_company_name"
+                    value={formData.vendor_company_name}
+                    onChange={(e) => setFormData({ ...formData, vendor_company_name: e.target.value })}
+                  />
+                </div>
+                <div>
                   <Label htmlFor="vendor_email">Vendor Email</Label>
                   <Input
                     id="vendor_email"
@@ -648,6 +734,125 @@ export default function PurchaseOrders() {
                     id="vendor_phone"
                     value={formData.vendor_phone}
                     onChange={(e) => setFormData({ ...formData, vendor_phone: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="vendor_gst">GST</Label>
+                  <Input
+                    id="vendor_gst"
+                    value={formData.vendor_gst}
+                    onChange={(e) => setFormData({ ...formData, vendor_gst: e.target.value.toUpperCase() })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="vendor_gst_treatment">GST Treatment</Label>
+                  <Select
+                    value={formData.vendor_gst_treatment || undefined}
+                    onValueChange={(value) => setFormData({ ...formData, vendor_gst_treatment: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select GST treatment" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GST_TREATMENTS.map((treatment) => (
+                        <SelectItem key={treatment} value={treatment}>
+                          {treatment}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="vendor_state">State</Label>
+                  <Select
+                    value={formData.vendor_state || undefined}
+                    onValueChange={(value) => setFormData({ ...formData, vendor_state: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select state" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INDIAN_STATES.map((state) => (
+                        <SelectItem key={state} value={state}>
+                          {state}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="vendor_address">Address</Label>
+                  <Textarea
+                    id="vendor_address"
+                    value={formData.vendor_address}
+                    onChange={(e) => setFormData({ ...formData, vendor_address: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+                <div className="md:col-span-2 flex items-center gap-2">
+                  <input
+                    id="vendor_msme_registered"
+                    type="checkbox"
+                    checked={formData.vendor_msme_registered}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      vendor_msme_registered: e.target.checked,
+                      vendor_udyam_aadhaar: e.target.checked ? formData.vendor_udyam_aadhaar : '',
+                    })}
+                  />
+                  <Label htmlFor="vendor_msme_registered">MSME / Udyam registered</Label>
+                </div>
+                {formData.vendor_msme_registered && (
+                  <div className="md:col-span-2">
+                    <Label htmlFor="vendor_udyam_aadhaar">Udyam Aadhaar Number</Label>
+                    <Input
+                      id="vendor_udyam_aadhaar"
+                      value={formData.vendor_udyam_aadhaar}
+                      onChange={(e) => setFormData({ ...formData, vendor_udyam_aadhaar: e.target.value.toUpperCase() })}
+                    />
+                  </div>
+                )}
+                <div className="md:col-span-2">
+                  <h3 className="text-sm font-semibold">Bank Account Details</h3>
+                </div>
+                <div>
+                  <Label htmlFor="vendor_bank_account_holder">Account Holder Name</Label>
+                  <Input
+                    id="vendor_bank_account_holder"
+                    value={formData.vendor_bank_account_holder}
+                    onChange={(e) => setFormData({ ...formData, vendor_bank_account_holder: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="vendor_bank_account_number">Account Number</Label>
+                  <Input
+                    id="vendor_bank_account_number"
+                    value={formData.vendor_bank_account_number}
+                    onChange={(e) => setFormData({ ...formData, vendor_bank_account_number: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="vendor_bank_ifsc">IFSC Code</Label>
+                  <Input
+                    id="vendor_bank_ifsc"
+                    value={formData.vendor_bank_ifsc}
+                    onChange={(e) => setFormData({ ...formData, vendor_bank_ifsc: e.target.value.toUpperCase() })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="vendor_bank_name">Bank Name</Label>
+                  <Input
+                    id="vendor_bank_name"
+                    value={formData.vendor_bank_name}
+                    onChange={(e) => setFormData({ ...formData, vendor_bank_name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="vendor_bank_branch">Branch</Label>
+                  <Input
+                    id="vendor_bank_branch"
+                    value={formData.vendor_bank_branch}
+                    onChange={(e) => setFormData({ ...formData, vendor_bank_branch: e.target.value })}
                   />
                 </div>
                 <div>

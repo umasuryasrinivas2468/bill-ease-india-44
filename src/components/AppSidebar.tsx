@@ -2,36 +2,24 @@
 import React, { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard,
   FileText,
   Users,
   BarChart3,
-  Settings,
-  HelpCircle,
   Calculator,
   Bell,
   LogOut,
   Package,
   Quote,
-  BookOpen,
-  BookOpenText,
+  CalendarDays,
   Scale,
   ListTree,
   TrendingUp,
-  ChevronDown,
   ChevronRight,
-  LineChart,
   Percent,
-  Brain,
   Banknote,
-  HandCoins,
   ShoppingCart,
   Truck,
-  CreditCard,
   Receipt,
-  UserCheck,
-  Building2,
-  Shield,
   RefreshCw
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
@@ -59,45 +47,51 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { CAClientSwitcher } from "@/components/auth/CAClientSwitcher";
 import { PlanAwareMenuItem } from "@/components/PlanAwareMenuItem";
 
-const mainMenuItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Invoices", url: "/invoices", icon: FileText },
+const salesMenuItems = [
   { title: "Quotations", url: "/quotations", icon: Quote },
   { title: "Clients", url: "/clients", icon: Users },
-
-  { title: "Banking", url: "/banking", icon: Banknote },
+  { title: "Sales Orders", url: "/inventory/sales-orders", icon: ShoppingCart, feature: "salesOrders" as const },
+  { title: "Invoices", url: "/invoices", icon: FileText },
+  { title: "Recurring Invoices", url: "/ca/recurring-invoices", icon: RefreshCw },
+  { title: "Delivery Challan", url: "/inventory/delivery-challans", icon: Truck },
   { title: "Notifications", url: "/notifications", icon: Bell },
-  { title: "Settings", url: "/settings", icon: Settings },
 ];
 
-const inventoryMenuItems = [
-  { title: "Manage Inventory", url: "/inventory", icon: Package },
-  { title: "Delivery Challans", url: "/inventory/delivery-challans", icon: Truck },
-  { title: "Sales Orders", url: "/inventory/sales-orders", icon: ShoppingCart, feature: "salesOrders" as const },
+const purchasesMenuItems = [
+  { title: "Vendors", url: "/vendors", icon: Users },
+  { title: "Expenses", url: "/expenses", icon: Receipt },
   { title: "Purchase Orders", url: "/inventory/purchase-orders", icon: Truck, feature: "purchaseOrders" as const },
 ];
 
+const inventoryMenuItems = [
+  { title: "Inventory", url: "/inventory", icon: Package },
+];
+
+const bankingMenuItems = [
+  { title: "Banking", url: "/banking", icon: Banknote },
+];
+
+const complianceMenuItems = [
+  { title: "Compliance Calendar", url: "/compliance", icon: CalendarDays },
+  { title: "Reports", url: "/reports/tds", icon: Percent },
+];
+
 const reportsMenuItems = [
-  { title: "Business Reports", url: "/reports", icon: BarChart3 }, // Available for all plans
-  { title: "Cash Flow Forecasting", url: "/reports/cash-flow-forecasting", icon: LineChart, feature: "cashFlowForecasting" as const },
-  { title: "AI Business Tax Advisor", url: "/reports/ai-tax-advisor", icon: Brain, feature: "virtualCFO" as const },
-  { title: "Receivables", url: "/reports/receivables", icon: CreditCard },
-  { title: "Payables", url: "/reports/payables", icon: Receipt },
-  { title: "Vendor TDS", url: "/reports/tds", icon: Percent },
+  { title: "Financial Statements", url: "/accounting/financial-statements", icon: FileText },
+  { title: "Profit Loss", url: "/accounting/profit-loss", icon: TrendingUp },
 ];
 
 const caToolsMenuItems = [
-  { title: "CA Dashboard", url: "/ca", icon: Calculator },
-  { title: "Recurring Invoices", url: "/ca/recurring-invoices", icon: RefreshCw },
-  { title: "Expenses", url: "/expenses", icon: Receipt },
-  { title: "Vendors", url: "/vendors", icon: Users },
-  { title: "TDS Management", url: "/reports/tds", icon: Percent },
-  { title: "Manual Journals", url: "/accounting/manual-journals", icon: BookOpen },
-  { title: "Ledgers", url: "/accounting/ledgers", icon: BookOpenText },
+  { title: "Manual Journals", url: "/accounting/manual-journals", icon: Calculator },
+  { title: "TDS", url: "/reports/tds", icon: Percent },
+  { title: "Ledgers", url: "/accounting/ledgers", icon: Receipt },
   { title: "Trial Balance", url: "/accounting/trial-balance", icon: Scale },
   { title: "Chart of Accounts", url: "/accounting/chart-of-accounts", icon: ListTree },
-  { title: "Profit & Loss", url: "/accounting/profit-loss", icon: TrendingUp },
-  { title: "Financial Statements", url: "/accounting/financial-statements", icon: FileText },
+  { title: "CA", url: "/ca", icon: Users },
+];
+
+const standaloneMenuItems = [
+  { title: "Dashboard", url: "/dashboard", icon: BarChart3 },
 ];
 
 export function AppSidebar() {
@@ -109,9 +103,11 @@ export function AppSidebar() {
   const { hasRole, currentRole } = useAuthorization();
   const currentPath = location.pathname;
   const isCollapsed = state === "collapsed";
+  const [isSalesOpen, setIsSalesOpen] = useState(false);
+  const [isPurchasesOpen, setIsPurchasesOpen] = useState(false);
+  const [isComplianceOpen, setIsComplianceOpen] = useState(false);
   const [isCAToolsOpen, setIsCAToolsOpen] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
-  const [isInventoryOpen, setIsInventoryOpen] = useState(false);
 
   const isCA = hasRole('ca');
 
@@ -175,7 +171,7 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {mainMenuItems.map((item) => (
+                {standaloneMenuItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
                       <NavLink
@@ -190,61 +186,28 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 ))}
 
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/payroll"
-                      className={getNavCls('/payroll')}
-                      title="Payroll"
-                    >
-                      <UserCheck className="h-4 w-4" />
-                      {!isCollapsed && <span>Payroll</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-
-                {/* Loans - Plan Restricted */}
-                {!isCollapsed && (
-                  <PlanAwareMenuItem
-                    title="Loans"
-                    url="/loans"
-                    icon={HandCoins}
-                    feature="loans"
-                    className={getNavCls('/loans')}
-                  />
-                )}
-                {/* Compliance Calendar at main level */}
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink to="/compliance" className={getNavCls('/compliance')} title="Compliance Calendar">
-                      <BookOpenText className="h-4 w-4" />
-                      {!isCollapsed && <span>Compliance Calendar</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-
-                {/* Inventory Collapsible Menu */}
+                {/* Sales Collapsible Menu */}
                 <SidebarMenuItem>
                   <Collapsible
-                    open={isInventoryOpen}
-                    onOpenChange={setIsInventoryOpen}
+                    open={isSalesOpen}
+                    onOpenChange={setIsSalesOpen}
                     className="w-full"
                   >
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full ${currentPath.startsWith('/inventory') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
-                        title="Inventory Management"
+                        className={`w-full ${currentPath.startsWith('/quotations') || currentPath.startsWith('/clients') || currentPath.startsWith('/invoices') || currentPath.startsWith('/notifications') || currentPath.startsWith('/inventory/sales-orders') || currentPath.startsWith('/inventory/delivery-challans') || currentPath.startsWith('/ca/recurring-invoices') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
+                        title="Sales"
                       >
                         <CollapsibleTrigger
                           className="w-full"
-                          onClick={() => setIsInventoryOpen(!isInventoryOpen)}
+                          onClick={() => setIsSalesOpen(!isSalesOpen)}
                         >
-                          <Package className="h-4 w-4" />
+                          <ShoppingCart className="h-4 w-4" />
                           {!isCollapsed && (
                             <>
-                              <span>Inventory Management</span>
-                              <ChevronRight className={`h-4 w-4 ml-auto transition-transform duration-200 ${isInventoryOpen ? 'rotate-90' : ''}`} />
+                              <span>Sales</span>
+                              <ChevronRight className={`h-4 w-4 ml-auto transition-transform duration-200 ${isSalesOpen ? 'rotate-90' : ''}`} />
                             </>
                           )}
                         </CollapsibleTrigger>
@@ -253,7 +216,7 @@ export function AppSidebar() {
                       {!isCollapsed && (
                         <CollapsibleContent className="transition-all duration-200 ease-in-out">
                           <SidebarMenuSub>
-                            {inventoryMenuItems.map((item) => (
+                            {salesMenuItems.map((item) => (
                               <SidebarMenuSubItem key={item.title}>
                                 <SidebarMenuSubButton asChild={!(item as any).feature || true}>
                                   {(item as any).feature ? (
@@ -275,6 +238,200 @@ export function AppSidebar() {
                                       <span>{item.title}</span>
                                     </NavLink>
                                   )}
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      )}
+                    </div>
+                  </Collapsible>
+                </SidebarMenuItem>
+
+                {/* Purchases Collapsible Menu */}
+                <SidebarMenuItem>
+                  <Collapsible
+                    open={isPurchasesOpen}
+                    onOpenChange={setIsPurchasesOpen}
+                    className="w-full"
+                  >
+                    <div className="w-full">
+                      <SidebarMenuButton
+                        asChild
+                        className={`w-full ${currentPath.startsWith('/vendors') || currentPath.startsWith('/expenses') || currentPath.startsWith('/inventory/purchase-orders') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
+                        title="Purchases"
+                      >
+                        <CollapsibleTrigger
+                          className="w-full"
+                          onClick={() => setIsPurchasesOpen(!isPurchasesOpen)}
+                        >
+                          <Truck className="h-4 w-4" />
+                          {!isCollapsed && (
+                            <>
+                              <span>Purchases</span>
+                              <ChevronRight className={`h-4 w-4 ml-auto transition-transform duration-200 ${isPurchasesOpen ? 'rotate-90' : ''}`} />
+                            </>
+                          )}
+                        </CollapsibleTrigger>
+                      </SidebarMenuButton>
+
+                      {!isCollapsed && (
+                        <CollapsibleContent className="transition-all duration-200 ease-in-out">
+                          <SidebarMenuSub>
+                            {purchasesMenuItems.map((item) => (
+                              <SidebarMenuSubItem key={item.title}>
+                                <SidebarMenuSubButton asChild={!(item as any).feature || true}>
+                                  {(item as any).feature ? (
+                                    <PlanAwareMenuItem
+                                      title={item.title}
+                                      url={item.url}
+                                      icon={item.icon}
+                                      feature={(item as any).feature}
+                                      className={`${getNavCls(item.url)} ml-4 text-sm`}
+                                      asChild={false}
+                                    />
+                                  ) : (
+                                    <NavLink
+                                      to={item.url}
+                                      className={`${getNavCls(item.url)} ml-4 text-sm`}
+                                      title={item.title}
+                                    >
+                                      <item.icon className="h-3 w-3" />
+                                      <span>{item.title}</span>
+                                    </NavLink>
+                                  )}
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      )}
+                    </div>
+                  </Collapsible>
+                </SidebarMenuItem>
+
+                {inventoryMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        className={getNavCls(item.url)}
+                        title={item.title}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {!isCollapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+
+                {bankingMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        className={getNavCls(item.url)}
+                        title={item.title}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {!isCollapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+
+                {/* Compliance Collapsible Menu */}
+                <SidebarMenuItem>
+                  <Collapsible
+                    open={isComplianceOpen}
+                    onOpenChange={setIsComplianceOpen}
+                    className="w-full"
+                  >
+                    <div className="w-full">
+                      <SidebarMenuButton
+                        asChild
+                        className={`w-full ${currentPath.startsWith('/compliance') || currentPath.startsWith('/reports/tds') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
+                        title="Compliance"
+                      >
+                        <CollapsibleTrigger
+                          className="w-full"
+                          onClick={() => setIsComplianceOpen(!isComplianceOpen)}
+                        >
+                          <CalendarDays className="h-4 w-4" />
+                          {!isCollapsed && (
+                            <>
+                              <span>Compliance</span>
+                              <ChevronRight className={`h-4 w-4 ml-auto transition-transform duration-200 ${isComplianceOpen ? 'rotate-90' : ''}`} />
+                            </>
+                          )}
+                        </CollapsibleTrigger>
+                      </SidebarMenuButton>
+
+                      {!isCollapsed && (
+                        <CollapsibleContent className="transition-all duration-200 ease-in-out">
+                          <SidebarMenuSub>
+                            {complianceMenuItems.map((item) => (
+                              <SidebarMenuSubItem key={item.title}>
+                                <SidebarMenuSubButton asChild>
+                                  <NavLink
+                                    to={item.url}
+                                    className={`${getNavCls(item.url)} ml-4 text-sm`}
+                                    title={item.title}
+                                  >
+                                    <item.icon className="h-3 w-3" />
+                                    <span>{item.title}</span>
+                                  </NavLink>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      )}
+                    </div>
+                  </Collapsible>
+                </SidebarMenuItem>
+
+                {/* CA Collapsible Menu */}
+                <SidebarMenuItem>
+                  <Collapsible
+                    open={isCAToolsOpen}
+                    onOpenChange={setIsCAToolsOpen}
+                    className="w-full"
+                  >
+                    <div className="w-full">
+                      <SidebarMenuButton
+                        asChild
+                        className={`w-full ${(currentPath.startsWith('/ca') || currentPath.startsWith('/accounting')) ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
+                        title="CA"
+                      >
+                        <CollapsibleTrigger
+                          className="w-full"
+                          onClick={() => setIsCAToolsOpen(!isCAToolsOpen)}
+                        >
+                          <Calculator className="h-4 w-4" />
+                          {!isCollapsed && (
+                            <>
+                              <span>CA</span>
+                              <ChevronRight className={`h-4 w-4 ml-auto transition-transform duration-200 ${isCAToolsOpen ? 'rotate-90' : ''}`} />
+                            </>
+                          )}
+                        </CollapsibleTrigger>
+                      </SidebarMenuButton>
+
+                      {!isCollapsed && (
+                        <CollapsibleContent className="transition-all duration-200 ease-in-out">
+                          <SidebarMenuSub>
+                            {caToolsMenuItems.map((item) => (
+                              <SidebarMenuSubItem key={item.title}>
+                                <SidebarMenuSubButton asChild>
+                                  <NavLink
+                                    to={item.url}
+                                    className={`${getNavCls(item.url)} ml-4 text-sm`}
+                                    title={item.title}
+                                  >
+                                    <item.icon className="h-3 w-3" />
+                                    <span>{item.title}</span>
+                                  </NavLink>
                                 </SidebarMenuSubButton>
                               </SidebarMenuSubItem>
                             ))}
@@ -295,8 +452,8 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full ${currentPath.startsWith('/reports') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
-                        title="Reports & Analytics"
+                        className={`w-full ${currentPath.startsWith('/accounting/financial-statements') || currentPath.startsWith('/accounting/profit-loss') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
+                        title="Reports"
                       >
                         <CollapsibleTrigger
                           className="w-full"
@@ -305,7 +462,7 @@ export function AppSidebar() {
                           <BarChart3 className="h-4 w-4" />
                           {!isCollapsed && (
                             <>
-                              <span>Reports & Analytics</span>
+                              <span>Reports</span>
                               <ChevronRight className={`h-4 w-4 ml-auto transition-transform duration-200 ${isReportsOpen ? 'rotate-90' : ''}`} />
                             </>
                           )}
@@ -316,68 +473,6 @@ export function AppSidebar() {
                         <CollapsibleContent className="transition-all duration-200 ease-in-out">
                           <SidebarMenuSub>
                             {reportsMenuItems.map((item) => (
-                              <SidebarMenuSubItem key={item.title}>
-                                <SidebarMenuSubButton asChild={!(item as any).feature || true}>
-                                  {(item as any).feature ? (
-                                    <PlanAwareMenuItem
-                                      title={item.title}
-                                      url={item.url}
-                                      icon={item.icon}
-                                      feature={(item as any).feature}
-                                      className={`${getNavCls(item.url)} ml-4 text-sm`}
-                                      asChild={false}
-                                    />
-                                  ) : (
-                                    <NavLink
-                                      to={item.url}
-                                      className={`${getNavCls(item.url)} ml-4 text-sm`}
-                                      title={item.title}
-                                    >
-                                      <item.icon className="h-3 w-3" />
-                                      <span>{item.title}</span>
-                                    </NavLink>
-                                  )}
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                            ))}
-                          </SidebarMenuSub>
-                        </CollapsibleContent>
-                      )}
-                    </div>
-                  </Collapsible>
-                </SidebarMenuItem>
-
-                {/* CA Tools Collapsible Menu */}
-                <SidebarMenuItem>
-                  <Collapsible
-                    open={isCAToolsOpen}
-                    onOpenChange={setIsCAToolsOpen}
-                    className="w-full"
-                  >
-                    <div className="w-full">
-                      <SidebarMenuButton
-                        asChild
-                        className={`w-full ${(currentPath.startsWith('/ca') || currentPath.startsWith('/accounting')) ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
-                        title="CA Tools & Accounting"
-                      >
-                        <CollapsibleTrigger
-                          className="w-full"
-                          onClick={() => setIsCAToolsOpen(!isCAToolsOpen)}
-                        >
-                          <Calculator className="h-4 w-4" />
-                          {!isCollapsed && (
-                            <>
-                              <span>CA Tools & Accounting</span>
-                              <ChevronRight className={`h-4 w-4 ml-auto transition-transform duration-200 ${isCAToolsOpen ? 'rotate-90' : ''}`} />
-                            </>
-                          )}
-                        </CollapsibleTrigger>
-                      </SidebarMenuButton>
-
-                      {!isCollapsed && (
-                        <CollapsibleContent className="transition-all duration-200 ease-in-out">
-                          <SidebarMenuSub>
-                            {caToolsMenuItems.map((item) => (
                               <SidebarMenuSubItem key={item.title}>
                                 <SidebarMenuSubButton asChild>
                                   <NavLink

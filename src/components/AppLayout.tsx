@@ -1,5 +1,6 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
+import { Settings } from 'lucide-react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
@@ -7,6 +8,7 @@ import AICommandBar from '@/components/AICommandBar';
 import { useAuth } from '@/components/ClerkAuthProvider';
 import { useBusinessData } from '@/hooks/useBusinessData';
 import useSimpleBranding from '@/hooks/useSimpleBranding';
+import { Button } from '@/components/ui/button';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -24,6 +26,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   // For root path, hide sidebar if user is not authenticated (showing landing page)
   const shouldHideSidebar = pagesWithoutSidebar.includes(location.pathname) || 
     (location.pathname === '/' && !user && !loading);
+  const isBankingPage = location.pathname === '/banking';
 
   const businessInfo = getBusinessInfo();
   const businessAssets = getBusinessAssets();
@@ -58,6 +61,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         
         <SidebarInset className="flex-1 w-full overflow-x-hidden">
           {/* Header with business name and logo */}
+          {!isBankingPage && (
           <header className="sticky top-0 z-10 border-b border-sidebar-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             {/* Mobile Header */}
             <div className="md:hidden flex h-14 items-center justify-between gap-2 px-2">
@@ -77,6 +81,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               >
                 📢
               </a>
+              <Button variant="ghost" size="icon" asChild className="flex-shrink-0">
+                <NavLink to="/settings" aria-label="Settings">
+                  <Settings className="h-4 w-4" />
+                </NavLink>
+              </Button>
             </div>
             
             {/* Desktop Header */}
@@ -106,18 +115,25 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               >
                 📢 Announcements
               </a>
+              <Button variant="ghost" asChild className="flex-shrink-0">
+                <NavLink to="/settings" className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  <span>Settings</span>
+                </NavLink>
+              </Button>
             </div>
           </header>
-          <main className="flex-1 w-full pb-36 md:pb-28">
+          )}
+          <main className={isBankingPage ? "flex-1 w-full" : "flex-1 w-full pb-36 md:pb-28"}>
             {children}
           </main>
         </SidebarInset>
         
         {/* Mobile Bottom Navigation */}
-        <MobileBottomNav />
+        {!isBankingPage && <MobileBottomNav />}
 
         {/* AI Command Bar */}
-        <AICommandBar />
+        {!isBankingPage && <AICommandBar />}
       </div>
     </SidebarProvider>
   );
