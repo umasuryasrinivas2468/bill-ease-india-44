@@ -1307,6 +1307,8 @@ export type Database = {
       purchase_bills: {
         Row: {
           amount: number
+          bill_attachment_name: string | null
+          bill_attachment_url: string | null
           bill_date: string
           bill_number: string
           created_at: string | null
@@ -1315,9 +1317,14 @@ export type Database = {
           id: string
           items: Json
           notes: string | null
+          order_number: string | null
           org_id: string | null
           paid_amount: number | null
+          payment_terms: string | null
           status: string | null
+          subject: string | null
+          tcs_amount: number | null
+          tds_amount: number | null
           total_amount: number
           updated_at: string | null
           user_id: string
@@ -1329,6 +1336,8 @@ export type Database = {
         }
         Insert: {
           amount: number
+          bill_attachment_name?: string | null
+          bill_attachment_url?: string | null
           bill_date: string
           bill_number: string
           created_at?: string | null
@@ -1337,9 +1346,14 @@ export type Database = {
           id?: string
           items?: Json
           notes?: string | null
+          order_number?: string | null
           org_id?: string | null
           paid_amount?: number | null
+          payment_terms?: string | null
           status?: string | null
+          subject?: string | null
+          tcs_amount?: number | null
+          tds_amount?: number | null
           total_amount: number
           updated_at?: string | null
           user_id: string
@@ -1351,6 +1365,8 @@ export type Database = {
         }
         Update: {
           amount?: number
+          bill_attachment_name?: string | null
+          bill_attachment_url?: string | null
           bill_date?: string
           bill_number?: string
           created_at?: string | null
@@ -1359,9 +1375,14 @@ export type Database = {
           id?: string
           items?: Json
           notes?: string | null
+          order_number?: string | null
           org_id?: string | null
           paid_amount?: number | null
+          payment_terms?: string | null
           status?: string | null
+          subject?: string | null
+          tcs_amount?: number | null
+          tds_amount?: number | null
           total_amount?: number
           updated_at?: string | null
           user_id?: string
@@ -1407,11 +1428,21 @@ export type Database = {
           updated_at: string | null
           user_id: string
           vendor_address: string | null
+          vendor_bank_account_holder: string | null
+          vendor_bank_account_number: string | null
+          vendor_bank_branch: string | null
+          vendor_bank_ifsc: string | null
+          vendor_bank_name: string | null
+          vendor_company_name: string | null
           vendor_email: string | null
           vendor_gst: string | null
+          vendor_gst_treatment: string | null
           vendor_id: string | null
+          vendor_msme_registered: boolean
           vendor_name: string
           vendor_phone: string | null
+          vendor_state: string | null
+          vendor_udyam_aadhaar: string | null
         }
         Insert: {
           created_at?: string | null
@@ -1431,11 +1462,21 @@ export type Database = {
           updated_at?: string | null
           user_id: string
           vendor_address?: string | null
+          vendor_bank_account_holder?: string | null
+          vendor_bank_account_number?: string | null
+          vendor_bank_branch?: string | null
+          vendor_bank_ifsc?: string | null
+          vendor_bank_name?: string | null
+          vendor_company_name?: string | null
           vendor_email?: string | null
           vendor_gst?: string | null
+          vendor_gst_treatment?: string | null
           vendor_id?: string | null
+          vendor_msme_registered?: boolean
           vendor_name: string
           vendor_phone?: string | null
+          vendor_state?: string | null
+          vendor_udyam_aadhaar?: string | null
         }
         Update: {
           created_at?: string | null
@@ -1455,11 +1496,21 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           vendor_address?: string | null
+          vendor_bank_account_holder?: string | null
+          vendor_bank_account_number?: string | null
+          vendor_bank_branch?: string | null
+          vendor_bank_ifsc?: string | null
+          vendor_bank_name?: string | null
+          vendor_company_name?: string | null
           vendor_email?: string | null
           vendor_gst?: string | null
+          vendor_gst_treatment?: string | null
           vendor_id?: string | null
+          vendor_msme_registered?: boolean
           vendor_name?: string
           vendor_phone?: string | null
+          vendor_state?: string | null
+          vendor_udyam_aadhaar?: string | null
         }
         Relationships: [
           {
@@ -2373,49 +2424,79 @@ export type Database = {
       vendors: {
         Row: {
           address: string | null
+          bank_account_holder: string | null
+          bank_account_number: string | null
+          bank_branch: string | null
+          bank_ifsc: string | null
+          bank_name: string | null
+          company_name: string | null
           created_at: string | null
           email: string | null
           gst_number: string | null
+          gst_treatment: string | null
           id: string
           linked_tds_section_id: string | null
+          msme_registered: boolean
           name: string
           org_id: string | null
           pan: string | null
           payment_terms: number | null
           phone: string | null
+          state: string | null
           tds_enabled: boolean | null
+          udyam_aadhaar: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           address?: string | null
+          bank_account_holder?: string | null
+          bank_account_number?: string | null
+          bank_branch?: string | null
+          bank_ifsc?: string | null
+          bank_name?: string | null
+          company_name?: string | null
           created_at?: string | null
           email?: string | null
           gst_number?: string | null
+          gst_treatment?: string | null
           id?: string
           linked_tds_section_id?: string | null
+          msme_registered?: boolean
           name: string
           org_id?: string | null
           pan?: string | null
           payment_terms?: number | null
           phone?: string | null
+          state?: string | null
           tds_enabled?: boolean | null
+          udyam_aadhaar?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           address?: string | null
+          bank_account_holder?: string | null
+          bank_account_number?: string | null
+          bank_branch?: string | null
+          bank_ifsc?: string | null
+          bank_name?: string | null
+          company_name?: string | null
           created_at?: string | null
           email?: string | null
           gst_number?: string | null
+          gst_treatment?: string | null
           id?: string
           linked_tds_section_id?: string | null
+          msme_registered?: boolean
           name?: string
           org_id?: string | null
           pan?: string | null
           payment_terms?: number | null
           phone?: string | null
+          state?: string | null
           tds_enabled?: boolean | null
+          udyam_aadhaar?: string | null
           updated_at?: string | null
           user_id?: string
         }
