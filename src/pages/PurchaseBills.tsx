@@ -27,7 +27,7 @@ type BillItem = {
   amount: number;
 };
 
-type PurchaseBillRecord = {
+export type PurchaseBillRecord = {
   id: string;
   vendor_id?: string | null;
   vendor_name: string;
