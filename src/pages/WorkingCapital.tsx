@@ -128,8 +128,8 @@ const WorkingCapital: React.FC = () => {
                   {appliedMap[selectedInvoice.id] ? (
                     <div className="text-sm text-green-600 font-medium">Applied — awaiting verification</div>
                   ) : (
-                    <Button onClick={() => handleApply(selectedInvoice)} disabled={applyMutation.isLoading}>
-                      {applyMutation.isLoading ? 'Applying...' : 'Apply for Trade Invoice'}
+                    <Button onClick={() => handleApply(selectedInvoice)} disabled={applyMutation.isPending}>
+                      {applyMutation.isPending ? 'Applying...' : 'Apply for Trade Invoice'}
                     </Button>
                   )}
                 </div>
