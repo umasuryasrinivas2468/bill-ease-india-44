@@ -9,10 +9,46 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+async function generateGeminiText(prompt) {
+  if (!GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY is not configured on the server');
+  }
+
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            { text: prompt }
+          ]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.4,
+        topP: 0.9,
+        maxOutputTokens: 1200
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Gemini request failed: ${response.status} ${text}`);
+  }
+
+  const data = await response.json();
+  return data?.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('\n').trim() || '';
+}
 
 // In-memory storage for user VPAs (in production, use a database)
 const userVPAs = new Map();
@@ -622,6 +658,84 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     service: 'Federal Bank UPI Integration with TDS Support'
   });
+});
+
+app.post('/ai/inventory-insights', async (req, res) => {
+  try {
+    const { inventory = [] } = req.body;
+
+    if (!Array.isArray(inventory) || inventory.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Inventory data is required'
+      });
+    }
+
+    const goods = inventory.filter(item => item.type === 'goods');
+    const services = inventory.filter(item => item.type === 'services');
+    const lowStock = goods.filter(item => Number(item.stock_quantity || 0) <= Number(item.reorder_level || 0));
+    const outOfStock = goods.filter(item => Number(item.stock_quantity || 0) === 0);
+    const totalValue = goods.reduce((sum, item) => sum + (Number(item.purchase_price || 0) * Number(item.stock_quantity || 0)), 0);
+
+    const compactInventory = inventory.slice(0, 100).map(item => ({
+      product_name: item.product_name,
+      sku: item.sku,
+      category: item.category,
+      type: item.type,
+      purchase_price: item.purchase_price,
+      selling_price: item.selling_price,
+      stock_quantity: item.stock_quantity,
+      reorder_level: item.reorder_level,
+      supplier_name: item.supplier_name
+    }));
+
+    const prompt = [
+      'You are an expert inventory analyst for an Indian SMB.',
+      'Review the inventory snapshot and return practical business insights.',
+      'Keep the answer concise, structured, and action-oriented.',
+      'Return markdown with these exact sections:',
+      '## Summary',
+      '## Risks',
+      '## Opportunities',
+      '## Recommended Actions',
+      '## Priority Products',
+      '',
+      'Business metrics:',
+      `- Total items: ${inventory.length}`,
+      `- Goods: ${goods.length}`,
+      `- Services: ${services.length}`,
+      `- Low stock items: ${lowStock.length}`,
+      `- Out of stock items: ${outOfStock.length}`,
+      `- Estimated inventory value at cost: ₹${totalValue.toFixed(2)}`,
+      '',
+      'Inventory snapshot JSON:',
+      JSON.stringify(compactInventory)
+    ].join('\n');
+
+    const insights = await generateGeminiText(prompt);
+
+    res.json({
+      success: true,
+      data: {
+        insights,
+        stats: {
+          totalItems: inventory.length,
+          goods: goods.length,
+          services: services.length,
+          lowStock: lowStock.length,
+          outOfStock: outOfStock.length,
+          totalValue
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error generating inventory insights:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate inventory insights',
+      details: error.message
+    });
+  }
 });
 
 // Annual Report endpoint - generate in-process using PDFKit and stream the result

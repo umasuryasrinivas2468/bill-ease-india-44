@@ -29,6 +29,7 @@ const moreItems = [
   { label: 'Notifications', path: '/notifications' },
   { label: 'Settings', path: '/settings' },
   { label: 'Inventory', path: '/inventory' },
+  { label: 'Inventory Insights', path: '/inventory/insights' },
   { label: 'Delivery Challans', path: '/inventory/delivery-challans' },
   { label: 'Sales Orders', path: '/inventory/sales-orders' },
   { label: 'Purchase Orders', path: '/inventory/purchase-orders' },

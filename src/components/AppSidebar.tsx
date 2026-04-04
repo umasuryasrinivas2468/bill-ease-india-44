@@ -20,7 +20,10 @@ import {
   ShoppingCart,
   Truck,
   Receipt,
-  RefreshCw
+  RefreshCw,
+  Sparkles,
+  ScrollText,
+  Wallet
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import { useBusinessData } from "@/hooks/useBusinessData";
@@ -52,6 +55,10 @@ const salesMenuItems = [
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Sales Orders", url: "/inventory/sales-orders", icon: ShoppingCart, feature: "salesOrders" as const },
   { title: "Invoices", url: "/invoices", icon: FileText },
+  { title: "Working Capital", url: "/working-capital", icon: Banknote },
+  { title: "Cash Memo", url: "/cash-memo", icon: Wallet },
+  { title: "E Way Bills", url: "/coming-soon?feature=E%20Way%20Bills", icon: Truck },
+  { title: "Credit Notes", url: "/coming-soon?feature=Credit%20Notes", icon: ScrollText },
   { title: "Recurring Invoices", url: "/ca/recurring-invoices", icon: RefreshCw },
   { title: "Delivery Challan", url: "/inventory/delivery-challans", icon: Truck },
   { title: "Notifications", url: "/notifications", icon: Bell },
@@ -60,11 +67,13 @@ const salesMenuItems = [
 const purchasesMenuItems = [
   { title: "Vendors", url: "/vendors", icon: Users },
   { title: "Expenses", url: "/expenses", icon: Receipt },
+  { title: "Bills", url: "/purchase-bills", icon: FileText },
   { title: "Purchase Orders", url: "/inventory/purchase-orders", icon: Truck, feature: "purchaseOrders" as const },
 ];
 
 const inventoryMenuItems = [
   { title: "Inventory", url: "/inventory", icon: Package },
+  { title: "Inventory Insights", url: "/inventory/insights", icon: Sparkles },
 ];
 
 const bankingMenuItems = [
@@ -196,7 +205,7 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full ${currentPath.startsWith('/quotations') || currentPath.startsWith('/clients') || currentPath.startsWith('/invoices') || currentPath.startsWith('/notifications') || currentPath.startsWith('/inventory/sales-orders') || currentPath.startsWith('/inventory/delivery-challans') || currentPath.startsWith('/ca/recurring-invoices') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
+                        className={`w-full ${currentPath.startsWith('/quotations') || currentPath.startsWith('/clients') || currentPath.startsWith('/invoices') || currentPath.startsWith('/notifications') || currentPath.startsWith('/cash-memo') || currentPath.startsWith('/coming-soon') || currentPath.startsWith('/inventory/sales-orders') || currentPath.startsWith('/inventory/delivery-challans') || currentPath.startsWith('/ca/recurring-invoices') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
                         title="Sales"
                       >
                         <CollapsibleTrigger
@@ -258,7 +267,7 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full ${currentPath.startsWith('/vendors') || currentPath.startsWith('/expenses') || currentPath.startsWith('/inventory/purchase-orders') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
+                        className={`w-full ${currentPath.startsWith('/vendors') || currentPath.startsWith('/expenses') || currentPath.startsWith('/purchase-bills') || currentPath.startsWith('/inventory/purchase-orders') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
                         title="Purchases"
                       >
                         <CollapsibleTrigger

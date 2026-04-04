@@ -158,6 +158,31 @@ export const postPaymentReceivedJournal = async (
 };
 
 /**
+ * Cash Memo / Instant Sale → Debit Cash/Bank, Credit Sales Revenue + Output GST
+ */
+export const postCashMemoJournal = async (
+  userId: string,
+  sale: { memo_number: string; date: string; customer_name: string; amount: number; gst_amount: number; total_amount: number; payment_mode?: string }
+) => {
+  const uid = normalizeUserId(userId);
+  const paymentAccountName = sale.payment_mode === 'cash' ? 'Cash Account' : 'Bank Account';
+  const paymentAccountId = await getOrCreateAccount(uid, paymentAccountName, 'Asset');
+  const salesId = await getOrCreateAccount(uid, 'Sales Revenue', 'Income');
+
+  const lines: JournalLineInput[] = [
+    { account_id: paymentAccountId, debit: sale.total_amount, credit: 0, line_narration: `Instant receipt – ${sale.memo_number}` },
+    { account_id: salesId, debit: 0, credit: sale.amount, line_narration: `Cash memo sales – ${sale.memo_number}` },
+  ];
+
+  if (sale.gst_amount > 0) {
+    const gstId = await getOrCreateAccount(uid, 'Output GST', 'Liability');
+    lines.push({ account_id: gstId, debit: 0, credit: sale.gst_amount, line_narration: `GST on ${sale.memo_number}` });
+  }
+
+  return createJournal(uid, sale.date, `Cash Memo ${sale.memo_number} – ${sale.customer_name}`, lines);
+};
+
+/**
  * Purchase Bill → Debit Expense/Purchase + Input GST, Credit Accounts Payable
  */
 export const postPurchaseBillJournal = async (

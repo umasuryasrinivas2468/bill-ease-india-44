@@ -22,8 +22,10 @@ import ClerkLogin from "./pages/ClerkLogin";
 import Onboarding from "./pages/Onboarding";
 import TimeTracking from "./pages/TimeTracking";
 import Inventory from "./pages/Inventory";
+import InventoryInsights from "./pages/InventoryInsights";
 import SalesOrders from "./pages/SalesOrders";
 import PurchaseOrders from "./pages/PurchaseOrders";
+import PurchaseBills from "./pages/PurchaseBills";
 import Receivables from "./pages/Receivables";
 import Payables from "./pages/Payables";
 import Banking from "./pages/Banking";
@@ -36,6 +38,8 @@ import CA from "./pages/CA";
 import Payout from "./pages/Payout";
 import Quotations from "./pages/Quotations";
 import QuotationsInfo from "./pages/QuotationsInfo";
+import CashMemo from "./pages/CashMemo";
+import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 import AcceptInvite from "./pages/AcceptInvite";
 import CashFlowForecasting from "./pages/CashFlowForecasting";
@@ -54,6 +58,7 @@ import TDS from "./pages/TDS";
 import DeliveryChallans from "./pages/DeliveryChallans";
 import ITR6Filing from "./pages/ITR6Filing";
 import RecurringInvoices from "./pages/RecurringInvoices";
+import WorkingCapital from "./pages/WorkingCapital";
 
 // License pages
 import StarterPage from "./pages/StarterPage";
@@ -149,6 +154,7 @@ function App() {
                       <Route element={<ProtectedRoute />}>
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/invoices" element={<Invoices />} />
+                        <Route path="/working-capital" element={<WorkingCapital />} />
                         <Route path="/create-invoice" element={<CreateInvoice />} />
                         <Route path="/clients" element={<Clients />} />
                         <Route path="/reports" element={<Reports />} />
@@ -161,9 +167,11 @@ function App() {
                         <Route path="/onboarding" element={<Onboarding />} />
                         <Route path="/time-tracking" element={<TimeTracking />} />
                         <Route path="/inventory" element={<Inventory />} />
+                        <Route path="/inventory/insights" element={<InventoryInsights />} />
                         <Route path="/inventory/delivery-challans" element={<DeliveryChallans />} />
                         <Route path="/inventory/sales-orders" element={<PlanRestrictedSalesOrders />} />
                         <Route path="/inventory/purchase-orders" element={<PlanRestrictedPurchaseOrders />} />
+                        <Route path="/purchase-bills" element={<PurchaseBills />} />
                         <Route path="/reports/receivables" element={<Receivables />} />
                         <Route path="/reports/payables" element={<Payables />} />
                         <Route path="/banking" element={<Banking />} />
@@ -173,6 +181,8 @@ function App() {
                         <Route path="/marketplace" element={<Marketplace />} />
                         <Route path="/support" element={<Support />} />
                         <Route path="/notifications" element={<Notifications />} />
+                        <Route path="/cash-memo" element={<CashMemo />} />
+                        <Route path="/coming-soon" element={<ComingSoon />} />
                         <Route path="/ca" element={<CA />} />
                         <Route path="/ca/itr6" element={<ITR6Filing />} />
                         <Route path="/ca/recurring-invoices" element={<RecurringInvoices />} />

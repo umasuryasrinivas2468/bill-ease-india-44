@@ -14,6 +14,7 @@ import { useTDSRules } from '@/hooks/useTDSRules';
 import { Upload } from 'lucide-react';
 import ImportDialog from '@/components/ImportDialog';
 import { GST_TREATMENTS, INDIAN_STATES } from '@/constants/india';
+import VendorCharts from '@/components/vendors/VendorCharts';
 
 interface VendorRecord {
   id: string;
@@ -45,6 +46,8 @@ export default function Vendors() {
   const [isOpen, setIsOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [editing, setEditing] = useState<VendorRecord | null>(null);
+  const [selectedVendor, setSelectedVendor] = useState<VendorRecord | null>(null);
+  const [isVendorDialogOpen, setIsVendorDialogOpen] = useState(false);
   const { data: tdsRules = [] } = useTDSRules();
 
   const emptyForm: Partial<VendorRecord> = {
@@ -228,7 +231,7 @@ export default function Vendors() {
             </TableHeader>
             <TableBody>
               {vendors.map((v) => (
-                <TableRow key={v.id}>
+                  <TableRow key={v.id}>
                   <TableCell className="font-medium">{v.name}</TableCell>
                   <TableCell>{v.company_name || '-'}</TableCell>
                   <TableCell>{v.gst_number || '-'}</TableCell>
@@ -239,6 +242,7 @@ export default function Vendors() {
                   <TableCell>
                     <div className="flex gap-2">
                       <Button size="sm" variant="ghost" onClick={() => openEdit(v)}>Edit</Button>
+                      <Button size="sm" onClick={() => { setSelectedVendor(v); setIsVendorDialogOpen(true); }}>View</Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -389,6 +393,21 @@ export default function Vendors() {
         moduleKey="vendors"
         onConfirmImport={handleImportVendors}
       />
+
+      <Dialog open={isVendorDialogOpen} onOpenChange={setIsVendorDialogOpen}>
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>{selectedVendor ? selectedVendor.name : 'Vendor'}</DialogTitle>
+          </DialogHeader>
+          <div className="p-4">
+            {selectedVendor ? (
+              <VendorCharts vendorId={selectedVendor.id} />
+            ) : (
+              <div className="text-muted-foreground">No vendor selected</div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
