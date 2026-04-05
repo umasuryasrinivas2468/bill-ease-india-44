@@ -30,6 +30,8 @@ import { useInvoices } from '@/hooks/useInvoices';
 import { useExpenses } from '@/hooks/useExpenses';
 import { toast } from 'sonner';
 
+const ITR_PORTAL_URL = 'https://eportal.incometax.gov.in/iec/foservices/#/login';
+
 const formSchema = z.object({
   assessmentYear: z.string().min(1, 'Assessment year is required'),
   filingType: z.enum(['original', 'revised', 'belated']),
@@ -226,6 +228,7 @@ export default function ITR6Form() {
 
       const filename = `${businessInfo.businessName.replace(/\s+/g, '_')}_ITR6_AY${values.assessmentYear}`;
       downloadITR6Json(itr6Json, filename);
+      window.open(ITR_PORTAL_URL, '_blank', 'noopener,noreferrer');
       toast.success('ITR-6 JSON generated successfully');
     } catch (error) {
       console.error('Error generating ITR-6:', error);

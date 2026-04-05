@@ -5,12 +5,14 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Plus, Filter, Download, TrendingUp, Receipt, CreditCard, Wallet } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useExpenses, useExpenseStats } from '@/hooks/useExpenses';
-import { ExpenseFilters } from '@/types/expenses';
+import { CreateExpenseData, ExpenseFilters } from '@/types/expenses';
 import ExpensesList from '@/components/expenses/ExpensesList';
 import ExpenseForm from '@/components/expenses/ExpenseForm';
 import ExpenseStats from '@/components/expenses/ExpenseStats';
 import ExpenseFiltersComponent from '@/components/expenses/ExpenseFilters';
 import ExpenseChart from '@/components/expenses/ExpenseChart';
+import ExpenseOCRCapture from '@/components/expenses/ExpenseOCRCapture';
+import MileageRecorder from '@/components/expenses/MileageRecorder';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 
@@ -19,6 +21,7 @@ const Expenses = () => {
   const [filters, setFilters] = useState<ExpenseFilters>({});
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [expenseDraft, setExpenseDraft] = useState<(Partial<CreateExpenseData> & { expense_date?: string }) | undefined>();
   
   const { data: expenses = [], isLoading } = useExpenses(filters);
   const { data: stats } = useExpenseStats(filters);
@@ -30,6 +33,11 @@ const Expenses = () => {
 
   const clearFilters = () => {
     setFilters({});
+  };
+
+  const openDraftInForm = (draft: Partial<CreateExpenseData> & { expense_date?: string }) => {
+    setExpenseDraft(draft);
+    setIsCreateDialogOpen(true);
   };
 
   const exportExpenses = () => {
@@ -120,7 +128,15 @@ const Expenses = () => {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <Dialog
+            open={isCreateDialogOpen}
+            onOpenChange={(open) => {
+              setIsCreateDialogOpen(open);
+              if (!open) {
+                setExpenseDraft(undefined);
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button size="sm">
                 <Plus className="h-4 w-4 mr-2" />
@@ -131,7 +147,14 @@ const Expenses = () => {
               <DialogHeader>
                 <DialogTitle>Add New Expense</DialogTitle>
               </DialogHeader>
-              <ExpenseForm onSuccess={() => setIsCreateDialogOpen(false)} />
+              <ExpenseForm
+                key={JSON.stringify(expenseDraft || {})}
+                initialData={expenseDraft}
+                onSuccess={() => {
+                  setIsCreateDialogOpen(false);
+                  setExpenseDraft(undefined);
+                }}
+              />
             </DialogContent>
           </Dialog>
         </div>
@@ -205,10 +228,12 @@ const Expenses = () => {
       )}
 
       <Tabs defaultValue="list" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="list">Expense List</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="charts">Charts</TabsTrigger>
+          <TabsTrigger value="ocr">OCR Capture</TabsTrigger>
+          <TabsTrigger value="mileage">Mileage</TabsTrigger>
         </TabsList>
 
         <TabsContent value="list" className="space-y-6">
@@ -240,6 +265,14 @@ const Expenses = () => {
 
         <TabsContent value="charts">
           <ExpenseChart stats={stats} />
+        </TabsContent>
+
+        <TabsContent value="ocr">
+          <ExpenseOCRCapture onCreateDraft={openDraftInForm} />
+        </TabsContent>
+
+        <TabsContent value="mileage">
+          <MileageRecorder onCreateDraft={openDraftInForm} />
         </TabsContent>
       </Tabs>
 

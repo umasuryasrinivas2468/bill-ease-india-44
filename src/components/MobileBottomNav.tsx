@@ -46,6 +46,7 @@ const moreItems = [
   { label: 'Trial Balance', path: '/accounting/trial-balance' },
   { label: 'Profit & Loss', path: '/accounting/profit-loss' },
   { label: 'Compliance Calendar', path: '/compliance' },
+  { label: 'Apps', path: '/apps' },
   { label: 'Loans', path: '/loans' },
   { label: 'Payments', path: '/payments' },
   { label: 'Branding', path: '/branding' },

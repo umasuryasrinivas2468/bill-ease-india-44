@@ -32,6 +32,7 @@ import Banking from "./pages/Banking";
 import BankingSuccess from "./pages/BankingSuccess";
 import UPICollections from "./pages/UPICollections";
 import Marketplace from "./pages/Marketplace";
+import Apps from "./pages/Apps";
 import Support from "./pages/Support";
 import Notifications from "./pages/Notifications";
 import CA from "./pages/CA";
@@ -179,6 +180,7 @@ function App() {
                         <Route path="/payroll" element={<Payroll />} />
                         <Route path="/upi-collections" element={<UPICollections />} />
                         <Route path="/marketplace" element={<Marketplace />} />
+                        <Route path="/apps" element={<Apps />} />
                         <Route path="/support" element={<Support />} />
                         <Route path="/notifications" element={<Notifications />} />
                         <Route path="/cash-memo" element={<CashMemo />} />

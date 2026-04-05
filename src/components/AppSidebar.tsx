@@ -23,7 +23,8 @@ import {
   RefreshCw,
   Sparkles,
   ScrollText,
-  Wallet
+  Wallet,
+  LayoutGrid
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import { useBusinessData } from "@/hooks/useBusinessData";
@@ -83,11 +84,16 @@ const bankingMenuItems = [
 const complianceMenuItems = [
   { title: "Compliance Calendar", url: "/compliance", icon: CalendarDays },
   { title: "Reports", url: "/reports/tds", icon: Percent },
+  { title: "ITR", url: "/ca/itr6", icon: FileText },
 ];
 
 const reportsMenuItems = [
   { title: "Financial Statements", url: "/accounting/financial-statements", icon: FileText },
   { title: "Profit Loss", url: "/accounting/profit-loss", icon: TrendingUp },
+];
+
+const appsMenuItems = [
+  { title: "Apps", url: "/apps", icon: LayoutGrid },
 ];
 
 const caToolsMenuItems = [
@@ -359,7 +365,7 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full ${currentPath.startsWith('/compliance') || currentPath.startsWith('/reports/tds') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
+                        className={`w-full ${currentPath.startsWith('/compliance') || currentPath.startsWith('/reports/tds') || currentPath.startsWith('/ca/itr6') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
                         title="Compliance"
                       >
                         <CollapsibleTrigger
@@ -501,6 +507,21 @@ export function AppSidebar() {
                     </div>
                   </Collapsible>
                 </SidebarMenuItem>
+
+                {appsMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        className={getNavCls(item.url)}
+                        title={item.title}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {!isCollapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

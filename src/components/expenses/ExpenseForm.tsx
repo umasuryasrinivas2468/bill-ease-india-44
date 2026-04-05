@@ -46,9 +46,10 @@ type ExpenseFormData = z.infer<typeof expenseSchema>;
 interface ExpenseFormProps {
   expense?: Expense;
   onSuccess?: () => void;
+  initialData?: Partial<CreateExpenseData> & { expense_date?: string };
 }
 
-const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess }) => {
+const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess, initialData }) => {
   const [expenseDate, setExpenseDate] = useState<Date>();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [selectedVendorTDS, setSelectedVendorTDS] = useState<any>(null);
@@ -115,6 +116,27 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess }) => {
       setExpenseDate(new Date(expense.expense_date));
     }
   }, [expense, setValue]);
+
+  useEffect(() => {
+    if (expense || !initialData) return;
+
+    if (initialData.vendor_name) setValue('vendor_name', initialData.vendor_name);
+    if (initialData.vendor_id) setValue('vendor_id', initialData.vendor_id);
+    if (initialData.expense_date) {
+      setValue('expense_date', initialData.expense_date);
+      setExpenseDate(new Date(initialData.expense_date));
+    }
+    if (initialData.category_name) setValue('category_name', initialData.category_name);
+    if (initialData.category_id) setValue('category_id', initialData.category_id);
+    if (initialData.description) setValue('description', initialData.description);
+    if (typeof initialData.amount === 'number') setValue('amount', initialData.amount.toString());
+    if (typeof initialData.tax_amount === 'number') setValue('tax_amount', initialData.tax_amount.toString());
+    if (typeof initialData.tds_amount === 'number') setValue('tds_amount', initialData.tds_amount.toString());
+    if (initialData.payment_mode) setValue('payment_mode', initialData.payment_mode);
+    if (initialData.reference_number) setValue('reference_number', initialData.reference_number);
+    if (initialData.bill_number) setValue('bill_number', initialData.bill_number);
+    if (initialData.notes) setValue('notes', initialData.notes);
+  }, [expense, initialData, setValue]);
 
   const onSubmit = async (data: ExpenseFormData) => {
     try {
