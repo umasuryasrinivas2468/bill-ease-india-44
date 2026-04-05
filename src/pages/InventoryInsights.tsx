@@ -141,7 +141,7 @@ const InventoryInsights = () => {
     };
 
     try {
-      const text = await callGemini(prompts[type]);
+      const text = await callAI(type, metricsBlock, json);
       if (!text) throw new Error('No insights returned.');
       setResults(p => ({ ...p, [type]: text }));
     } catch (err) {
@@ -218,7 +218,7 @@ const InventoryInsights = () => {
                 {isLoading && <p className="text-sm text-muted-foreground">Loading inventory…</p>}
                 {!isLoading && inventory.length === 0 && <p className="text-sm text-muted-foreground">Add inventory items first.</p>}
                 {errors[t.key] && <p className="text-sm text-destructive">{errors[t.key]}</p>}
-                {loading[t.key] && <p className="text-sm text-muted-foreground animate-pulse">Gemini is analyzing your inventory…</p>}
+                {loading[t.key] && <p className="text-sm text-muted-foreground animate-pulse">AI is analyzing your inventory…</p>}
                 {!results[t.key] && !errors[t.key] && !loading[t.key] && inventory.length > 0 && (
                   <p className="text-sm text-muted-foreground">Click "Generate" to get AI-powered {t.label.toLowerCase()} insights.</p>
                 )}
