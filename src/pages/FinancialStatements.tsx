@@ -11,6 +11,7 @@ import { FileText, Download, Building2, Calculator, BookOpen, FileSpreadsheet, L
 import ITCReport from '@/components/reports/ITCReport';
 import RCMLiabilityReport from '@/components/reports/RCMLiabilityReport';
 import GSTSummaryReport from '@/components/reports/GSTSummaryReport';
+import ScheduleIIIBalanceSheet from '@/components/reports/ScheduleIIIBalanceSheet';
 import { useEnhancedBusinessData } from '@/hooks/useEnhancedBusinessData';
 import { 
   fetchFinancialData, 
@@ -657,96 +658,12 @@ const FinancialStatements = () => {
         </TabsContent>
         
         <TabsContent value="balance" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Balance Sheet</CardTitle>
-              <CardDescription>Assets, liabilities and equity position as at year end</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {financialData ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="font-bold text-lg mb-4 border-b pb-2">EQUITY & LIABILITIES</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="font-semibold text-sm text-muted-foreground">Shareholder's Funds</h4>
-                        <div className="flex justify-between py-1">
-                          <span>Share Capital</span>
-                          <span>{formatCurrency(financialData.shareCapital)}</span>
-                        </div>
-                        <div className="flex justify-between py-1">
-                          <span>Reserves & Surplus</span>
-                          <span className={financialData.reservesAndSurplus >= 0 ? '' : 'text-red-600'}>
-                            {formatCurrency(financialData.reservesAndSurplus)}
-                          </span>
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-sm text-muted-foreground">Current Liabilities</h4>
-                        <div className="flex justify-between py-1">
-                          <span>Trade Payables</span>
-                          <span>{formatCurrency(financialData.tradePayables)}</span>
-                        </div>
-                        <div className="flex justify-between py-1">
-                          <span>Other Current Liabilities</span>
-                          <span>{formatCurrency(financialData.otherCurrentLiabilities)}</span>
-                        </div>
-                      </div>
-                      <div className="border-t pt-2">
-                        <div className="flex justify-between font-bold">
-                          <span>Total Equity & Liabilities</span>
-                          <span>{formatCurrency(financialData.totalEquityAndLiabilities)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h3 className="font-bold text-lg mb-4 border-b pb-2">ASSETS</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="font-semibold text-sm text-muted-foreground">Non-Current Assets</h4>
-                        <div className="flex justify-between py-1">
-                          <span>Fixed Assets</span>
-                          <span>{formatCurrency(financialData.fixedAssets)}</span>
-                        </div>
-                        <div className="flex justify-between py-1">
-                          <span>Non-current Investments</span>
-                          <span>{formatCurrency(financialData.nonCurrentInvestments)}</span>
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-sm text-muted-foreground">Current Assets</h4>
-                        <div className="flex justify-between py-1">
-                          <span>Trade Receivables</span>
-                          <span>{formatCurrency(financialData.tradeReceivables)}</span>
-                        </div>
-                        <div className="flex justify-between py-1">
-                          <span>Cash & Bank</span>
-                          <span>{formatCurrency(financialData.cashAndBank)}</span>
-                        </div>
-                        <div className="flex justify-between py-1">
-                          <span>Other Current Assets</span>
-                          <span>{formatCurrency(financialData.otherCurrentAssets)}</span>
-                        </div>
-                      </div>
-                      <div className="border-t pt-2">
-                        <div className="flex justify-between font-bold">
-                          <span>Total Assets</span>
-                          <span>{formatCurrency(financialData.totalAssets)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-12 text-muted-foreground">
-                  <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No data available. Please fetch financial data first.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <ScheduleIIIBalanceSheet
+            financialData={financialData}
+            companyDetails={companyDetails}
+            financialYear={financialYear || fyOptions[0]}
+            formatCurrency={formatCurrency}
+          />
         </TabsContent>
         
         <TabsContent value="income-expenditure" className="space-y-4">
