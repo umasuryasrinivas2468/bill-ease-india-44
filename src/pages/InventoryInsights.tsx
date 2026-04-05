@@ -5,8 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useInventory, InventoryItem } from '@/hooks/useInventory';
 import { Sparkles, AlertTriangle, Package, IndianRupee, Bot, TrendingUp, BarChart3, Target } from 'lucide-react';
-
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyBTQPbSpcSt7xlcXUGbgxiLQqmsmLItA8o';
+import { supabase } from '@/integrations/supabase/client';
 
 function formatSimpleMarkdown(text: string) {
   return text.split('\n').map((line, index) => {
@@ -25,22 +24,13 @@ function formatSimpleMarkdown(text: string) {
   });
 }
 
-async function callGemini(prompt: string): Promise<string> {
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.4, topP: 0.9, maxOutputTokens: 1500 },
-    }),
+async function callAI(type: string, metrics: string, inventory: string): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('inventory-insights', {
+    body: { type, metrics, inventory },
   });
-  const raw = await response.text();
-  if (!response.ok) {
-    const payload = JSON.parse(raw);
-    throw new Error(payload.error?.message || `Gemini error (${response.status})`);
-  }
-  const payload = JSON.parse(raw);
-  return payload?.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('\n').trim() || '';
+  if (error) throw new Error(error.message || 'AI analysis failed');
+  if (data?.error) throw new Error(data.error);
+  return data?.result || '';
 }
 
 function compactItems(inventory: InventoryItem[]) {
@@ -151,7 +141,7 @@ const InventoryInsights = () => {
     };
 
     try {
-      const text = await callGemini(prompts[type]);
+      const text = await callAI(type, metricsBlock, json);
       if (!text) throw new Error('No insights returned.');
       setResults(p => ({ ...p, [type]: text }));
     } catch (err) {
@@ -228,7 +218,7 @@ const InventoryInsights = () => {
                 {isLoading && <p className="text-sm text-muted-foreground">Loading inventory…</p>}
                 {!isLoading && inventory.length === 0 && <p className="text-sm text-muted-foreground">Add inventory items first.</p>}
                 {errors[t.key] && <p className="text-sm text-destructive">{errors[t.key]}</p>}
-                {loading[t.key] && <p className="text-sm text-muted-foreground animate-pulse">Gemini is analyzing your inventory…</p>}
+                {loading[t.key] && <p className="text-sm text-muted-foreground animate-pulse">AI is analyzing your inventory…</p>}
                 {!results[t.key] && !errors[t.key] && !loading[t.key] && inventory.length > 0 && (
                   <p className="text-sm text-muted-foreground">Click "Generate" to get AI-powered {t.label.toLowerCase()} insights.</p>
                 )}
