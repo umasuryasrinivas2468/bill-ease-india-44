@@ -2421,6 +2421,74 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_mileage_logs: {
+        Row: {
+          amount: number
+          created_at: string
+          distance_km: number
+          end_km: number
+          end_location: string | null
+          id: string
+          notes: string | null
+          rate_per_km: number
+          start_km: number
+          start_location: string | null
+          trip_date: string
+          trip_purpose: string
+          updated_at: string
+          user_id: string
+          vehicle_name: string
+          vendor_id: string | null
+          vendor_name: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          distance_km?: number
+          end_km?: number
+          end_location?: string | null
+          id?: string
+          notes?: string | null
+          rate_per_km?: number
+          start_km?: number
+          start_location?: string | null
+          trip_date: string
+          trip_purpose: string
+          updated_at?: string
+          user_id: string
+          vehicle_name: string
+          vendor_id?: string | null
+          vendor_name?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          distance_km?: number
+          end_km?: number
+          end_location?: string | null
+          id?: string
+          notes?: string | null
+          rate_per_km?: number
+          start_km?: number
+          start_location?: string | null
+          trip_date?: string
+          trip_purpose?: string
+          updated_at?: string
+          user_id?: string
+          vehicle_name?: string
+          vendor_id?: string | null
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_mileage_logs_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendors: {
         Row: {
           address: string | null
