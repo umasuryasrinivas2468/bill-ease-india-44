@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useInventory, InventoryItem } from '@/hooks/useInventory';
 import { Sparkles, AlertTriangle, Package, IndianRupee, Bot, TrendingUp, BarChart3, Target } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import InventoryCharts from '@/components/inventory/InventoryCharts';
 
 function formatSimpleMarkdown(text: string) {
   return text.split('\n').map((line, index) => {
@@ -215,6 +216,9 @@ const InventoryInsights = () => {
                 </Button>
               </CardHeader>
               <CardContent className="space-y-3">
+                {(t.key === 'demand' || t.key === 'forecast') && inventory.length > 0 && (
+                  <InventoryCharts inventory={inventory} type={t.key} />
+                )}
                 {isLoading && <p className="text-sm text-muted-foreground">Loading inventory…</p>}
                 {!isLoading && inventory.length === 0 && <p className="text-sm text-muted-foreground">Add inventory items first.</p>}
                 {errors[t.key] && <p className="text-sm text-destructive">{errors[t.key]}</p>}
