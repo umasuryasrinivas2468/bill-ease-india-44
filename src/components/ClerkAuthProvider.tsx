@@ -14,7 +14,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    // Return a safe default during HMR/initialization instead of throwing
+    return { user: null, loading: true, signOut: async () => {} } as AuthContextType;
   }
   return context;
 };
