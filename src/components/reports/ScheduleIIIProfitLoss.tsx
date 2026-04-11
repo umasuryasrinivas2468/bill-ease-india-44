@@ -112,14 +112,14 @@ const ScheduleIIIProfitLoss: React.FC<Props> = ({
     {
       no: '1', title: 'Revenue from Operations',
       items: financialData.incomeDetails.length > 0
-        ? financialData.incomeDetails
+        ? financialData.incomeDetails.map((d: any) => ({ label: d.description || d.label || '', amount: d.amount }))
         : [{ label: 'Gross Receipts from Services / Sales', amount: financialData.revenueFromOperations }],
     },
     {
       no: '9', title: 'Other Expenses',
-      items: financialData.expenseDetails.filter(e =>
-        !['Salary', 'Payroll', 'Bank Charges', 'Interest', 'Depreciation'].includes(e.description)
-      ),
+      items: financialData.expenseDetails
+        .filter((e: any) => !['Salary', 'Payroll', 'Bank Charges', 'Interest', 'Depreciation'].includes(e.description))
+        .map((e: any) => ({ label: e.description || e.label || '', amount: e.amount })),
     },
   ];
 

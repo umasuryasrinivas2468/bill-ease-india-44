@@ -1,11 +1,10 @@
 
 import React, { createContext, useContext, useEffect } from 'react';
 import { useUser, useAuth as useClerkAuth } from '@clerk/clerk-react';
-import type { UserResource } from '@clerk/types';
 import { syncUserWithSupabase } from '@/utils/userSync';
 
 interface AuthContextType {
-  user: UserResource | null;
+  user: any | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
