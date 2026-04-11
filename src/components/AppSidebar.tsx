@@ -79,6 +79,7 @@ const inventorySubItems = [
 
 const bankingMenuItems = [
   { title: "Banking", url: "/banking", icon: Banknote },
+  { title: "Reconciliation", url: "/banking/reconciliation", icon: FileText },
 ];
 
 const complianceMenuItems = [
@@ -569,7 +570,7 @@ export function AppSidebar() {
           </div>
           <Button
             variant="ghost"
-            onClick={signOut}
+            onClick={() => signOut()}
             className={`w-full rounded-xl border border-primary/10 bg-background/60 ${isCollapsed ? "justify-center px-0" : "justify-start px-3"}`}
             title="Sign Out"
           >

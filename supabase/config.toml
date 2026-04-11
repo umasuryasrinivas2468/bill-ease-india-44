@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.aczen-mcp]
 verify_jwt = false
+
+[functions.bank-reconciliation]
+verify_jwt = false

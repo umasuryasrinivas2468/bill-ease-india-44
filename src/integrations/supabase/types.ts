@@ -711,6 +711,8 @@ export type Database = {
           org_id: string | null
           payment_mode: string | null
           posted_to_ledger: boolean | null
+          project_id: string | null
+          project_name: string | null
           status: string | null
           tax_amount: number | null
           tds_amount: number | null
@@ -734,6 +736,8 @@ export type Database = {
           org_id?: string | null
           payment_mode?: string | null
           posted_to_ledger?: boolean | null
+          project_id?: string | null
+          project_name?: string | null
           status?: string | null
           tax_amount?: number | null
           tds_amount?: number | null
@@ -757,6 +761,8 @@ export type Database = {
           org_id?: string | null
           payment_mode?: string | null
           posted_to_ledger?: boolean | null
+          project_id?: string | null
+          project_name?: string | null
           status?: string | null
           tax_amount?: number | null
           tds_amount?: number | null
@@ -780,6 +786,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
@@ -932,6 +945,7 @@ export type Database = {
           items_with_product_id: Json | null
           notes: string | null
           org_id: string | null
+          paid_amount: number | null
           roundoff: number | null
           status: string | null
           total_amount: number
@@ -959,6 +973,7 @@ export type Database = {
           items_with_product_id?: Json | null
           notes?: string | null
           org_id?: string | null
+          paid_amount?: number | null
           roundoff?: number | null
           status?: string | null
           total_amount?: number
@@ -986,6 +1001,7 @@ export type Database = {
           items_with_product_id?: Json | null
           notes?: string | null
           org_id?: string | null
+          paid_amount?: number | null
           roundoff?: number | null
           status?: string | null
           total_amount?: number
@@ -1303,6 +1319,62 @@ export type Database = {
           resource?: string
         }
         Relationships: []
+      }
+      projects: {
+        Row: {
+          assigned_users: Json
+          billing_method: string
+          client_id: string | null
+          client_name: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          project_code: string | null
+          project_name: string
+          tasks: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_users?: Json
+          billing_method?: string
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          project_code?: string | null
+          project_name: string
+          tasks?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_users?: Json
+          billing_method?: string
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          project_code?: string | null
+          project_name?: string
+          tasks?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       purchase_bills: {
         Row: {
@@ -1683,6 +1755,109 @@ export type Database = {
             columns: ["related_sales_order_id"]
             isOneToOne: false
             referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_expenses: {
+        Row: {
+          amount: number
+          category_id: string | null
+          category_name: string
+          created_at: string | null
+          description: string | null
+          end_date: string | null
+          frequency: string
+          id: string
+          is_active: boolean
+          last_generated_date: string | null
+          name: string
+          next_due_date: string
+          notes: string | null
+          payment_mode: string
+          project_id: string | null
+          project_name: string | null
+          reference_number: string | null
+          start_date: string
+          tax_amount: number
+          total_amount: number
+          updated_at: string | null
+          user_id: string
+          vendor_id: string | null
+          vendor_name: string
+        }
+        Insert: {
+          amount?: number
+          category_id?: string | null
+          category_name?: string
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          last_generated_date?: string | null
+          name: string
+          next_due_date: string
+          notes?: string | null
+          payment_mode?: string
+          project_id?: string | null
+          project_name?: string | null
+          reference_number?: string | null
+          start_date: string
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string | null
+          user_id: string
+          vendor_id?: string | null
+          vendor_name?: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          category_name?: string
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          last_generated_date?: string | null
+          name?: string
+          next_due_date?: string
+          notes?: string | null
+          payment_mode?: string
+          project_id?: string | null
+          project_name?: string | null
+          reference_number?: string | null
+          start_date?: string
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string | null
+          user_id?: string
+          vendor_id?: string | null
+          vendor_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_expenses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_expenses_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]

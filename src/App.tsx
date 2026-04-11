@@ -30,6 +30,7 @@ import PurchaseBills from "./pages/PurchaseBills";
 import Receivables from "./pages/Receivables";
 import Payables from "./pages/Payables";
 import Banking from "./pages/Banking";
+import BankReconciliation from "./pages/BankReconciliation";
 import BankingSuccess from "./pages/BankingSuccess";
 import UPICollections from "./pages/UPICollections";
 import Marketplace from "./pages/Marketplace";
@@ -181,6 +182,7 @@ function App() {
                         <Route path="/reports/receivables" element={<Receivables />} />
                         <Route path="/reports/payables" element={<Payables />} />
                         <Route path="/banking" element={<Banking />} />
+                        <Route path="/banking/reconciliation" element={<BankReconciliation />} />
                         <Route path="/banking/success" element={<BankingSuccess />} />
                         <Route path="/payroll" element={<Payroll />} />
                         <Route path="/upi-collections" element={<UPICollections />} />
