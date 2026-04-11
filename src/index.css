@@ -1,0 +1,185 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 235 86% 65%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 16 90% 65%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 235 86% 65%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 235 86% 65%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 235 86% 65%;
+
+    --orange: 16 100% 66%;
+    --orange-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 235 86% 65%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 16 90% 65%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 235 86% 65%;
+
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 235 86% 65%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 235 86% 65%;
+
+    --orange: 16 100% 66%;
+    --orange-foreground: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    overflow-x: hidden;
+  }
+
+  /* Page headings alignment */
+  .page-heading {
+    @apply text-left;
+  }
+
+  /* Ensure all h1, h2, h3 elements are left-aligned by default */
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-left;
+  }
+
+  /* Override any center alignment for page titles */
+  .page-title {
+    @apply text-left;
+  }
+
+  /* Responsive utilities */
+  @media (max-width: 640px) {
+    .container {
+      @apply px-4;
+    }
+  }
+}
+
+/* Enhanced Relevance AI branding hiding with better coverage */
+.branding-overlay,
+[class*="branding"],
+[class*="powered-by"],
+[class*="powered_by"],
+[class*="poweredBy"],
+[class*="relevance"],
+[class*="logo"],
+[data-testid*="branding"],
+[data-testid*="powered"],
+[data-testid*="logo"],
+iframe[src*="relevanceai"] + div,
+iframe[src*="relevanceai"] ~ div[style*="position: absolute"],
+iframe[src*="relevanceai"] ~ div[style*="bottom"],
+iframe[src*="relevanceai"] ~ div[style*="fixed"],
+iframe[src*="relevanceai"] ~ div[style*="z-index"],
+div[style*="bottom: 0px"],
+div[style*="bottom:0px"],
+div[style*="position: fixed"][style*="bottom"],
+div[style*="position:fixed"][style*="bottom"],
+a[href*="relevanceai"],
+a[href*="relevance.ai"],
+span:contains("Powered by"),
+span:contains("powered by"),
+div:contains("Powered by Relevance"),
+div:contains("powered by relevance") {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  z-index: -9999 !important;
+  height: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+}
+
+/* Additional overlay to cover any remaining branding */
+iframe[src*="relevanceai"] {
+  position: relative;
+}
+
+iframe[src*="relevanceai"]::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.95), transparent);
+  pointer-events: none;
+  z-index: 1000;
+}
+
+/* Dark mode overlay */
+.dark iframe[src*="relevanceai"]::after {
+  background: linear-gradient(to top, rgba(34, 34, 34, 0.95), transparent);
+}

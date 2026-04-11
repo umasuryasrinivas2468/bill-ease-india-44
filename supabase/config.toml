@@ -1,0 +1,16 @@
+project_id = "vhntnkvtzmerpdhousfr"
+
+[functions.financial-advisor]
+verify_jwt = false
+
+[functions.ai-command]
+verify_jwt = false
+
+[functions.ai-tax-advisor]
+verify_jwt = false
+
+[functions.inventory-insights]
+verify_jwt = false
+
+[functions.aczen-mcp]
+verify_jwt = false
