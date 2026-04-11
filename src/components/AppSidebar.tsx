@@ -79,6 +79,7 @@ const inventorySubItems = [
 
 const bankingMenuItems = [
   { title: "Banking", url: "/banking", icon: Banknote },
+  { title: "Reconciliation", url: "/banking/reconciliation", icon: FileText },
 ];
 
 const complianceMenuItems = [

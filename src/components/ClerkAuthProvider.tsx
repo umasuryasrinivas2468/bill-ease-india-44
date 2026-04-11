@@ -27,7 +27,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (isLoaded && user) {
       console.log('User loaded, syncing with Supabase:', user.id);
-      syncUserWithSupabase(user);
+      syncUserWithSupabase(user as any);
     }
   }, [user, isLoaded]);
 
