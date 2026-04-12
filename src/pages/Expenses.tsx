@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Plus, Filter, Download, TrendingUp, Receipt, CreditCard, Wallet, RepeatIcon } from 'lucide-react';
+import { Plus, Filter, Download, Upload, TrendingUp, Receipt, CreditCard, Wallet, RepeatIcon } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useExpenses, useExpenseStats } from '@/hooks/useExpenses';
+import { useExpenses, useExpenseStats, useCreateExpense } from '@/hooks/useExpenses';
 import { CreateExpenseData, ExpenseFilters } from '@/types/expenses';
 import ExpensesList from '@/components/expenses/ExpensesList';
 import ExpenseForm from '@/components/expenses/ExpenseForm';
@@ -15,16 +16,19 @@ import ExpenseOCRCapture from '@/components/expenses/ExpenseOCRCapture';
 import MileageRecorder from '@/components/expenses/MileageRecorder';
 import RecurringExpensesList from '@/components/expenses/RecurringExpensesList';
 import RecurringExpenseForm from '@/components/expenses/RecurringExpenseForm';
+import ImportDialog from '@/components/ImportDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 
 const Expenses = () => {
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState<ExpenseFilters>({});
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isRecurringDialogOpen, setIsRecurringDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('list');
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'list');
   const [expenseDraft, setExpenseDraft] = useState<(Partial<CreateExpenseData> & { expense_date?: string }) | undefined>();
   
   const { data: expenses = [], isLoading } = useExpenses(filters);
@@ -107,6 +111,37 @@ const Expenses = () => {
     });
   };
 
+  const createExpense = useCreateExpense();
+
+  const handleImportExpenses = async (validRows: any[]) => {
+    let successCount = 0;
+    for (const row of validRows) {
+      try {
+        await createExpense.mutateAsync({
+          vendor_name: String(row.vendor_name || '').trim(),
+          expense_date: row.expense_date ? new Date(row.expense_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          category_name: String(row.category_name || 'Miscellaneous').trim(),
+          description: String(row.description || '').trim() || `Imported expense from ${row.vendor_name}`,
+          amount: parseFloat(row.amount) || 0,
+          tax_amount: parseFloat(row.tax_amount || 0),
+          payment_mode: (['cash', 'bank', 'credit_card', 'debit_card', 'upi', 'cheque'].includes(String(row.payment_mode || '').toLowerCase())
+            ? String(row.payment_mode).toLowerCase()
+            : 'bank') as any,
+          bill_number: row.bill_number || undefined,
+          notes: row.notes || 'Imported via CSV',
+        });
+        successCount++;
+      } catch (err) {
+        console.error('Failed to import expense row:', err);
+      }
+    }
+    toast({
+      title: 'Import Complete',
+      description: `${successCount} of ${validRows.length} expenses imported successfully.`,
+    });
+    setIsImportDialogOpen(false);
+  };
+
   const hasActiveFilters = Object.values(filters).some(value => value !== undefined && value !== '');
 
   return (
@@ -127,6 +162,10 @@ const Expenses = () => {
             <Filter className="h-4 w-4 mr-2" />
             Filters
             {hasActiveFilters && <span className="ml-1 text-xs bg-primary text-primary-foreground rounded-full px-1">•</span>}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setIsImportDialogOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Import
           </Button>
           <Button variant="outline" size="sm" onClick={exportExpenses}>
             <Download className="h-4 w-4 mr-2" />
@@ -302,6 +341,13 @@ const Expenses = () => {
           <MileageRecorder onCreateDraft={openDraftInForm} />
         </TabsContent>
       </Tabs>
+
+      <ImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        moduleKey="expenses"
+        onConfirmImport={handleImportExpenses}
+      />
 
       {/* Filters Dialog */}
       <Dialog open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>

@@ -36,12 +36,12 @@ const getRuleSet = (moduleKey: ModuleKey): ValidationRuleSet => {
   rules.formatRules['phone'] = (val) => !val || phoneRegex.test(String(val).trim());
 
   // Numeric fields
-  ['quantity', 'rate', 'opening_balance', 'gst_rate'].forEach((field) => {
+  ['quantity', 'rate', 'opening_balance', 'gst_rate', 'amount', 'tax_amount'].forEach((field) => {
     rules.formatRules[field] = (val) => !val || !isNaN(Number(val));
   });
 
   // Date fields
-  ['invoice_date', 'quotation_date', 'due_date'].forEach((field) => {
+  ['invoice_date', 'quotation_date', 'due_date', 'expense_date'].forEach((field) => {
     rules.formatRules[field] = (val) => !val || !isNaN(new Date(String(val)).getTime());
   });
 
@@ -102,6 +102,8 @@ export const validateRows = (
       dupKey = `ledger:${String(row['ledger_name']).toLowerCase().trim()}`;
     } else if (moduleKey === 'quotations' && row['quotation_number']) {
       dupKey = `quote:${String(row['quotation_number']).toLowerCase().trim()}`;
+    } else if (moduleKey === 'expenses' && row['bill_number']) {
+      dupKey = `expense:${String(row['bill_number']).toLowerCase().trim()}`;
     }
 
     if (dupKey && seen.has(dupKey)) {

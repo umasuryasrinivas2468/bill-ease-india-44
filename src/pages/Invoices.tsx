@@ -400,27 +400,46 @@ const Invoices = () => {
                       <span>{new Date(invoice.invoice_date).toLocaleDateString()}</span>
                     </div>
                   </div>
+                  {invoice.paid_amount != null && Number(invoice.paid_amount) > 0 && (
+                    <div className="mt-2 space-y-0.5">
+                      <Progress value={(Number(invoice.paid_amount) / Number(invoice.total_amount)) * 100} className="h-1.5" />
+                      <div className="text-xs text-muted-foreground">
+                        Paid ₹{Number(invoice.paid_amount).toLocaleString('en-IN')} of ₹{Number(invoice.total_amount).toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                  )}
                   <div className="flex gap-2 mt-4">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
+                    {invoice.status !== 'paid' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 transition-all hover:scale-[1.02] border-green-400 text-green-700 hover:bg-green-50"
+                        onClick={() => openPaymentDialog(invoice)}
+                      >
+                        <IndianRupee className="h-3 w-3 mr-1" />
+                        Pay
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
                       className="flex-1 transition-all hover:scale-[1.02]"
                       onClick={() => handleViewInvoice(invoice)}
                     >
                       <Eye className="h-3 w-3 mr-1" />
                       View
                     </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
+                    <Button
+                      size="sm"
+                      variant="outline"
                       className="flex-1 transition-all hover:scale-[1.02]"
                       onClick={() => handleDownloadInvoice(invoice)}
                     >
                       <Download className="h-3 w-3 mr-1" />
                       Download
                     </Button>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="default"
                       className="flex-1 transition-all hover:scale-[1.02]"
                       onClick={() => handleSendInvoice(invoice)}
@@ -428,9 +447,9 @@ const Invoices = () => {
                       <Send className="h-3 w-3 mr-1" />
                       Send
                     </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
+                    <Button
+                      size="sm"
+                      variant="outline"
                       onClick={() => handleDeleteInvoice(invoice)}
                       disabled={deleteInvoice.isPending}
                       className="transition-all hover:scale-[1.02]"

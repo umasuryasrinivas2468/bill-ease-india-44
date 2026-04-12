@@ -236,40 +236,54 @@ export const useRecordInvoicePayment = () => {
       if (!user || !isValidUserId(user.id)) throw new Error('User not authenticated');
       const uid = normalizeUserId(user.id);
 
-      // Fetch current paid_amount
+      // Fetch current paid_amount (include user_id filter for RLS)
       const { data: current, error: fetchError } = await supabase
         .from('invoices')
         .select('paid_amount, total_amount, invoice_number, client_name')
         .eq('id', invoiceId)
+        .eq('user_id', uid)
         .single();
-      if (fetchError) throw fetchError;
 
-      const newPaidAmount = Number(current?.paid_amount || 0) + paymentAmount;
+      if (fetchError) {
+        console.error('Failed to fetch invoice for payment:', fetchError);
+        throw new Error('Could not fetch invoice. Please refresh and try again.');
+      }
+
+      const currentPaid = Number(current?.paid_amount) || 0;
+      const invoiceTotal = Number(current?.total_amount) || totalAmount;
+      const newPaidAmount = currentPaid + paymentAmount;
       const newStatus: Invoice['status'] =
-        newPaidAmount >= totalAmount ? 'paid' : 'partial';
+        newPaidAmount >= invoiceTotal ? 'paid' : 'partial';
+
+      console.log('[Payment] Invoice:', current.invoice_number, '| Current paid:', currentPaid, '| New payment:', paymentAmount, '| New total paid:', newPaidAmount, '| Status:', newStatus);
 
       const { data, error } = await supabase
         .from('invoices')
-        .update({ paid_amount: newPaidAmount, status: newStatus })
+        .update({
+          paid_amount: newPaidAmount,
+          status: newStatus,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', invoiceId)
         .eq('user_id', uid)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Failed to update invoice payment:', error);
+        throw new Error('Payment update failed. Check if paid_amount column exists in the database.');
+      }
 
-      // Post payment journal when fully paid
-      if (newStatus === 'paid') {
-        try {
-          await postPaymentReceivedJournal(uid, {
-            invoice_number: current.invoice_number,
-            date: new Date().toISOString().split('T')[0],
-            client_name: current.client_name,
-            amount: paymentAmount,
-          });
-        } catch (journalErr) {
-          console.error('Auto payment journal failed:', journalErr);
-        }
+      // Post payment journal for every payment (partial or full)
+      try {
+        await postPaymentReceivedJournal(uid, {
+          invoice_number: current.invoice_number,
+          date: new Date().toISOString().split('T')[0],
+          client_name: current.client_name,
+          amount: paymentAmount,
+        });
+      } catch (journalErr) {
+        console.error('Auto payment journal failed:', journalErr);
       }
 
       return data as Invoice;

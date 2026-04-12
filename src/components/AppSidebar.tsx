@@ -15,6 +15,7 @@ import {
   Scale,
   ListTree,
   TrendingUp,
+  TrendingDown,
   ChevronRight,
   Percent,
   Banknote,
@@ -28,6 +29,7 @@ import {
   LayoutGrid,
   Clock,
   FolderKanban,
+  GitMerge,
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import { useAuthorization } from "@/hooks/useAuthorization";
@@ -56,6 +58,7 @@ const salesMenuItems = [
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Sales Orders", url: "/inventory/sales-orders", icon: ShoppingCart, feature: "salesOrders" as const },
   { title: "Invoices", url: "/invoices", icon: FileText },
+  { title: "Receivables", url: "/reports/receivables", icon: TrendingUp },
   { title: "Working Capital", url: "/working-capital", icon: Banknote },
   { title: "Cash Memo", url: "/cash-memo", icon: Wallet },
   { title: "E Way Bills", url: "/coming-soon?feature=E%20Way%20Bills", icon: Truck },
@@ -69,6 +72,8 @@ const purchasesMenuItems = [
   { title: "Vendors", url: "/vendors", icon: Users },
   { title: "Expenses", url: "/expenses", icon: Receipt },
   { title: "Bills", url: "/purchase-bills", icon: FileText },
+  { title: "Payables", url: "/reports/payables", icon: TrendingDown },
+  { title: "Recurring Bills", url: "/expenses?tab=recurring", icon: RefreshCw },
   { title: "Purchase Orders", url: "/inventory/purchase-orders", icon: Truck, feature: "purchaseOrders" as const },
 ];
 
@@ -77,21 +82,23 @@ const inventorySubItems = [
   { title: "Inventory Insights", url: "/inventory/insights", icon: Sparkles },
 ];
 
-const bankingMenuItems = [
+const bankingSubItems = [
   { title: "Banking", url: "/banking", icon: Banknote },
-  { title: "Reconciliation", url: "/banking/reconciliation", icon: FileText },
+  { title: "Reconciliation", url: "/banking/reconciliation", icon: GitMerge },
 ];
 
 const complianceMenuItems = [
   { title: "Compliance Calendar", url: "/compliance", icon: CalendarDays },
+  { title: "GST", url: "/compliance/gst", icon: Scale },
   { title: "MCA Filing", url: "/compliance/mca", icon: Building2 },
-  { title: "Reports", url: "/reports/tds", icon: Percent },
+  { title: "TDS Reports", url: "/reports/tds", icon: Percent },
   { title: "ITR", url: "/ca/itr6", icon: FileText },
 ];
 
 const reportsMenuItems = [
   { title: "Financial Statements", url: "/accounting/financial-statements", icon: FileText },
   { title: "Profit Loss", url: "/accounting/profit-loss", icon: TrendingUp },
+  { title: "Project P&L", url: "/accounting/project-profit-loss", icon: FolderKanban },
 ];
 
 const appsMenuItems = [
@@ -130,6 +137,7 @@ export function AppSidebar() {
   const [isCAToolsOpen, setIsCAToolsOpen] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
   const [isSpaceOpen, setIsSpaceOpen] = useState(false);
+  const [isBankingOpen, setIsBankingOpen] = useState(false);
 
   const isCA = hasRole('ca');
   const collapseTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -237,7 +245,7 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/quotations','/clients','/invoices','/notifications','/cash-memo','/coming-soon','/inventory/sales-orders','/inventory/delivery-challans','/ca/recurring-invoices'])}`}
+                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/quotations','/clients','/invoices','/notifications','/cash-memo','/coming-soon','/inventory/sales-orders','/inventory/delivery-challans','/ca/recurring-invoices','/reports/receivables'])}`}
                         title="Sales"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsSalesOpen(!isSalesOpen)}>
@@ -287,7 +295,7 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/vendors','/expenses','/purchase-bills','/inventory/purchase-orders'])}`}
+                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/vendors','/expenses','/purchase-bills','/inventory/purchase-orders','/reports/payables'])}`}
                         title="Purchases"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsPurchasesOpen(!isPurchasesOpen)}>
@@ -371,20 +379,43 @@ export function AppSidebar() {
                 </SidebarMenuItem>
 
                 {/* Banking */}
-                {bankingMenuItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild className="px-0 py-1">
-                      <NavLink
-                        to={item.url}
-                        className={`${getNavCls(item.url)} flex w-full items-center ${isCollapsed ? "justify-center px-0 py-3" : "px-3 py-3"}`}
-                        title={item.title}
+                <SidebarMenuItem>
+                  <Collapsible open={isBankingOpen} onOpenChange={setIsBankingOpen} className="w-full">
+                    <div className="w-full">
+                      <SidebarMenuButton
+                        asChild
+                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/banking'])}`}
+                        title="Banking"
                       >
-                        <item.icon className="h-6 w-6 shrink-0" />
-                        {!isCollapsed && <span className="ml-2">{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                        <CollapsibleTrigger className={triggerCls} onClick={() => setIsBankingOpen(!isBankingOpen)}>
+                          <Banknote className="h-5 w-5 shrink-0" />
+                          {!isCollapsed && (
+                            <>
+                              <span className="ml-2">Banking</span>
+                              <ChevronRight className={`ml-auto h-4 w-4 transition-transform duration-200 ${isBankingOpen ? "rotate-90" : ""}`} />
+                            </>
+                          )}
+                        </CollapsibleTrigger>
+                      </SidebarMenuButton>
+                      {!isCollapsed && (
+                        <CollapsibleContent className="transition-all duration-200 ease-in-out">
+                          <SidebarMenuSub>
+                            {bankingSubItems.map((item) => (
+                              <SidebarMenuSubItem key={item.title}>
+                                <SidebarMenuSubButton asChild>
+                                  <NavLink to={item.url} className={`${getNavCls(item.url)} ml-4 px-3 py-2.5 text-sm`} title={item.title}>
+                                    <item.icon className="h-4 w-4" />
+                                    <span>{item.title}</span>
+                                  </NavLink>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      )}
+                    </div>
+                  </Collapsible>
+                </SidebarMenuItem>
 
                 {/* Compliance */}
                 <SidebarMenuItem>
@@ -392,7 +423,7 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/compliance','/compliance/mca','/reports/tds','/ca/itr6'])}`}
+                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/compliance','/compliance/gst','/compliance/mca','/reports/tds','/ca/itr6'])}`}
                         title="Compliance"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsComplianceOpen(!isComplianceOpen)}>
@@ -470,7 +501,7 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/accounting/financial-statements','/accounting/profit-loss'])}`}
+                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/accounting/financial-statements','/accounting/profit-loss','/accounting/project-profit-loss'])}`}
                         title="Reports"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsReportsOpen(!isReportsOpen)}>

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Settings } from 'lucide-react';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { UniversalSearchDropdown } from '@/components/UniversalSearchDropdown';
+import { NotificationCenter } from '@/components/NotificationCenter';
 import AICommandBar from '@/components/AICommandBar';
 import { useAuth } from '@/components/ClerkAuthProvider';
 import { useBusinessData } from '@/hooks/useBusinessData';
@@ -74,15 +75,18 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                     <p className="text-xs text-muted-foreground">Dashboard overview</p>
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-10 w-10 flex-shrink-0 rounded-[14px] border border-primary/15 bg-background/70"
-                  onClick={() => setSettingsOpen(true)}
-                  aria-label="Settings"
-                >
-                  <Settings className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <NotificationCenter compact />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 flex-shrink-0 rounded-[14px] border border-primary/15 bg-background/70"
+                    onClick={() => setSettingsOpen(true)}
+                    aria-label="Settings"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
               <div className="hidden md:flex items-center gap-4 px-4 py-4">
@@ -100,6 +104,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                   <p className="mt-1 text-sm text-muted-foreground">Finance workspace</p>
                 </div>
                 <UniversalSearchDropdown />
+                <NotificationCenter />
                 <Button variant="ghost" className="h-11 rounded-full border border-primary/15 bg-background/70 px-4 flex items-center gap-2" onClick={() => setSettingsOpen(true)}>
                   <Settings className="h-4 w-4" />
                   <span>Settings</span>
@@ -108,7 +113,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             </header>
           )}
 
-          <main className={isBankingPage ? 'flex-1 w-full' : 'flex-1 w-full pb-36 md:pb-28'}>
+          <main key={location.pathname} className={`${isBankingPage ? 'flex-1 w-full' : 'flex-1 w-full pb-36 md:pb-28'} animate-in fade-in slide-in-from-bottom-3 duration-300`}>
             {children}
           </main>
         </SidebarInset>

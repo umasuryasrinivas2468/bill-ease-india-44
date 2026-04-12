@@ -1,4 +1,4 @@
-export type ModuleKey = 'ledgers' | 'clients' | 'vendors' | 'invoices' | 'quotations';
+export type ModuleKey = 'ledgers' | 'clients' | 'vendors' | 'invoices' | 'quotations' | 'expenses';
 
 interface TemplateConfig {
   required: string[];
@@ -25,6 +25,10 @@ const templates: Record<ModuleKey, TemplateConfig> = {
   quotations: {
     required: ['quotation_number', 'quotation_date', 'client_name', 'item_description', 'quantity', 'rate'],
     optional: ['hsn_sac', 'gst_rate', 'notes'],
+  },
+  expenses: {
+    required: ['vendor_name', 'expense_date', 'category_name', 'amount'],
+    optional: ['description', 'tax_amount', 'payment_mode', 'bill_number', 'notes'],
   },
 };
 

@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from "react";
-import Tesseract from "tesseract.js";
 import { AlertCircle, Brain, FileImage, Loader2, ScanLine, WandSparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,12 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ExpenseOCRResult, extractExpenseDataFromText } from "@/utils/expenseOCR";
+import { ExpenseOCRResult } from "@/utils/expenseOCR";
+import { extractExpenseWithGemini } from "@/utils/geminiOCR";
 import { CreateExpenseData } from "@/types/expenses";
 
 interface ExpenseOCRCaptureProps {
   onCreateDraft: (draft: Partial<CreateExpenseData> & { expense_date?: string }) => void;
 }
+
+const RUPEE_SYMBOL = "\u20B9";
 
 const confidenceColorMap = {
   high: "default" as const,
@@ -22,7 +24,7 @@ const confidenceColorMap = {
 };
 
 const formatRupee = (value?: string) =>
-  value ? `₹${Number(value).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "N/A";
+  value ? `${RUPEE_SYMBOL}${Number(value).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "N/A";
 
 const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) => {
   const { toast } = useToast();
@@ -53,34 +55,22 @@ const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) 
 
   const runOCR = async () => {
     if (!selectedFile) return;
-    if (!selectedFile.type.startsWith("image/")) {
-      toast({
-        title: "Image required",
-        description: "For now, OCR capture supports receipt images like JPG and PNG.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     setIsProcessing(true);
     try {
-      const {
-        data: { text },
-      } = await Tesseract.recognize(selectedFile, "eng", {
-        logger: () => undefined,
-      });
+      const result = await extractExpenseWithGemini(selectedFile);
+      setOcrResult(result);
 
-      const parsed = extractExpenseDataFromText(text);
-      setOcrResult(parsed);
       toast({
-        title: "OCR completed",
-        description: "Receipt fields were extracted and are ready for review.",
+        title: "AI extraction completed",
+        description: "Gemini AI has analyzed your document and extracted the expense fields.",
       });
     } catch (error) {
-      console.error("OCR error:", error);
+      console.error("Gemini OCR error:", error);
+      const message = error instanceof Error ? error.message : "Unknown error";
       toast({
-        title: "OCR failed",
-        description: "The receipt could not be processed. Try a clearer image.",
+        title: "Extraction failed",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -100,7 +90,7 @@ const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) 
     onCreateDraft({
       vendor_name: ocrResult.vendorName?.value || "Scanned Vendor",
       expense_date: ocrResult.expenseDate?.value || new Date().toISOString().split("T")[0],
-      category_name: ocrResult.categoryHint?.value || "General Expense",
+      category_name: ocrResult.categoryHint?.value || "Miscellaneous",
       description: ocrResult.vendorName?.value
         ? `OCR captured expense from ${ocrResult.vendorName.value}`
         : "OCR captured expense",
@@ -108,7 +98,7 @@ const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) 
       tax_amount: Number(tax),
       payment_mode: (ocrResult.paymentMode?.value as CreateExpenseData["payment_mode"]) || "bank",
       bill_number: ocrResult.billNumber?.value,
-      notes: [ocrResult.notes, "Created from OCR capture"].filter(Boolean).join(" | "),
+      notes: [ocrResult.notes, `Created from ${selectedFile?.name || "OCR capture"}`].filter(Boolean).join(" | "),
     });
   };
 
@@ -123,7 +113,7 @@ const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) 
             <div>
               <CardTitle className="text-white">Expense OCR Capture</CardTitle>
               <CardDescription className="text-slate-200">
-                Scan receipts and bills, pull out the likely fields, then convert them into an expense draft.
+                Upload receipt images or PDFs, extract likely fields, then convert them into an expense draft.
               </CardDescription>
             </div>
           </div>
@@ -133,11 +123,11 @@ const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
               <div className="mb-3 flex items-center gap-2 text-sm font-medium">
                 <FileImage className="h-4 w-4" />
-                Upload receipt image
+                Upload receipt image or PDF
               </div>
-              <Input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={handleFileChange} />
+              <Input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={handleFileChange} />
               <p className="mt-3 text-xs text-slate-300">
-                Best results come from clear mobile photos with the full bill visible and minimal shadows.
+                Powered by Google Gemini AI. Upload a clear photo or PDF of your bill/invoice for accurate extraction.
               </p>
               <div className="mt-4 flex gap-2">
                 <Button
@@ -149,12 +139,12 @@ const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) 
                   {isProcessing ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Reading receipt...
+                      AI is analyzing...
                     </>
                   ) : (
                     <>
                       <ScanLine className="mr-2 h-4 w-4" />
-                      Run OCR
+                      Extract with Gemini AI
                     </>
                   )}
                 </Button>
@@ -168,13 +158,13 @@ const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) 
             </div>
 
             <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-5">
-              <div className="mb-2 text-sm font-semibold">What this pulls out</div>
+              <div className="mb-2 text-sm font-semibold">Gemini AI extracts</div>
               <ul className="space-y-2 text-sm text-slate-100">
                 <li>Vendor name and bill number</li>
                 <li>Expense date and GST number</li>
                 <li>Base amount, tax amount, and total</li>
                 <li>Payment mode and category hint</li>
-                <li>Raw OCR text for manual review</li>
+                <li>Raw extracted text for manual review</li>
               </ul>
             </div>
           </div>
@@ -219,7 +209,7 @@ const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) 
 
           <Card>
             <CardHeader>
-              <CardTitle>OCR Text</CardTitle>
+              <CardTitle>Extracted Text</CardTitle>
               <CardDescription>Use this when a field needs manual correction.</CardDescription>
             </CardHeader>
             <CardContent>

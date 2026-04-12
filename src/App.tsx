@@ -57,6 +57,7 @@ import Vendors from "./pages/Vendors";
 import PayLink from "./pages/PayLink";
 import GST3Filing from "./pages/reports/GST3Filing";
 import Expenses from "./pages/Expenses";
+import GSTCompliance from "./pages/GSTCompliance";
 import Payroll from "./pages/Payroll";
 import TDS from "./pages/TDS";
 import DeliveryChallans from "./pages/DeliveryChallans";
@@ -80,6 +81,7 @@ import ChartOfAccounts from "./pages/accounting/ChartOfAccounts";
 import Ledgers from "./pages/accounting/Ledgers";
 import TrialBalance from "./pages/accounting/TrialBalance";
 import ProfitLoss from "./pages/accounting/ProfitLoss";
+import ProjectProfitLoss from "./pages/accounting/ProjectProfitLoss";
 import ManualJournals from "./pages/accounting/ManualJournals";
 import FinancialStatements from "./pages/FinancialStatements";
 
@@ -210,9 +212,11 @@ function App() {
                         <Route path="/accounting/ledgers" element={<Ledgers />} />
                         <Route path="/accounting/trial-balance" element={<TrialBalance />} />
                         <Route path="/accounting/profit-loss" element={<ProfitLoss />} />
+                        <Route path="/accounting/project-profit-loss" element={<ProjectProfitLoss />} />
                         <Route path="/accounting/manual-journals" element={<ManualJournals />} />
                         <Route path="/accounting/financial-statements" element={<FinancialStatements />} />
                         <Route path="/expenses" element={<Expenses />} />
+                        <Route path="/compliance/gst" element={<GSTCompliance />} />
                         <Route path="/reports/tds" element={<TDS />} />
                       </Route>
 
