@@ -72,6 +72,8 @@ const purchasesMenuItems = [
   { title: "Vendors", url: "/vendors", icon: Users },
   { title: "Expenses", url: "/expenses", icon: Receipt },
   { title: "Bills", url: "/purchase-bills", icon: FileText },
+  { title: "Vendor Advances", url: "/vendor-advances", icon: Banknote },
+  { title: "Bill Payments", url: "/vendor-bill-payments", icon: Wallet },
   { title: "Payables", url: "/reports/payables", icon: TrendingDown },
   { title: "Recurring Bills", url: "/expenses?tab=recurring", icon: RefreshCw },
   { title: "Purchase Orders", url: "/inventory/purchase-orders", icon: Truck, feature: "purchaseOrders" as const },
@@ -232,7 +234,7 @@ export function AppSidebar() {
                         className={`${getNavCls(item.url)} flex w-full items-center ${isCollapsed ? "justify-center px-0 py-3" : "px-3 py-3"}`}
                         title={item.title}
                       >
-                        <item.icon className="h-6 w-6 shrink-0" />
+                        <item.icon className="h-7 w-7 shrink-0" />
                         {!isCollapsed && <span className="ml-2">{item.title}</span>}
                       </NavLink>
                     </SidebarMenuButton>
@@ -249,7 +251,7 @@ export function AppSidebar() {
                         title="Sales"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsSalesOpen(!isSalesOpen)}>
-                          <ShoppingCart className="h-5 w-5 shrink-0" />
+                          <ShoppingCart className="h-6 w-6 shrink-0" />
                           {!isCollapsed && (
                             <>
                               <span className="ml-2">Sales</span>
@@ -275,7 +277,7 @@ export function AppSidebar() {
                                     />
                                   ) : (
                                     <NavLink to={item.url} className={`${getNavCls(item.url)} ml-4 px-3 py-2.5 text-sm`} title={item.title}>
-                                      <item.icon className="h-4 w-4" />
+                                      <item.icon className="h-5 w-5" />
                                       <span>{item.title}</span>
                                     </NavLink>
                                   )}
@@ -295,11 +297,11 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/vendors','/expenses','/purchase-bills','/inventory/purchase-orders','/reports/payables'])}`}
+                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/vendors','/expenses','/purchase-bills','/vendor-advances','/vendor-bill-payments','/inventory/purchase-orders','/reports/payables'])}`}
                         title="Purchases"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsPurchasesOpen(!isPurchasesOpen)}>
-                          <Truck className="h-5 w-5 shrink-0" />
+                          <Truck className="h-6 w-6 shrink-0" />
                           {!isCollapsed && (
                             <>
                               <span className="ml-2">Purchases</span>
@@ -325,7 +327,7 @@ export function AppSidebar() {
                                     />
                                   ) : (
                                     <NavLink to={item.url} className={`${getNavCls(item.url)} ml-4 px-3 py-2.5 text-sm`} title={item.title}>
-                                      <item.icon className="h-4 w-4" />
+                                      <item.icon className="h-5 w-5" />
                                       <span>{item.title}</span>
                                     </NavLink>
                                   )}
@@ -349,7 +351,7 @@ export function AppSidebar() {
                         title="Inventory"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsInventoryOpen(!isInventoryOpen)}>
-                          <Package className="h-5 w-5 shrink-0" />
+                          <Package className="h-6 w-6 shrink-0" />
                           {!isCollapsed && (
                             <>
                               <span className="ml-2">Inventory</span>
@@ -365,7 +367,7 @@ export function AppSidebar() {
                               <SidebarMenuSubItem key={item.title}>
                                 <SidebarMenuSubButton asChild>
                                   <NavLink to={item.url} className={`${getNavCls(item.url)} ml-4 px-3 py-2.5 text-sm`} title={item.title}>
-                                    <item.icon className="h-4 w-4" />
+                                    <item.icon className="h-5 w-5" />
                                     <span>{item.title}</span>
                                   </NavLink>
                                 </SidebarMenuSubButton>
@@ -388,7 +390,7 @@ export function AppSidebar() {
                         title="Banking"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsBankingOpen(!isBankingOpen)}>
-                          <Banknote className="h-5 w-5 shrink-0" />
+                          <Banknote className="h-6 w-6 shrink-0" />
                           {!isCollapsed && (
                             <>
                               <span className="ml-2">Banking</span>
@@ -404,7 +406,7 @@ export function AppSidebar() {
                               <SidebarMenuSubItem key={item.title}>
                                 <SidebarMenuSubButton asChild>
                                   <NavLink to={item.url} className={`${getNavCls(item.url)} ml-4 px-3 py-2.5 text-sm`} title={item.title}>
-                                    <item.icon className="h-4 w-4" />
+                                    <item.icon className="h-5 w-5" />
                                     <span>{item.title}</span>
                                   </NavLink>
                                 </SidebarMenuSubButton>
@@ -427,7 +429,7 @@ export function AppSidebar() {
                         title="Compliance"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsComplianceOpen(!isComplianceOpen)}>
-                          <CalendarDays className="h-5 w-5 shrink-0" />
+                          <CalendarDays className="h-6 w-6 shrink-0" />
                           {!isCollapsed && (
                             <>
                               <span className="ml-2">Compliance</span>
@@ -443,7 +445,7 @@ export function AppSidebar() {
                               <SidebarMenuSubItem key={item.title}>
                                 <SidebarMenuSubButton asChild>
                                   <NavLink to={item.url} className={`${getNavCls(item.url)} ml-4 px-3 py-2.5 text-sm`} title={item.title}>
-                                    <item.icon className="h-4 w-4" />
+                                    <item.icon className="h-5 w-5" />
                                     <span>{item.title}</span>
                                   </NavLink>
                                 </SidebarMenuSubButton>
@@ -466,7 +468,7 @@ export function AppSidebar() {
                         title="CA"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsCAToolsOpen(!isCAToolsOpen)}>
-                          <Calculator className="h-5 w-5 shrink-0" />
+                          <Calculator className="h-6 w-6 shrink-0" />
                           {!isCollapsed && (
                             <>
                               <span className="ml-2">CA</span>
@@ -482,7 +484,7 @@ export function AppSidebar() {
                               <SidebarMenuSubItem key={item.title}>
                                 <SidebarMenuSubButton asChild>
                                   <NavLink to={item.url} className={`${getNavCls(item.url)} ml-4 px-3 py-2.5 text-sm`} title={item.title}>
-                                    <item.icon className="h-4 w-4" />
+                                    <item.icon className="h-5 w-5" />
                                     <span>{item.title}</span>
                                   </NavLink>
                                 </SidebarMenuSubButton>
@@ -505,7 +507,7 @@ export function AppSidebar() {
                         title="Reports"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsReportsOpen(!isReportsOpen)}>
-                          <BarChart3 className="h-5 w-5 shrink-0" />
+                          <BarChart3 className="h-6 w-6 shrink-0" />
                           {!isCollapsed && (
                             <>
                               <span className="ml-2">Reports</span>
@@ -521,7 +523,7 @@ export function AppSidebar() {
                               <SidebarMenuSubItem key={item.title}>
                                 <SidebarMenuSubButton asChild>
                                   <NavLink to={item.url} className={`${getNavCls(item.url)} ml-4 px-3 py-2.5 text-sm`} title={item.title}>
-                                    <item.icon className="h-4 w-4" />
+                                    <item.icon className="h-5 w-5" />
                                     <span>{item.title}</span>
                                   </NavLink>
                                 </SidebarMenuSubButton>
@@ -544,7 +546,7 @@ export function AppSidebar() {
                         title="Space"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsSpaceOpen(!isSpaceOpen)}>
-                          <FolderKanban className="h-5 w-5 shrink-0" />
+                          <FolderKanban className="h-6 w-6 shrink-0" />
                           {!isCollapsed && (
                             <>
                               <span className="ml-2">Space</span>
@@ -560,7 +562,7 @@ export function AppSidebar() {
                               <SidebarMenuSubItem key={item.title}>
                                 <SidebarMenuSubButton asChild>
                                   <NavLink to={item.url} className={`${getNavCls(item.url)} ml-4 px-3 py-2.5 text-sm`} title={item.title}>
-                                    <item.icon className="h-4 w-4" />
+                                    <item.icon className="h-5 w-5" />
                                     <span>{item.title}</span>
                                   </NavLink>
                                 </SidebarMenuSubButton>
@@ -582,7 +584,7 @@ export function AppSidebar() {
                         className={`${getNavCls(item.url)} flex w-full items-center ${isCollapsed ? "justify-center px-0 py-3" : "px-3 py-3"}`}
                         title={item.title}
                       >
-                        <item.icon className="h-6 w-6 shrink-0" />
+                        <item.icon className="h-7 w-7 shrink-0" />
                         {!isCollapsed && <span className="ml-2">{item.title}</span>}
                       </NavLink>
                     </SidebarMenuButton>
@@ -605,7 +607,7 @@ export function AppSidebar() {
             className={`w-full rounded-xl border border-primary/10 bg-background/60 ${isCollapsed ? "justify-center px-0" : "justify-start px-3"}`}
             title="Sign Out"
           >
-            <LogOut className="h-5 w-5 shrink-0" />
+            <LogOut className="h-6 w-6 shrink-0" />
             {!isCollapsed && <span className="ml-2">Sign Out</span>}
           </Button>
         </div>

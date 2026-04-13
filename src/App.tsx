@@ -64,6 +64,8 @@ import DeliveryChallans from "./pages/DeliveryChallans";
 import ITR6Filing from "./pages/ITR6Filing";
 import RecurringInvoices from "./pages/RecurringInvoices";
 import WorkingCapital from "./pages/WorkingCapital";
+import VendorAdvances from "./pages/VendorAdvances";
+import VendorBillPayments from "./pages/VendorBillPayments";
 
 // License pages
 import StarterPage from "./pages/StarterPage";
@@ -203,6 +205,8 @@ function App() {
                         <Route path="/branding" element={<Branding />} />
                         <Route path="/payments" element={<Payments />} />
                         <Route path="/vendors" element={<Vendors />} />
+                        <Route path="/vendor-advances" element={<VendorAdvances />} />
+                        <Route path="/vendor-bill-payments" element={<VendorBillPayments />} />
 
                         {/* Plan Test Route - For development/testing */}
                         <Route path="/plan-test" element={<PlanTestPage />} />

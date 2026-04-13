@@ -225,6 +225,41 @@ export const postVendorPaymentJournal = async (
 };
 
 /**
+ * Vendor Advance → Debit Vendor Advance (Asset), Credit Bank/Cash
+ */
+export const postVendorAdvanceJournal = async (
+  userId: string,
+  advance: { advance_number: string; advance_date: string; vendor_name: string; amount: number; payment_mode?: string }
+) => {
+  const uid = normalizeUserId(userId);
+  const advanceAccId = await getOrCreateAccount(uid, 'Vendor Advances', 'Asset');
+  const bankName = advance.payment_mode === 'cash' ? 'Cash Account' : 'Bank Account';
+  const bankId = await getOrCreateAccount(uid, bankName, 'Asset');
+
+  return createJournal(uid, advance.advance_date, `Vendor Advance ${advance.advance_number} – ${advance.vendor_name}`, [
+    { account_id: advanceAccId, debit: advance.amount, credit: 0, line_narration: `Advance to ${advance.vendor_name} – ${advance.advance_number}` },
+    { account_id: bankId, debit: 0, credit: advance.amount, line_narration: `Payment for advance – ${advance.advance_number}` },
+  ]);
+};
+
+/**
+ * Advance Adjustment against bill → Debit Accounts Payable, Credit Vendor Advance
+ */
+export const postAdvanceAdjustmentJournal = async (
+  userId: string,
+  adjustment: { advance_number: string; bill_number: string; date: string; vendor_name: string; amount: number }
+) => {
+  const uid = normalizeUserId(userId);
+  const apId = await getOrCreateAccount(uid, 'Accounts Payable', 'Liability');
+  const advanceAccId = await getOrCreateAccount(uid, 'Vendor Advances', 'Asset');
+
+  return createJournal(uid, adjustment.date, `Advance adjustment ${adjustment.advance_number} → ${adjustment.bill_number} – ${adjustment.vendor_name}`, [
+    { account_id: apId, debit: adjustment.amount, credit: 0, line_narration: `Adjust payable – ${adjustment.bill_number}` },
+    { account_id: advanceAccId, debit: 0, credit: adjustment.amount, line_narration: `Adjust advance – ${adjustment.advance_number}` },
+  ]);
+};
+
+/**
  * Convert accepted Quotation → Sales Order data shape
  */
 export const quotationToSalesOrderData = (

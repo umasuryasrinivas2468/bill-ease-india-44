@@ -2,9 +2,18 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { PurchaseBillRecord } from '@/pages/PurchaseBills';
+import { computeVendorScore } from '@/components/vendors/VendorHealthBadge';
 
 interface VendorChartsProps {
   vendorId: string;
+  vendor?: {
+    gst_number?: string | null;
+    pan?: string | null;
+    bank_ifsc?: string | null;
+    bank_account_number?: string | null;
+    email?: string | null;
+    phone?: string | null;
+  };
 }
 
 type MonthlyStat = {
@@ -13,7 +22,7 @@ type MonthlyStat = {
   count: number;
 };
 
-const VendorCharts: React.FC<VendorChartsProps> = ({ vendorId }) => {
+const VendorCharts: React.FC<VendorChartsProps> = ({ vendorId, vendor }) => {
   const [bills, setBills] = useState<PurchaseBillRecord[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -60,10 +69,81 @@ const VendorCharts: React.FC<VendorChartsProps> = ({ vendorId }) => {
     return { totalAmount, totalTax, totalBills, outstanding, monthlyTrend };
   }, [bills]);
 
+  const healthScore = useMemo(() => computeVendorScore(bills, vendor || {}), [bills, vendor]);
+
+  const SCORE_COLOR =
+    healthScore.label === 'Excellent' ? 'text-green-600' :
+    healthScore.label === 'Good'      ? 'text-blue-600' :
+    healthScore.label === 'Fair'      ? 'text-amber-600' :
+    healthScore.label === 'Poor'      ? 'text-red-600' : 'text-gray-500';
+
+  const SCORE_BG =
+    healthScore.label === 'Excellent' ? 'bg-green-500' :
+    healthScore.label === 'Good'      ? 'bg-blue-500' :
+    healthScore.label === 'Fair'      ? 'bg-amber-400' :
+    healthScore.label === 'Poor'      ? 'bg-red-500' : 'bg-gray-400';
+
   if (loading) return <div className="p-4">Loading charts...</div>;
 
   return (
     <div className="space-y-4">
+      {/* Vendor Glance / Health Score */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Vendor Glance</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row md:items-center gap-6">
+            {/* Score ring */}
+            <div className="flex flex-col items-center gap-1 shrink-0">
+              <div className={`text-5xl font-bold ${SCORE_COLOR}`}>
+                {healthScore.label === 'New' ? '–' : healthScore.score}
+              </div>
+              <div className="text-xs text-muted-foreground">out of 100</div>
+              <div className={`mt-1 px-3 py-1 rounded-full text-xs font-semibold ${
+                healthScore.label === 'Excellent' ? 'bg-green-100 text-green-800' :
+                healthScore.label === 'Good'      ? 'bg-blue-100 text-blue-800' :
+                healthScore.label === 'Fair'      ? 'bg-amber-100 text-amber-800' :
+                healthScore.label === 'Poor'      ? 'bg-red-100 text-red-800' :
+                'bg-gray-100 text-gray-600'
+              }`}>
+                {healthScore.label}
+              </div>
+            </div>
+
+            {/* Breakdown bars */}
+            {healthScore.label !== 'New' ? (
+              <div className="flex-1 space-y-3">
+                {[
+                  { label: 'Payment behavior', value: healthScore.breakdown.payment, max: 40, hint: `${healthScore.stats.paidBills}/${healthScore.stats.totalBills} bills paid${healthScore.stats.overdueBills > 0 ? `, ${healthScore.stats.overdueBills} overdue` : ''}` },
+                  { label: 'Low outstanding', value: healthScore.breakdown.outstanding, max: 30, hint: healthScore.stats.outstandingAmount > 0 ? `₹${healthScore.stats.outstandingAmount.toLocaleString()} pending` : 'All cleared' },
+                  { label: 'Profile completeness', value: healthScore.breakdown.profile, max: 20, hint: 'GST · PAN · Bank · Contact' },
+                  { label: 'Recent activity', value: healthScore.breakdown.activity, max: 10, hint: healthScore.breakdown.activity === 10 ? 'Active in last 90 days' : 'No recent bills' },
+                ].map(({ label, value, max, hint }) => (
+                  <div key={label} className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium">{label}</span>
+                      <span className="text-muted-foreground text-xs">{value}/{max}</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${SCORE_BG}`}
+                        style={{ width: `${Math.round((value / max) * 100)}%` }}
+                      />
+                    </div>
+                    <div className="text-xs text-muted-foreground">{hint}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex-1 text-sm text-muted-foreground">
+                No purchase bills recorded yet. Health score will be calculated once transactions begin.
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader>

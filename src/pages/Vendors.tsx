@@ -15,6 +15,7 @@ import { Upload } from 'lucide-react';
 import ImportDialog from '@/components/ImportDialog';
 import { GST_TREATMENTS, INDIAN_STATES } from '@/constants/india';
 import VendorCharts from '@/components/vendors/VendorCharts';
+import VendorHealthBadge, { computeVendorScore, VendorScore } from '@/components/vendors/VendorHealthBadge';
 
 interface VendorRecord {
   id: string;
@@ -42,6 +43,7 @@ export default function Vendors() {
   const { user } = useUser();
   const { toast } = useToast();
   const [vendors, setVendors] = useState<VendorRecord[]>([]);
+  const [vendorScores, setVendorScores] = useState<Record<string, VendorScore>>({});
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -81,14 +83,35 @@ export default function Vendors() {
   const fetchVendors = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('vendors')
-        .select('id, name, company_name, email, phone, address, pan, gst_number, gst_treatment, state, msme_registered, udyam_aadhaar, bank_account_holder, bank_account_number, bank_ifsc, bank_name, bank_branch, linked_tds_section_id, tds_enabled')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
+      const [vendorsRes, billsRes] = await Promise.all([
+        supabase
+          .from('vendors')
+          .select('id, name, company_name, email, phone, address, pan, gst_number, gst_treatment, state, msme_registered, udyam_aadhaar, bank_account_holder, bank_account_number, bank_ifsc, bank_name, bank_branch, linked_tds_section_id, tds_enabled')
+          .eq('user_id', user?.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('purchase_bills' as any)
+          .select('vendor_id, status, total_amount, bill_date, due_date')
+          .eq('user_id', user?.id),
+      ]);
 
-      if (error) throw error;
-      setVendors((data || []) as any);
+      if (vendorsRes.error) throw vendorsRes.error;
+      const loadedVendors = (vendorsRes.data || []) as any[];
+      setVendors(loadedVendors);
+
+      // Group bills by vendor and compute scores
+      const billsByVendor: Record<string, any[]> = {};
+      for (const bill of (billsRes.data || []) as any[]) {
+        if (!bill.vendor_id) continue;
+        if (!billsByVendor[bill.vendor_id]) billsByVendor[bill.vendor_id] = [];
+        billsByVendor[bill.vendor_id].push(bill);
+      }
+
+      const scores: Record<string, VendorScore> = {};
+      for (const v of loadedVendors) {
+        scores[v.id] = computeVendorScore(billsByVendor[v.id] || [], v);
+      }
+      setVendorScores(scores);
     } catch (err) {
       console.error('fetch vendors error', err);
       toast({ title: 'Error', description: 'Unable to load vendors', variant: 'destructive' });
@@ -226,6 +249,7 @@ export default function Vendors() {
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>TDS</TableHead>
+                <TableHead>Health</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -240,6 +264,11 @@ export default function Vendors() {
                   <TableCell>{v.phone || '-'}</TableCell>
                   <TableCell>{v.tds_enabled ? 'Enabled' : 'Disabled'}</TableCell>
                   <TableCell>
+                    {vendorScores[v.id] && (
+                      <VendorHealthBadge score={vendorScores[v.id]} />
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <div className="flex gap-2">
                       <Button size="sm" variant="ghost" onClick={() => openEdit(v)}>Edit</Button>
                       <Button size="sm" onClick={() => { setSelectedVendor(v); setIsVendorDialogOpen(true); }}>View</Button>
@@ -249,7 +278,7 @@ export default function Vendors() {
               ))}
               {vendors.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No vendors found</TableCell>
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No vendors found</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -401,7 +430,7 @@ export default function Vendors() {
           </DialogHeader>
           <div className="p-4">
             {selectedVendor ? (
-              <VendorCharts vendorId={selectedVendor.id} />
+              <VendorCharts vendorId={selectedVendor.id} vendor={selectedVendor} />
             ) : (
               <div className="text-muted-foreground">No vendor selected</div>
             )}

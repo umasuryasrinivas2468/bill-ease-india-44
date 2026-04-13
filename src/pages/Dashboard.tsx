@@ -4,22 +4,24 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   BarChart3,
-  CircleAlert,
-  Clock3,
   FileUp,
   IndianRupee,
   Plus,
   TrendingUp,
   Wallet,
 } from 'lucide-react';
+import { Cell, Pie, PieChart } from 'recharts';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
-import { useExpenseStats, useExpenses } from '@/hooks/useExpenses';
+import { useExpenseStats } from '@/hooks/useExpenses';
 import { useCashflowData, CashflowView } from '@/hooks/useCashflowData';
+import { useReceivables } from '@/hooks/useReceivables';
+import { usePayables } from '@/hooks/usePayables';
 import { cn } from '@/lib/utils';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 
 const currencyFormatter = new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -36,6 +38,17 @@ const formatCurrency = (value: number) => currencyFormatter.format(Math.max(0, v
 
 const formatCompactCurrency = (value: number) =>
   `${compactNumberFormatter.format(Math.max(0, value || 0))}`;
+
+const receivablePayableConfig = {
+  receivables: {
+    label: 'Receivables',
+    color: 'hsl(var(--primary))',
+  },
+  payables: {
+    label: 'Payables',
+    color: 'hsl(var(--accent))',
+  },
+};
 
 const buildTrendPath = (values: number[]) => {
   const width = 640;
@@ -86,13 +99,14 @@ const DashboardSkeleton = () => (
 const Dashboard = () => {
   const [activeView, setActiveView] = useState<CashflowView>('month');
   const [openSheet, setOpenSheet] = useState<'cashflow' | 'invoice' | 'report' | null>(null);
+  const [selectedLedger, setSelectedLedger] = useState<'receivables' | 'payables'>('receivables');
 
   const { data: dashboardData, isLoading } = useDashboardStats();
   const { data: expenseStats, isLoading: expensesLoading } = useExpenseStats();
   const { data: cashflowData, isFetching: cashflowFetching } = useCashflowData(activeView);
-  const { data: expenseList } = useExpenses();
-
-  if (isLoading || expensesLoading) {
+  const { data: receivables = [], isLoading: receivablesLoading } = useReceivables();
+  const { data: payables = [], isLoading: payablesLoading } = usePayables();
+  if (isLoading || expensesLoading || receivablesLoading || payablesLoading) {
     return <DashboardSkeleton />;
   }
 
@@ -101,8 +115,29 @@ const Dashboard = () => {
   const pendingAmount = dashboardData?.pendingAmount || 0;
   const profit = revenue - expenses;
   const cashBalance = revenue + pendingAmount - expenses;
-  const overdueInvoices = dashboardData?.recentInvoices.filter((invoice) => invoice.status === 'overdue').length || 0;
   const recentInvoices = dashboardData?.recentInvoices || [];
+  const receivablesTotal = receivables
+    .filter((receivable) => receivable.status !== 'paid')
+    .reduce((sum, receivable) => sum + Number(receivable.amount_remaining || 0), 0);
+  const payablesTotal = payables
+    .filter((payable) => payable.status !== 'paid')
+    .reduce((sum, payable) => sum + Number(payable.amount_remaining || 0), 0);
+  const receivablePayableData = [
+    {
+      name: 'receivables',
+      value: receivablesTotal,
+      fill: receivablePayableConfig.receivables.color,
+    },
+    {
+      name: 'payables',
+      value: payablesTotal,
+      fill: receivablePayableConfig.payables.color,
+    },
+  ];
+  const totalOutstanding = receivablesTotal + payablesTotal;
+  const selectedLedgerValue = selectedLedger === 'receivables' ? receivablesTotal : payablesTotal;
+  const selectedLedgerShare = totalOutstanding > 0 ? Math.round((selectedLedgerValue / totalOutstanding) * 100) : 0;
+  const netReceivablePosition = receivablesTotal - payablesTotal;
 
   // Real-time cashflow chart data
   const chartPoints = cashflowData?.points ?? [];
@@ -155,32 +190,18 @@ const Dashboard = () => {
     },
   ];
 
-  const alerts = [
-    {
-      title: overdueInvoices > 0 ? `${overdueInvoices} overdue invoices` : 'No overdue invoices',
-      description: overdueInvoices > 0 ? 'Follow up on pending collections.' : 'Collections are on track.',
-      icon: CircleAlert,
-      tone: overdueInvoices > 0 ? 'text-[hsl(var(--accent))]' : 'text-emerald-600',
+  const ledgerHighlights = {
+    receivables: {
+      label: 'Receivables',
+      description: 'Expected incoming collections still pending.',
+      countLabel: `${receivables.filter((item) => item.status !== 'paid').length} open items`,
     },
-    {
-      title: expenses > revenue * 0.7 ? 'High expenses' : 'Expense levels stable',
-      description:
-        expenses > revenue * 0.7
-          ? 'Review spending and vendor costs this week.'
-          : 'Spend is balanced against incoming revenue.',
-      icon: TrendingUp,
-      tone: expenses > revenue * 0.7 ? 'text-amber-500' : 'text-primary',
+    payables: {
+      label: 'Payables',
+      description: 'Vendor bills and outgoing dues to settle.',
+      countLabel: `${payables.filter((item) => item.status !== 'paid').length} open items`,
     },
-    {
-      title: cashBalance > 0 ? 'Cash balance looks healthy' : 'Low cash balance',
-      description:
-        cashBalance > 0
-          ? `${formatCurrency(cashBalance)} available after expenses.`
-          : 'Collections may need attention soon.',
-      icon: Clock3,
-      tone: cashBalance > 0 ? 'text-primary' : 'text-destructive',
-    },
-  ];
+  };
 
   return (
     <>
@@ -285,7 +306,7 @@ const Dashboard = () => {
 
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_320px]">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_360px]">
           <Card className="rounded-[8px] border-white/40 bg-card/80 shadow-[0_24px_60px_-32px_hsl(var(--primary)/0.45)] backdrop-blur">
             <CardContent className="p-6 md:p-8">
               <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -416,23 +437,146 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <div className="space-y-4">
-            {alerts.map((alert) => (
-              <Card key={alert.title} className="rounded-[8px] border-white/40 bg-card/80 shadow-[0_20px_50px_-34px_hsl(var(--primary)/0.45)] backdrop-blur">
-                <CardContent className="p-5">
-                  <div className="flex items-start gap-3">
-                    <div className={cn('mt-0.5 rounded-full bg-background p-2 shadow-sm', alert.tone)}>
-                      <alert.icon className="h-4 w-4" />
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="text-lg font-semibold">{alert.title}</h3>
-                      <p className="text-sm text-muted-foreground">{alert.description}</p>
+          <Card className="overflow-hidden rounded-[8px] border-white/40 bg-card/80 shadow-[0_20px_50px_-34px_hsl(var(--primary)/0.45)] backdrop-blur">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold tracking-tight">Receivables vs Payables</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Live split of pending incoming and outgoing balances.
+                  </p>
+                </div>
+                <div className={cn(
+                  'rounded-full px-3 py-1 text-xs font-semibold',
+                  netReceivablePosition >= 0
+                    ? 'bg-primary/10 text-primary'
+                    : 'bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))]'
+                )}>
+                  Net {netReceivablePosition >= 0 ? '+' : '-'}{formatCurrency(Math.abs(netReceivablePosition))}
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <div className="relative mx-auto h-56 max-w-[280px]">
+                  <ChartContainer
+                    config={receivablePayableConfig}
+                    className="mx-auto aspect-square h-full"
+                  >
+                    <PieChart>
+                      <ChartTooltip
+                        cursor={false}
+                        content={
+                          <ChartTooltipContent
+                            formatter={(value, name) => (
+                              <div className="flex min-w-[10rem] items-center justify-between gap-3">
+                                <span className="text-muted-foreground">
+                                  {name === 'receivables' ? 'Receivables' : 'Payables'}
+                                </span>
+                                <span className="font-medium text-foreground">
+                                  {formatCurrency(Number(value))}
+                                </span>
+                              </div>
+                            )}
+                          />
+                        }
+                      />
+                      <Pie
+                        data={receivablePayableData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={62}
+                        outerRadius={88}
+                        paddingAngle={6}
+                        cornerRadius={10}
+                        strokeWidth={0}
+                        onMouseEnter={(_, index) => setSelectedLedger(index === 0 ? 'receivables' : 'payables')}
+                        isAnimationActive
+                        animationDuration={650}
+                        animationEasing="ease-out"
+                      >
+                        {receivablePayableData.map((entry) => (
+                          <Cell
+                            key={entry.name}
+                            fill={entry.fill}
+                            style={{
+                              filter: selectedLedger === entry.name ? 'drop-shadow(0 12px 18px rgba(15, 23, 42, 0.18))' : 'none',
+                              transform: selectedLedger === entry.name ? 'scale(1.04)' : 'scale(1)',
+                              transformOrigin: 'center',
+                              transition: 'transform 260ms ease, filter 260ms ease',
+                            }}
+                          />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ChartContainer>
+
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div className="w-40 overflow-hidden text-center">
+                      <div
+                        className="flex transition-transform duration-300 ease-out"
+                        style={{
+                          width: '200%',
+                          transform: selectedLedger === 'receivables' ? 'translateX(0%)' : 'translateX(-50%)',
+                        }}
+                      >
+                        {(['receivables', 'payables'] as const).map((item) => (
+                          <div key={item} className="w-1/2 shrink-0 px-2">
+                            <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
+                              {ledgerHighlights[item].label}
+                            </p>
+                            <p className="mt-2 text-2xl font-semibold tracking-tight">
+                              {formatCompactCurrency(item === 'receivables' ? receivablesTotal : payablesTotal)}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">{ledgerHighlights[item].countLabel}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                </div>
+
+                <div className="relative mt-5 rounded-full bg-muted/70 p-1">
+                  <div
+                    className="absolute inset-y-1 w-[calc(50%-0.25rem)] rounded-full bg-background shadow-sm transition-transform duration-300 ease-out"
+                    style={{
+                      transform: selectedLedger === 'receivables' ? 'translateX(0)' : 'translateX(calc(100% + 0.5rem))',
+                    }}
+                  />
+                  <div className="relative grid grid-cols-2 gap-1">
+                    {(['receivables', 'payables'] as const).map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setSelectedLedger(item)}
+                        className={cn(
+                          'rounded-full px-4 py-2 text-sm font-medium transition-colors',
+                          selectedLedger === item ? 'text-foreground' : 'text-muted-foreground'
+                        )}
+                      >
+                        {ledgerHighlights[item].label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-5 rounded-[8px] border border-border/60 bg-background/60 p-4">
+                  <p className="text-sm font-medium">{ledgerHighlights[selectedLedger].description}</p>
+                  <div className="mt-3 flex items-end justify-between gap-4">
+                    <div>
+                      <p className="text-3xl font-semibold tracking-tight">{formatCurrency(selectedLedgerValue)}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {selectedLedgerShare}% of total outstanding exposure
+                      </p>
+                    </div>
+                    <div className="text-right text-sm text-muted-foreground">
+                      <p>{ledgerHighlights[selectedLedger].countLabel}</p>
+                      <p className="mt-1">Total open: {formatCurrency(totalOutstanding)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <Card className="rounded-[8px] border-white/40 bg-card/80 shadow-[0_24px_60px_-32px_hsl(var(--primary)/0.42)] backdrop-blur">

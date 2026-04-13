@@ -113,7 +113,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             </header>
           )}
 
-          <main key={location.pathname} className={`${isBankingPage ? 'flex-1 w-full' : 'flex-1 w-full pb-36 md:pb-28'} animate-in fade-in slide-in-from-bottom-3 duration-300`}>
+          <main key={location.pathname} className={`${isBankingPage ? 'flex-1 w-full' : 'flex-1 w-full pb-36 md:pb-28'} animate-in fade-in slide-in-from-bottom-4 duration-500`}>
             {children}
           </main>
         </SidebarInset>
