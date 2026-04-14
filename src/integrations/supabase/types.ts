@@ -557,37 +557,79 @@ export type Database = {
       clients: {
         Row: {
           address: string | null
+          client_type: string | null
+          company_name: string | null
           created_at: string | null
+          currency: string | null
+          display_name: string | null
           email: string | null
+          first_name: string | null
           gst_number: string | null
+          gst_treatment: string | null
           id: string
+          language: string | null
+          last_name: string | null
           name: string
+          opening_balance: number | null
           org_id: string | null
+          pan: string | null
+          payment_terms: number | null
           phone: string | null
+          place_of_supply: string | null
+          salutation: string | null
+          tax_preference: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           address?: string | null
+          client_type?: string | null
+          company_name?: string | null
           created_at?: string | null
+          currency?: string | null
+          display_name?: string | null
           email?: string | null
+          first_name?: string | null
           gst_number?: string | null
+          gst_treatment?: string | null
           id?: string
+          language?: string | null
+          last_name?: string | null
           name: string
+          opening_balance?: number | null
           org_id?: string | null
+          pan?: string | null
+          payment_terms?: number | null
           phone?: string | null
+          place_of_supply?: string | null
+          salutation?: string | null
+          tax_preference?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           address?: string | null
+          client_type?: string | null
+          company_name?: string | null
           created_at?: string | null
+          currency?: string | null
+          display_name?: string | null
           email?: string | null
+          first_name?: string | null
           gst_number?: string | null
+          gst_treatment?: string | null
           id?: string
+          language?: string | null
+          last_name?: string | null
           name?: string
+          opening_balance?: number | null
           org_id?: string | null
+          pan?: string | null
+          payment_terms?: number | null
           phone?: string | null
+          place_of_supply?: string | null
+          salutation?: string | null
+          tax_preference?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -991,11 +1033,13 @@ export type Database = {
         Row: {
           category: string
           created_at: string | null
+          hsn_code: string | null
           id: string
           org_id: string | null
           product_name: string
           purchase_price: number | null
           reorder_level: number | null
+          sac_code: string | null
           selling_price: number
           sku: string
           stock_quantity: number | null
@@ -1010,11 +1054,13 @@ export type Database = {
         Insert: {
           category: string
           created_at?: string | null
+          hsn_code?: string | null
           id?: string
           org_id?: string | null
           product_name: string
           purchase_price?: number | null
           reorder_level?: number | null
+          sac_code?: string | null
           selling_price: number
           sku: string
           stock_quantity?: number | null
@@ -1029,11 +1075,13 @@ export type Database = {
         Update: {
           category?: string
           created_at?: string | null
+          hsn_code?: string | null
           id?: string
           org_id?: string | null
           product_name?: string
           purchase_price?: number | null
           reorder_level?: number | null
+          sac_code?: string | null
           selling_price?: number
           sku?: string
           stock_quantity?: number | null
@@ -1123,6 +1171,7 @@ export type Database = {
           org_id: string | null
           paid_amount: number | null
           roundoff: number | null
+          shipping_address: string | null
           status: string | null
           total_amount: number
           updated_at: string | null
@@ -1151,6 +1200,7 @@ export type Database = {
           org_id?: string | null
           paid_amount?: number | null
           roundoff?: number | null
+          shipping_address?: string | null
           status?: string | null
           total_amount?: number
           updated_at?: string | null
@@ -1179,6 +1229,7 @@ export type Database = {
           org_id?: string | null
           paid_amount?: number | null
           roundoff?: number | null
+          shipping_address?: string | null
           status?: string | null
           total_amount?: number
           updated_at?: string | null
@@ -2223,6 +2274,89 @@ export type Database = {
           },
         ]
       }
+      payment_received: {
+        Row: {
+          id: string
+          user_id: string
+          payment_type: string
+          customer_id: string | null
+          customer_name: string
+          amount: number
+          bank_charges: number | null
+          payment_date: string
+          reference_number: string | null
+          payment_mode: string | null
+          deposit_account: string | null
+          deposit_reference: string | null
+          notes: string | null
+          tax_deducted: number | null
+          invoice_allocations: any
+          attachments: any
+          place_of_supply: string | null
+          description: string | null
+          tax_amount: number | null
+          status: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          payment_type: string
+          customer_id?: string | null
+          customer_name: string
+          amount: number
+          bank_charges?: number | null
+          payment_date: string
+          reference_number?: string | null
+          payment_mode?: string | null
+          deposit_account?: string | null
+          deposit_reference?: string | null
+          notes?: string | null
+          tax_deducted?: number | null
+          invoice_allocations?: any
+          attachments?: any
+          place_of_supply?: string | null
+          description?: string | null
+          tax_amount?: number | null
+          status?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          payment_type?: string
+          customer_id?: string | null
+          customer_name?: string
+          amount?: number
+          bank_charges?: number | null
+          payment_date?: string
+          reference_number?: string | null
+          payment_mode?: string | null
+          deposit_account?: string | null
+          deposit_reference?: string | null
+          notes?: string | null
+          tax_deducted?: number | null
+          invoice_allocations?: any
+          attachments?: any
+          place_of_supply?: string | null
+          description?: string | null
+          tax_amount?: number | null
+          status?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_received_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_orders: {
         Row: {
           client_address: string | null
@@ -2239,6 +2373,7 @@ export type Database = {
           order_date: string
           order_number: string
           payment_status: string | null
+          shipping_address: string | null
           status: string | null
           subtotal: number
           tax_amount: number
@@ -2261,6 +2396,7 @@ export type Database = {
           order_date: string
           order_number: string
           payment_status?: string | null
+          shipping_address?: string | null
           status?: string | null
           subtotal?: number
           tax_amount?: number
@@ -2283,6 +2419,7 @@ export type Database = {
           order_date?: string
           order_number?: string
           payment_status?: string | null
+          shipping_address?: string | null
           status?: string | null
           subtotal?: number
           tax_amount?: number

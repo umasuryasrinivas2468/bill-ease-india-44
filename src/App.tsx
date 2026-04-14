@@ -62,6 +62,7 @@ import TDS from "./pages/TDS";
 import DeliveryChallans from "./pages/DeliveryChallans";
 import ITR6Filing from "./pages/ITR6Filing";
 import RecurringInvoices from "./pages/RecurringInvoices";
+import PaymentReceived from "./pages/PaymentReceived";
 import WorkingCapital from "./pages/WorkingCapital";
 import VendorAdvances from "./pages/VendorAdvances";
 import VendorBillPayments from "./pages/VendorBillPayments";
@@ -163,6 +164,7 @@ function App() {
                       <Route element={<ProtectedRoute />}>
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/invoices" element={<Invoices />} />
+                        <Route path="/payment-received" element={<PaymentReceived />} />
                         <Route path="/working-capital" element={<WorkingCapital />} />
                         <Route path="/create-invoice" element={<CreateInvoice />} />
                         <Route path="/clients" element={<Clients />} />

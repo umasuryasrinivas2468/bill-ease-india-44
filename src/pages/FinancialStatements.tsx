@@ -15,7 +15,7 @@ import {
   FileText, Download, Building2, Calculator, BookOpen, FileSpreadsheet, Loader2,
   ScrollText, ClipboardList, Scale, Wallet, Receipt, ArrowLeftRight, BarChart3,
   TrendingUp, TrendingDown, Activity, Package, ArrowUpDown, Bot, Sparkles,
-  DollarSign, PieChart, Boxes, MoveHorizontal, Minus,
+  IndianRupee, PieChart, Boxes, MoveHorizontal, Minus,
 } from 'lucide-react';
 import ITCReport from '@/components/reports/ITCReport';
 import RCMLiabilityReport from '@/components/reports/RCMLiabilityReport';
@@ -475,7 +475,7 @@ Provide actionable insights in bullet points. Keep it concise.`;
             <TabsTrigger value="mis" className="gap-1.5 text-xs"><Activity className="h-3.5 w-3.5" /> MIS Report</TabsTrigger>
             <TabsTrigger value="detailed-pnl" className="gap-1.5 text-xs"><Calculator className="h-3.5 w-3.5" /> Detailed P&L</TabsTrigger>
             <TabsTrigger value="ratios" className="gap-1.5 text-xs"><PieChart className="h-3.5 w-3.5" /> Ratios</TabsTrigger>
-            <TabsTrigger value="cashflow" className="gap-1.5 text-xs"><DollarSign className="h-3.5 w-3.5" /> Cash Flow</TabsTrigger>
+            <TabsTrigger value="cashflow" className="gap-1.5 text-xs"><IndianRupee className="h-3.5 w-3.5" /> Cash Flow</TabsTrigger>
             <TabsTrigger value="inv-ageing" className="gap-1.5 text-xs"><Boxes className="h-3.5 w-3.5" /> Inv. Ageing</TabsTrigger>
             <TabsTrigger value="stock" className="gap-1.5 text-xs"><MoveHorizontal className="h-3.5 w-3.5" /> Stock Movement</TabsTrigger>
             <TabsTrigger value="setup" className="gap-1.5 text-xs"><Building2 className="h-3.5 w-3.5" /> Setup</TabsTrigger>
@@ -647,7 +647,7 @@ Provide actionable insights in bullet points. Keep it concise.`;
                     <StatBox label="Total Expenses" value={fmtINR(detailedPnL.totalExpenseAmt)} icon={TrendingDown} color="rose" />
                     <StatBox label="Gross Profit" value={fmtINR(detailedPnL.grossProfit)} icon={Activity} color={detailedPnL.grossProfit >= 0 ? 'emerald' : 'rose'} />
                     <StatBox label="Tax (25%)" value={fmtINR(detailedPnL.taxExpense)} icon={Receipt} color="amber" />
-                    <StatBox label="Net Profit" value={fmtINR(detailedPnL.netProfit)} icon={DollarSign} color={detailedPnL.netProfit >= 0 ? 'emerald' : 'rose'} />
+                    <StatBox label="Net Profit" value={fmtINR(detailedPnL.netProfit)} icon={IndianRupee} color={detailedPnL.netProfit >= 0 ? 'emerald' : 'rose'} />
                   </div>
 
                   {/* Revenue Section */}
@@ -766,7 +766,7 @@ Provide actionable insights in bullet points. Keep it concise.`;
                   {/* Key figures */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <StatBox label="Total Assets" value={fmtINR(ratioData.totalAssets)} icon={Building2} color="blue" />
-                    <StatBox label="Cash & Bank" value={fmtINR(ratioData.cashBank)} icon={DollarSign} color="emerald" />
+                    <StatBox label="Cash & Bank" value={fmtINR(ratioData.cashBank)} icon={IndianRupee} color="emerald" />
                     <StatBox label="Total Revenue" value={fmtINR(ratioData.totalRevenue)} icon={TrendingUp} color="emerald" />
                     <StatBox label="Net Profit" value={fmtINR(ratioData.netProfit)} icon={Activity} color={ratioData.netProfit >= 0 ? 'emerald' : 'rose'} />
                   </div>
@@ -832,7 +832,7 @@ Provide actionable insights in bullet points. Keep it concise.`;
         <TabsContent value="cashflow" className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2"><DollarSign className="h-4 w-4 text-primary" /> Cash Flow Analysis & Forecasting</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2"><IndianRupee className="h-4 w-4 text-primary" /> Cash Flow Analysis & Forecasting</CardTitle>
               <CardDescription className="text-xs">6 months historical + 3 months forecast based on trends</CardDescription>
             </CardHeader>
             <CardContent>
@@ -979,7 +979,7 @@ Provide actionable insights in bullet points. Keep it concise.`;
                     <StatBox label="Total Purchases" value={fmtINR(stockMovement.purchases.reduce((s, p) => s + p.amount, 0))} sub={`${stockMovement.purchases.length} entries`} icon={ArrowUpDown} color="blue" />
                     <StatBox label="Total Sales" value={fmtINR(stockMovement.sales.reduce((s, p) => s + p.amount, 0))} sub={`${stockMovement.sales.length} entries`} icon={ArrowUpDown} color="emerald" />
                     <StatBox label="Stock Items" value={String(stockMovement.inventory.length)} sub="Goods only" icon={Package} color="amber" />
-                    <StatBox label="Stock Value" value={fmtINR(stockMovement.inventory.reduce((s, i) => s + (Number(i.stock_quantity || 0) * Number(i.purchase_price || 0)), 0))} icon={DollarSign} color="blue" />
+                    <StatBox label="Stock Value" value={fmtINR(stockMovement.inventory.reduce((s, i) => s + (Number(i.stock_quantity || 0) * Number(i.purchase_price || 0)), 0))} icon={IndianRupee} color="blue" />
                   </div>
 
                   {/* Current Stock Levels */}

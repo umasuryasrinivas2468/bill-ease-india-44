@@ -37,14 +37,14 @@ const Payroll = () => {
                 We have partnered with Razorpay to provide you with seamless payroll solutions. 
                 Click the button below to proceed to the payroll portal.
             </p>
-          <Button 
-            className="w-full bg-[#3399cc] hover:bg-[#2b82ad] text-white" 
+          <Button
+            className="w-full bg-[#3399cc] hover:bg-[#2b82ad] text-white"
             size="lg"
-            asChild
+            onClick={() => window.open("https://rzp.io/rzp/N75lCBht", "_blank", "noopener,noreferrer,width=1024,height=768")}
           >
-            <a href="https://rzp.io/rzp/N75lCBht" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
+            <span className="flex items-center justify-center gap-2">
               Go to Payroll <ExternalLink className="h-4 w-4" />
-            </a>
+            </span>
           </Button>
         </CardContent>
       </Card>

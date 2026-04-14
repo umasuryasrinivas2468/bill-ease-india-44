@@ -51,6 +51,7 @@ const CreateInvoice = () => {
   const [discountPercentage, setDiscountPercentage] = useState(0);
   const [roundoff, setRoundoff] = useState(0);
   const [currency, setCurrency] = useState('INR');
+  const [shippingAddress, setShippingAddress] = useState('');
   const [items, setItems] = useState<InvoiceItem[]>([
     { description: '', product_id: null, hsn_sac: '', quantity: 1, rate: 0, amount: 0, uom: 'pcs' }
   ]);
@@ -168,6 +169,7 @@ const CreateInvoice = () => {
         client_email: selectedClient.email,
         client_gst_number: selectedClient.gst_number,
         client_address: selectedClient.address,
+        shipping_address: shippingAddress || null,
         amount: subtotal,
         gst_amount: gstAmount,
         total_amount: total,
@@ -312,6 +314,10 @@ const CreateInvoice = () => {
                   {selectedClient.phone && <p><strong>Phone:</strong> {selectedClient.phone}</p>}
                   {selectedClient.gst_number && <p><strong>GST Number:</strong> {selectedClient.gst_number}</p>}
                   {selectedClient.address && <p><strong>Address:</strong> {selectedClient.address}</p>}
+                  <div className="mt-2 space-y-1">
+                    <Label htmlFor="shipping_address" className="text-xs">Shipping Address</Label>
+                    <Input id="shipping_address" value={shippingAddress} onChange={e => setShippingAddress(e.target.value)} placeholder="Enter shipping / delivery address" className="h-8 text-sm" />
+                  </div>
                 </div>
               )}
             </CardContent>

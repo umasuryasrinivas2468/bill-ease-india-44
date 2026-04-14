@@ -30,6 +30,7 @@ import {
   Clock,
   FolderKanban,
   GitMerge,
+  IndianRupee,
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import { useAuthorization } from "@/hooks/useAuthorization";
@@ -58,6 +59,7 @@ const salesMenuItems = [
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Sales Orders", url: "/inventory/sales-orders", icon: ShoppingCart, feature: "salesOrders" as const },
   { title: "Invoices", url: "/invoices", icon: FileText },
+  { title: "Payment Received", url: "/payment-received", icon: IndianRupee },
   { title: "Working Capital", url: "/working-capital", icon: Banknote },
   { title: "Cash Memo", url: "/cash-memo", icon: Wallet },
   { title: "E Way Bills", url: "/coming-soon?feature=E%20Way%20Bills", icon: Truck },
@@ -108,6 +110,7 @@ const appsMenuItems = [
 const spaceMenuItems = [
   { title: "Projects", url: "/space/projects", icon: FolderKanban },
   { title: "Timesheet", url: "/space/timesheet", icon: Clock },
+  { title: "Payroll", url: "/payroll", icon: IndianRupee },
 ];
 
 const caToolsMenuItems = [

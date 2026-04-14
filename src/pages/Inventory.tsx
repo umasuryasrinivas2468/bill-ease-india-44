@@ -54,6 +54,8 @@ const Inventory = () => {
     stock_quantity: '',
     reorder_level: '',
     uom: 'pcs',
+    hsn_code: '',
+    sac_code: '',
     supplier_name: '',
     supplier_contact: '',
     supplier_email: '',
@@ -109,6 +111,8 @@ const Inventory = () => {
       stock_quantity: '',
       reorder_level: '',
       uom: 'pcs',
+      hsn_code: '',
+      sac_code: '',
       supplier_name: '',
       supplier_contact: '',
       supplier_email: '',
@@ -128,6 +132,8 @@ const Inventory = () => {
       stock_quantity: item.stock_quantity.toString(),
       reorder_level: item.reorder_level.toString(),
       uom: (item as any).uom || 'pcs',
+      hsn_code: (item as any).hsn_code || '',
+      sac_code: (item as any).sac_code || '',
       supplier_name: item.supplier_name || '',
       supplier_contact: item.supplier_contact || '',
       supplier_email: item.supplier_email || '',
@@ -162,6 +168,8 @@ const Inventory = () => {
       stock_quantity: formData.type === 'services' ? null : (parseInt(formData.stock_quantity) || 0),
       reorder_level: formData.type === 'services' ? null : (parseInt(formData.reorder_level) || 10),
       uom: formData.uom || 'pcs',
+      hsn_code: formData.type === 'goods' ? (formData.hsn_code || null) : null,
+      sac_code: formData.type === 'services' ? (formData.sac_code || null) : null,
       supplier_name: formData.supplier_name || null,
       supplier_contact: formData.supplier_contact || null,
       supplier_email: formData.supplier_email || null,
@@ -374,6 +382,30 @@ const Inventory = () => {
                   </SelectContent>
                 </Select>
               </div>
+              {formData.type === 'goods' && (
+                <div className="space-y-2">
+                  <Label htmlFor="hsn_code">HSN Code</Label>
+                  <Input
+                    id="hsn_code"
+                    value={formData.hsn_code}
+                    onChange={(e) => setFormData({ ...formData, hsn_code: e.target.value })}
+                    placeholder="e.g. 8471"
+                    maxLength={8}
+                  />
+                </div>
+              )}
+              {formData.type === 'services' && (
+                <div className="space-y-2">
+                  <Label htmlFor="sac_code">SAC Code</Label>
+                  <Input
+                    id="sac_code"
+                    value={formData.sac_code}
+                    onChange={(e) => setFormData({ ...formData, sac_code: e.target.value })}
+                    placeholder="e.g. 998314"
+                    maxLength={6}
+                  />
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="purchase_price">Purchase Price (₹)</Label>
                 <Input
@@ -674,6 +706,7 @@ const Inventory = () => {
                   <TableHead>SKU</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>HSN/SAC</TableHead>
                   <TableHead>UOM</TableHead>
                   <TableHead className="text-right">Stock</TableHead>
                   <TableHead className="text-right">Selling Price</TableHead>
@@ -696,6 +729,7 @@ const Inventory = () => {
                         {item.type}
                       </Badge>
                     </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{item.type === 'goods' ? ((item as any).hsn_code || '—') : ((item as any).sac_code || '—')}</TableCell>
                     <TableCell className="text-xs text-muted-foreground uppercase">{(item as any).uom || 'pcs'}</TableCell>
                     <TableCell className="text-right">
                       {item.type === 'services' ? (

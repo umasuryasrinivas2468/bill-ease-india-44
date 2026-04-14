@@ -10,6 +10,20 @@ export interface Client {
   phone?: string;
   gst_number?: string;
   address?: string;
+  client_type?: string;
+  salutation?: string;
+  first_name?: string;
+  last_name?: string;
+  company_name?: string;
+  display_name?: string;
+  language?: string;
+  gst_treatment?: string;
+  place_of_supply?: string;
+  pan?: string;
+  tax_preference?: string;
+  currency?: string;
+  opening_balance?: number;
+  payment_terms?: number;
   created_at: string;
 }
 

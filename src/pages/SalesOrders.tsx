@@ -165,6 +165,7 @@ export default function SalesOrders() {
     client_email: '',
     client_phone: '',
     client_address: '',
+    shipping_address: '',
     order_date: new Date(),
     due_date: new Date(),
     notes: '',
@@ -317,6 +318,7 @@ export default function SalesOrders() {
       client_email: '',
       client_phone: '',
       client_address: '',
+      shipping_address: '',
       order_date: new Date(),
       due_date: new Date(),
       notes: '',
@@ -339,6 +341,7 @@ export default function SalesOrders() {
         client_email: formData.client_email,
         client_phone: formData.client_phone,
         client_address: formData.client_address,
+        shipping_address: formData.shipping_address || null,
         order_date: formData.order_date.toISOString().split('T')[0],
         due_date: formData.due_date.toISOString().split('T')[0],
         items: orderItems,
@@ -658,11 +661,21 @@ export default function SalesOrders() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="client_address">Customer Address</Label>
+                  <Label htmlFor="client_address">Billing Address</Label>
                   <Input
                     id="client_address"
                     value={formData.client_address}
                     onChange={(e) => setFormData({ ...formData, client_address: e.target.value })}
+                    placeholder="Billing address"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="shipping_address">Shipping Address</Label>
+                  <Input
+                    id="shipping_address"
+                    value={formData.shipping_address}
+                    onChange={(e) => setFormData({ ...formData, shipping_address: e.target.value })}
+                    placeholder="Shipping / delivery address"
                   />
                 </div>
                 <div>
