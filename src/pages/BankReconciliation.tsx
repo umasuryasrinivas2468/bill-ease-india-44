@@ -33,7 +33,17 @@ type ReconciliationResult = {
   unmatchedLedger: any[];
   summary: { totalBankTransactions: number; totalLedgerEntries: number; matchedCount: number; unmatchedBankCount: number; unmatchedLedgerCount: number; bankBalance: number; ledgerBalance: number; difference: number };
 };
-type HistoryEntry = { fileName: string; importDate: string; total: number; matched: number; unmatched: number };
+type HistoryEntry = { id: string; fileName: string; importDate: string; total: number; matched: number; unmatched: number };
+type HistoryDetail = {
+  bank_transactions: BankTx[];
+  matched: any[];
+  unmatched_bank: any[];
+  unmatched_ledger: any[];
+  bank_name: string | null;
+  detected_columns: DetectedColumns | null;
+  total_deposits: number;
+  total_withdrawals: number;
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const fmtCurrency = (n: number) =>
@@ -152,6 +162,11 @@ export default function BankReconciliation() {
   const [savedCount, setSavedCount] = useState(0);
   const [fileName, setFileName] = useState("");
 
+  // History detail view state
+  const [historyDetail, setHistoryDetail] = useState<HistoryDetail | null>(null);
+  const [historyDetailLoading, setHistoryDetailLoading] = useState(false);
+  const [historyDetailFileName, setHistoryDetailFileName] = useState("");
+
   // Create-journal dialog state
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedUnmatched, setSelectedUnmatched] = useState<any>(null);
@@ -207,30 +222,29 @@ export default function BankReconciliation() {
     enabled: !!userId && !!journals?.length,
   });
 
-  // Reconciliation history from bank_statements table
+  // Reconciliation history from bank_reconciliations table (1 document = 1 row)
   const { data: history, refetch: refetchHistory } = useQuery({
-    queryKey: ["bank-statement-history", userId],
+    queryKey: ["bank-reconciliation-history", userId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("bank_statements")
-        .select("file_name, file_import_date, status, credit, debit")
+      const { data, error } = await supabase
+        .from("bank_reconciliations")
+        .select("id, file_name, reconciled_at, total_transactions, matched_count, unmatched_bank_count, status, bank_name")
         .eq("user_id", userId!)
-        .order("file_import_date", { ascending: false })
-        .limit(200);
+        .order("reconciled_at", { ascending: false })
+        .limit(50);
       if (error) {
-        console.warn("bank_statements history:", error.message);
+        console.error("bank_reconciliations history:", error.message);
         return [] as HistoryEntry[];
       }
       if (!data?.length) return [] as HistoryEntry[];
-      const grouped: Record<string, HistoryEntry> = {};
-      for (const row of data) {
-        const key = row.file_name || "Unknown file";
-        if (!grouped[key]) grouped[key] = { fileName: key, importDate: row.file_import_date, total: 0, matched: 0, unmatched: 0 };
-        grouped[key].total++;
-        if (row.status === "matched") grouped[key].matched++;
-        else grouped[key].unmatched++;
-      }
-      return Object.values(grouped) as HistoryEntry[];
+      return data.map(row => ({
+        id: row.id,
+        fileName: row.file_name || "Unknown file",
+        importDate: row.reconciled_at || "",
+        total: row.total_transactions || 0,
+        matched: row.matched_count || 0,
+        unmatched: row.unmatched_bank_count || 0,
+      })) as HistoryEntry[];
     },
     enabled: !!userId,
   });
@@ -302,7 +316,8 @@ export default function BankReconciliation() {
         withdrawals: Number(t.withdrawals) || Number(t.debit) || Number(t.withdrawal) || 0,
         balance: Number(t.balance) || Number(t.closingBalance) || 0,
         reference: t.reference || t.ref || t.utr || undefined,
-      })).filter((t: BankTx) => t.date && t.description);
+      })).filter((t: BankTx) => t.date && t.description)
+        .sort((a, b) => parseDateToISO(a.date).localeCompare(parseDateToISO(b.date)));
       setBankTxns(txns);
       setDetectedBank(data.bankName || "Unknown");
       setDetectedColumns(data.detectedColumns || null);
@@ -317,63 +332,44 @@ export default function BankReconciliation() {
     }
   };
 
-  // Persist bank transactions (and optionally matched results) to Supabase
+  // Persist entire reconciliation as 1 row in bank_reconciliations (1 document = 1 row)
   const saveToDatabase = async (txns: BankTx[], reconResult?: ReconciliationResult) => {
     if (!userId || !txns.length) return;
     setIsSaving(true);
     try {
-      const records = txns.map((t, i) => ({
-        user_id: userId,
-        transaction_id: t.reference || `${fileName.replace(/\.[^.]+$/, "")}-${parseDateToISO(t.date)}-${i}`,
-        transaction_date: parseDateToISO(t.date),
-        description: t.description,
-        debit: t.withdrawals || 0,
-        credit: t.deposits || 0,
-        balance: t.balance || null,
-        status: "unmatched",
-        file_name: fileName,
-      }));
+      const totalDeposits = txns.reduce((s, t) => s + t.deposits, 0);
+      const totalWithdrawals = txns.reduce((s, t) => s + t.withdrawals, 0);
 
-      const { data: saved, error } = await (supabase as any)
-        .from("bank_statements")
-        .upsert(records, { onConflict: "user_id,transaction_id,transaction_date" })
-        .select();
+      const { error } = await supabase
+        .from("bank_reconciliations")
+        .insert({
+          user_id: userId,
+          file_name: fileName,
+          bank_name: detectedBank !== "Unknown" ? detectedBank : null,
+          total_transactions: txns.length,
+          total_deposits: totalDeposits,
+          total_withdrawals: totalWithdrawals,
+          matched_count: reconResult?.summary?.matchedCount || 0,
+          unmatched_bank_count: reconResult?.summary?.unmatchedBankCount || txns.length,
+          unmatched_ledger_count: reconResult?.summary?.unmatchedLedgerCount || 0,
+          bank_balance: reconResult?.summary?.bankBalance || 0,
+          ledger_balance: reconResult?.summary?.ledgerBalance || 0,
+          difference: reconResult?.summary?.difference || 0,
+          status: reconResult?.summary?.difference === 0 ? "matched" : "partial",
+          bank_transactions: txns,
+          matched: reconResult?.matched || [],
+          unmatched_bank: reconResult?.unmatchedBank || [],
+          unmatched_ledger: reconResult?.unmatchedLedger || [],
+          detected_columns: detectedColumns,
+        });
 
       if (error) throw error;
 
-      // Update matched transactions in DB
-      if (reconResult?.matched?.length && saved?.length) {
-        for (const match of reconResult.matched) {
-          const bTx = match.bankTransaction;
-          const lEntry = match.ledgerEntry;
-          const matchedJournal = journals?.find(j =>
-            j.journal_date === lEntry?.date && j.narration === lEntry?.narration
-          );
-          const savedStmt = saved.find((s: any) =>
-            s.description === bTx?.description &&
-            s.transaction_date === parseDateToISO(bTx?.date || "")
-          );
-          if (savedStmt && matchedJournal) {
-            await (supabase as any)
-              .from("bank_statements")
-              .update({ status: "matched", matched_journal_id: matchedJournal.id })
-              .eq("id", savedStmt.id);
-
-            await (supabase as any)
-              .from("bank_statement_reconciliation")
-              .upsert(
-                { user_id: userId, bank_statement_id: savedStmt.id, journal_id: matchedJournal.id, match_score: 1.0, match_type: "exact" },
-                { onConflict: "bank_statement_id,journal_id" }
-              );
-          }
-        }
-      }
-
-      setSavedCount(records.length);
+      setSavedCount(txns.length);
       refetchHistory();
     } catch (err: any) {
-      console.warn("DB save:", err.message);
-      // Non-fatal — results still shown in UI
+      console.error("DB save:", err.message);
+      toast({ title: "Failed to save to database", description: err.message, variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
@@ -395,17 +391,67 @@ export default function BankReconciliation() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      setResult(data);
+
+      // Ensure ALL bank transactions not in matched list appear in unmatchedBank
+      const matchedDescs = new Set((data.matched || []).map((m: any) => m.bankTransaction?.description));
+      const aiUnmatched = data.unmatchedBank || [];
+      const aiUnmatchedDescs = new Set(aiUnmatched.map((u: any) => u.description));
+      const missingUnmatched = bankData
+        .filter(t => !matchedDescs.has(t.description) && !aiUnmatchedDescs.has(t.description))
+        .map(t => ({ ...t, reason: "Not in ledger" }));
+      const fullUnmatchedBank = [...aiUnmatched, ...missingUnmatched];
+
+      const fullResult = {
+        ...data,
+        unmatchedBank: fullUnmatchedBank,
+        summary: {
+          ...data.summary,
+          totalBankTransactions: bankData.length,
+          unmatchedBankCount: fullUnmatchedBank.length,
+          matchedCount: (data.matched || []).length,
+        },
+      };
+
+      setResult(fullResult);
       toast({
         title: "Reconciliation complete",
-        description: `${data.summary?.matchedCount || 0} matched · ${data.summary?.unmatchedBankCount || 0} unmatched`,
+        description: `${fullResult.summary.matchedCount} matched · ${fullResult.summary.unmatchedBankCount} unmatched`,
       });
       // Persist results in background
-      saveToDatabase(bankTxns, data);
+      saveToDatabase(bankTxns, fullResult);
     } catch (err: any) {
       toast({ title: "Reconciliation failed", description: err.message, variant: "destructive" });
     } finally {
       setIsReconciling(false);
+    }
+  };
+
+  // Fetch full history detail (transactions from JSONB) when clicking on a history row
+  const handleViewHistory = async (entry: HistoryEntry) => {
+    setHistoryDetailLoading(true);
+    setHistoryDetailFileName(entry.fileName);
+    setHistoryDetail(null);
+    try {
+      const { data, error } = await supabase
+        .from("bank_reconciliations")
+        .select("bank_transactions, matched, unmatched_bank, unmatched_ledger, bank_name, detected_columns, total_deposits, total_withdrawals")
+        .eq("id", entry.id)
+        .single();
+      if (error) throw error;
+      setHistoryDetail({
+        bank_transactions: (data.bank_transactions as BankTx[]) || [],
+        matched: (data.matched as any[]) || [],
+        unmatched_bank: (data.unmatched_bank as any[]) || [],
+        unmatched_ledger: (data.unmatched_ledger as any[]) || [],
+        bank_name: data.bank_name,
+        detected_columns: data.detected_columns as DetectedColumns | null,
+        total_deposits: Number(data.total_deposits || 0),
+        total_withdrawals: Number(data.total_withdrawals || 0),
+      });
+    } catch (err: any) {
+      toast({ title: "Failed to load history", description: err.message, variant: "destructive" });
+    } finally {
+      setHistoryDetailLoading(false);
     }
   };
 
@@ -463,15 +509,6 @@ export default function BankReconciliation() {
         },
       ]);
       if (lErr) throw lErr;
-
-      // Try to mark bank statement as matched
-      await (supabase as any)
-        .from("bank_statements")
-        .update({ status: "matched", matched_journal_id: journal.id })
-        .eq("user_id", userId)
-        .eq("description", selectedUnmatched.description)
-        .eq("transaction_date", parseDateToISO(selectedUnmatched.date))
-        .then(() => {/* non-fatal */});
 
       queryClient.invalidateQueries({ queryKey: ["recon-journals"] });
       refetchHistory();
@@ -877,7 +914,7 @@ export default function BankReconciliation() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2"><History className="h-4 w-4 text-primary" /> Reconciliation History</CardTitle>
-            <CardDescription className="text-xs">Previously imported bank statement files</CardDescription>
+            <CardDescription className="text-xs">Click on a row to view all transactions (loaded from saved JSON, not stored separately)</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-auto">
@@ -893,10 +930,10 @@ export default function BankReconciliation() {
                 </TableHeader>
                 <TableBody>
                   {history.map((h, i) => (
-                    <TableRow key={i} className="hover:bg-muted/30">
+                    <TableRow key={i} className="hover:bg-primary/5 cursor-pointer transition-colors" onClick={() => handleViewHistory(h)}>
                       <TableCell className="pl-4">
                         <div className="flex items-center gap-2">
-                          <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
                           <span className="text-sm font-medium truncate max-w-[220px]">{h.fileName}</span>
                         </div>
                       </TableCell>
@@ -923,6 +960,143 @@ export default function BankReconciliation() {
                 </TableBody>
               </Table>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* History detail view — fetched from JSONB, NOT stored separately */}
+      {historyDetailLoading && (
+        <Card>
+          <CardContent className="py-10 text-center">
+            <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Loading transactions from saved data...</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {historyDetail && !historyDetailLoading && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" /> {historyDetailFileName}
+                  {historyDetail.bank_name && <Badge variant="outline" className="text-xs gap-1"><Landmark className="h-2.5 w-2.5" />{historyDetail.bank_name}</Badge>}
+                </CardTitle>
+                <CardDescription className="text-xs mt-1">
+                  {historyDetail.bank_transactions.length} transactions ·{" "}
+                  <span className="text-emerald-600">{fmtCurrency(historyDetail.total_deposits)} deposits</span> ·{" "}
+                  <span className="text-rose-600">{fmtCurrency(historyDetail.total_withdrawals)} withdrawals</span>
+                </CardDescription>
+              </div>
+              <Button size="sm" variant="ghost" onClick={() => setHistoryDetail(null)} className="text-xs">Close</Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Tabs defaultValue="all-txns" className="w-full">
+              <div className="px-4 pb-2">
+                <TabsList className="h-8 p-0.5 gap-1">
+                  <TabsTrigger value="all-txns" className="text-xs h-7 gap-1">
+                    <FileText className="h-3 w-3" /> All ({historyDetail.bank_transactions.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="h-matched" className="text-xs h-7 gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> Matched ({historyDetail.matched.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="h-unmatched" className="text-xs h-7 gap-1">
+                    <XCircle className="h-3 w-3" /> Unmatched ({historyDetail.unmatched_bank.length})
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+
+              <TabsContent value="all-txns" className="mt-0">
+                <div className="overflow-auto max-h-[460px]">
+                  <Table>
+                    <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
+                      <TableRow className="border-b-2">
+                        <TableHead className="w-10 text-center pl-4">#</TableHead>
+                        <TableHead className="w-28">Date</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-right w-32 text-emerald-700 dark:text-emerald-400">Deposit</TableHead>
+                        <TableHead className="text-right w-32 text-rose-600 dark:text-rose-400">Withdrawal</TableHead>
+                        <TableHead className="text-right w-32">Balance</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {historyDetail.bank_transactions.map((t: BankTx, i: number) => (
+                        <TableRow key={i} className={t.withdrawals > 0 ? "hover:bg-rose-50/60 dark:hover:bg-rose-950/20" : t.deposits > 0 ? "hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20" : "hover:bg-muted/40"}>
+                          <TableCell className="text-center pl-4"><span className="text-[11px] text-muted-foreground font-mono">{i + 1}</span></TableCell>
+                          <TableCell><span className="font-mono text-xs bg-muted/50 rounded px-1.5 py-0.5 whitespace-nowrap">{t.date}</span></TableCell>
+                          <TableCell className="max-w-xs"><p className="text-sm leading-snug line-clamp-2">{t.description}</p></TableCell>
+                          <TableCell className="text-right">{t.deposits ? <span className="font-semibold text-emerald-600 dark:text-emerald-400 font-mono text-sm">{fmtCurrency(t.deposits)}</span> : <span className="text-muted-foreground/30">—</span>}</TableCell>
+                          <TableCell className="text-right">{t.withdrawals ? <span className="font-semibold text-rose-600 dark:text-rose-400 font-mono text-sm">{fmtCurrency(t.withdrawals)}</span> : <span className="text-muted-foreground/30">—</span>}</TableCell>
+                          <TableCell className="text-right">{t.balance ? <span className="font-mono text-sm">{fmtCurrency(t.balance)}</span> : <span className="text-muted-foreground/30">—</span>}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="h-matched" className="mt-0">
+                {historyDetail.matched.length > 0 ? (
+                  <div className="overflow-auto max-h-[400px]">
+                    <Table>
+                      <TableHeader className="bg-muted/40">
+                        <TableRow>
+                          <TableHead className="pl-4">Date</TableHead>
+                          <TableHead>Bank Description</TableHead>
+                          <TableHead>Ledger Narration</TableHead>
+                          <TableHead className="text-right pr-4">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {historyDetail.matched.map((m: any, i: number) => (
+                          <TableRow key={i} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20">
+                            <TableCell className="pl-4"><span className="font-mono text-xs">{m.bankTransaction?.date}</span></TableCell>
+                            <TableCell className="text-sm max-w-[200px]"><p className="line-clamp-2">{m.bankTransaction?.description}</p></TableCell>
+                            <TableCell className="text-sm max-w-[200px] text-muted-foreground"><p className="line-clamp-2">{m.ledgerEntry?.narration}</p></TableCell>
+                            <TableCell className="text-right pr-4 font-mono font-semibold text-sm">{fmtCurrency(m.bankTransaction?.amount || 0)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="py-10 text-center text-muted-foreground text-sm">No matched transactions</div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="h-unmatched" className="mt-0">
+                {historyDetail.unmatched_bank.length > 0 ? (
+                  <div className="overflow-auto max-h-[400px]">
+                    <Table>
+                      <TableHeader className="bg-muted/40">
+                        <TableRow>
+                          <TableHead className="pl-4">Date</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead className="pr-4">Reason</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {historyDetail.unmatched_bank.map((u: any, i: number) => (
+                          <TableRow key={i} className="hover:bg-amber-50/40 dark:hover:bg-amber-950/20">
+                            <TableCell className="pl-4"><span className="font-mono text-xs">{u.date}</span></TableCell>
+                            <TableCell className="text-sm max-w-[200px]"><p className="line-clamp-2">{u.description}</p></TableCell>
+                            <TableCell className="text-right font-mono font-semibold text-sm">{fmtCurrency(u.amount || 0)}</TableCell>
+                            <TableCell><Badge variant="outline" className="text-xs">{u.type}</Badge></TableCell>
+                            <TableCell className="pr-4"><Badge variant="secondary" className="text-xs">{u.reason || "—"}</Badge></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="py-10 text-center text-muted-foreground text-sm">All transactions were matched</div>
+                )}
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       )}

@@ -56,6 +56,7 @@ import PayLink from "./pages/PayLink";
 import GST3Filing from "./pages/reports/GST3Filing";
 import Expenses from "./pages/Expenses";
 import GSTCompliance from "./pages/GSTCompliance";
+import ComplianceGST from "./pages/compliance/GST";
 import Payroll from "./pages/Payroll";
 import TDS from "./pages/TDS";
 import DeliveryChallans from "./pages/DeliveryChallans";
@@ -220,7 +221,7 @@ function App() {
                         <Route path="/accounting/manual-journals" element={<ManualJournals />} />
                         <Route path="/accounting/financial-statements" element={<FinancialStatements />} />
                         <Route path="/expenses" element={<Expenses />} />
-                        <Route path="/compliance/gst" element={<GSTCompliance />} />
+                        <Route path="/compliance/gst" element={<ComplianceGST />} />
                         <Route path="/reports/tds" element={<TDS />} />
                       </Route>
 

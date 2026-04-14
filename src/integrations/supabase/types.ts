@@ -159,6 +159,182 @@ export type Database = {
           },
         ]
       }
+      bank_reconciliations: {
+        Row: {
+          id: string
+          user_id: string
+          file_name: string
+          bank_name: string | null
+          reconciled_at: string | null
+          total_transactions: number
+          total_deposits: number | null
+          total_withdrawals: number | null
+          matched_count: number
+          unmatched_bank_count: number
+          unmatched_ledger_count: number
+          bank_balance: number | null
+          ledger_balance: number | null
+          difference: number | null
+          status: string | null
+          bank_transactions: any
+          matched: any
+          unmatched_bank: any
+          unmatched_ledger: any
+          detected_columns: any
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          file_name: string
+          bank_name?: string | null
+          reconciled_at?: string | null
+          total_transactions: number
+          total_deposits?: number | null
+          total_withdrawals?: number | null
+          matched_count: number
+          unmatched_bank_count: number
+          unmatched_ledger_count: number
+          bank_balance?: number | null
+          ledger_balance?: number | null
+          difference?: number | null
+          status?: string | null
+          bank_transactions: any
+          matched: any
+          unmatched_bank: any
+          unmatched_ledger: any
+          detected_columns?: any
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          file_name?: string
+          bank_name?: string | null
+          reconciled_at?: string | null
+          total_transactions?: number
+          total_deposits?: number | null
+          total_withdrawals?: number | null
+          matched_count?: number
+          unmatched_bank_count?: number
+          unmatched_ledger_count?: number
+          bank_balance?: number | null
+          ledger_balance?: number | null
+          difference?: number | null
+          status?: string | null
+          bank_transactions?: any
+          matched?: any
+          unmatched_bank?: any
+          unmatched_ledger?: any
+          detected_columns?: any
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      bank_statement_reconciliation: {
+        Row: {
+          id: string
+          user_id: string
+          bank_statement_id: string | null
+          journal_id: string | null
+          match_score: number | null
+          match_type: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          bank_statement_id?: string | null
+          journal_id?: string | null
+          match_score?: number | null
+          match_type: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          bank_statement_id?: string | null
+          journal_id?: string | null
+          match_score?: number | null
+          match_type?: string
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_statement_reconciliation_bank_statement_id_fkey"
+            columns: ["bank_statement_id"]
+            isOneToOne: false
+            referencedRelation: "bank_statements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_statement_reconciliation_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_statements: {
+        Row: {
+          id: string
+          user_id: string
+          transaction_id: string
+          transaction_date: string
+          description: string
+          debit: number | null
+          credit: number | null
+          balance: number | null
+          status: string | null
+          matched_journal_id: string | null
+          file_name: string | null
+          file_import_date: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          transaction_id: string
+          transaction_date: string
+          description: string
+          debit?: number | null
+          credit?: number | null
+          balance?: number | null
+          status?: string | null
+          matched_journal_id?: string | null
+          file_name?: string | null
+          file_import_date?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          transaction_id?: string
+          transaction_date?: string
+          description?: string
+          debit?: number | null
+          credit?: number | null
+          balance?: number | null
+          status?: string | null
+          matched_journal_id?: string | null
+          file_name?: string | null
+          file_import_date?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_statements_matched_journal_id_fkey"
+            columns: ["matched_journal_id"]
+            isOneToOne: false
+            referencedRelation: "journals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bank_details: {
         Row: {
           account_holder_name: string | null

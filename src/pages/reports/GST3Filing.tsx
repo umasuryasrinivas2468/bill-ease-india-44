@@ -1,10 +1,13 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useGST3Data } from '@/hooks/useGST3Data';
+import { useGST2AData, useGST2BData } from '@/hooks/useGST2Data';
 
 const GST3Filing: React.FC = () => {
   const { gst3Data, totals } = useGST3Data();
+  const { rows: gst2aRows } = useGST2AData();
+  const { totals: gst2bTotals } = useGST2BData();
 
   const formatCurrency = (amount: number) => `₹${amount.toFixed(2)}`;
 
@@ -16,6 +19,65 @@ const GST3Filing: React.FC = () => {
           <Button variant="outline">Export PDF</Button>
           <Button>File GST-3</Button>
         </div>
+      </div>
+
+      {/* GST summaries: GST-3, GST-2A, GST-2B */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">GST-3 Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm">Taxable Value: {formatCurrency(totals.taxableValue)}</p>
+            <p className="text-sm">IGST: {formatCurrency(totals.integratedTax)}</p>
+            <p className="text-sm">CGST: {formatCurrency(totals.centralTax)}</p>
+            <p className="text-sm">SGST: {formatCurrency(totals.stateUTTax)}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">GST-2A Purchases (Supplier-wise)</CardTitle>
+            <CardDescription className="text-xs">List of purchase bills with supplier GSTIN</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-auto max-h-40">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr>
+                    <th className="text-left">Vendor</th>
+                    <th className="text-left">GSTIN</th>
+                    <th className="text-right">Taxable</th>
+                    <th className="text-right">GST</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {gst2aRows.slice(0, 20).map((r, i) => (
+                    <tr key={i}>
+                      <td>{r.vendor_name}</td>
+                      <td>{r.vendor_gst_number || '—'}</td>
+                      <td className="text-right">{`₹${r.taxable_value.toFixed(2)}`}</td>
+                      <td className="text-right">{`₹${r.gst_amount.toFixed(2)}`}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">GST-2B (Auto ITC)</CardTitle>
+            <CardDescription className="text-xs">Summary of ITC-eligible purchase taxes</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm">IGST: {formatCurrency(gst2bTotals.integratedTax)}</p>
+            <p className="text-sm">CGST: {formatCurrency(gst2bTotals.centralTax)}</p>
+            <p className="text-sm">SGST: {formatCurrency(gst2bTotals.stateUTTax)}</p>
+            <p className="text-sm">CESS: {formatCurrency(gst2bTotals.cessTax)}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Section 3.1: Outward Supplies */}
