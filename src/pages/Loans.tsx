@@ -323,7 +323,7 @@ const Loans = () => {
       </Card>
 
       {/* CTA Section */}
-      <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
+      <Card className="border border-blue-200 bg-blue-50/50">
         <CardContent className="p-8 text-center">
           <HandCoins className="h-16 w-16 mx-auto mb-4 text-blue-600" />
           <h2 className="text-2xl font-bold mb-4">Ready to Grow Your Business?</h2>

@@ -117,11 +117,11 @@ const ComplianceCalendar: React.FC = () => {
   const getDateOccurrences = (iso: string) => monthOccurrences.filter(o => o.date === iso);
 
   return (
-    <div className="p-4 md:p-6 pb-20 md:pb-6 bg-gradient-to-br from-background via-background to-muted/20 min-h-screen">
+    <div className="p-4 md:p-6 pb-20 md:pb-6 bg-background min-h-screen">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-start justify-between mb-6 gap-4">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">Compliance Calendar</h1>
+            <h1 className="text-3xl font-bold text-foreground">Compliance Calendar</h1>
             <p className="text-sm text-muted-foreground mt-1">Track statutory due dates and issued circulars</p>
           </div>
           <div className="flex gap-2 items-center flex-wrap">
@@ -155,7 +155,7 @@ const ComplianceCalendar: React.FC = () => {
           {/* Left: enhanced month grid calendar */}
           <div className="lg:col-span-7">
             <Card className="shadow-lg border-muted/50">
-              <CardHeader className="border-b bg-gradient-to-r from-card to-muted/10">
+              <CardHeader className="border-b bg-card">
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-xl font-bold flex items-center gap-2">
@@ -298,7 +298,7 @@ const ComplianceCalendar: React.FC = () => {
               </Card>
             ) : (
               <Card className="shadow-lg border-muted/50">
-                <CardHeader className="border-b bg-gradient-to-r from-card to-muted/10">
+                <CardHeader className="border-b bg-card">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <CardTitle className="text-lg">Issued Circulars</CardTitle>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -374,19 +374,19 @@ const ComplianceCalendar: React.FC = () => {
 
             {/* Summary card */}
             <Card className="shadow-lg border-muted/50">
-              <CardHeader className="border-b bg-gradient-to-r from-card to-muted/10">
+              <CardHeader className="border-b bg-card">
                 <CardTitle className="text-lg">Summary</CardTitle>
               </CardHeader>
               <CardContent className="p-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="p-4 border rounded-lg bg-gradient-to-br from-destructive/10 to-destructive/5 border-destructive/20">
+                  <div className="p-4 border rounded-lg bg-destructive/5 border-destructive/20">
                     <div className="flex items-center gap-2 mb-2">
                       <AlertCircle className="h-4 w-4 text-destructive" />
                       <div className="text-xs font-medium text-muted-foreground">Overdue</div>
                     </div>
                     <div className="text-2xl font-bold text-destructive">{overdueCount}</div>
                   </div>
-                  <div className="p-4 border rounded-lg bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border-yellow-500/20">
+                  <div className="p-4 border rounded-lg bg-yellow-500/5 border-yellow-500/20">
                     <div className="flex items-center gap-2 mb-2">
                       <Clock className="h-4 w-4 text-yellow-600" />
                       <div className="text-xs font-medium text-muted-foreground">Unfiled</div>
@@ -398,7 +398,7 @@ const ComplianceCalendar: React.FC = () => {
             </Card>
 
             <Card className="shadow-lg border-muted/50">
-              <CardHeader className="border-b bg-gradient-to-r from-card to-muted/10">
+              <CardHeader className="border-b bg-card">
                 <CardTitle className="text-lg">What To Keep In MCA</CardTitle>
               </CardHeader>
               <CardContent className="p-4 space-y-3">

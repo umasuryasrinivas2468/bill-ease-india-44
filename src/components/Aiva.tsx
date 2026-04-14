@@ -158,7 +158,7 @@ export const Aiva = () => {
       <Button
         onClick={() => setIsOpen(true)}
         size="lg"
-        className="fixed bottom-20 right-4 md:bottom-6 md:right-6 h-14 w-14 rounded-full shadow-lg z-[100] bg-gradient-to-r from-[#5D62F2] to-[#FD7C52] hover:shadow-xl transition-all"
+        className="fixed bottom-20 right-4 md:bottom-6 md:right-6 h-14 w-14 rounded-full shadow-lg z-[100] bg-primary hover:shadow-xl transition-all"
       >
         <Sparkles className="h-6 w-6" />
       </Button>,
@@ -175,7 +175,7 @@ export const Aiva = () => {
         "shadow-2xl transition-all",
         isMinimized ? "h-14" : "h-[600px]"
       )}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 bg-gradient-to-r from-[#5D62F2] to-[#FD7C52] text-white rounded-t-lg">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 bg-primary text-white rounded-t-lg">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
               <Sparkles className="h-4 w-4" />
@@ -218,12 +218,12 @@ export const Aiva = () => {
                 {messages.map((message, idx) => (
                   <div key={idx} className={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     {message.role === 'assistant' && (
-                      <Avatar className="h-7 w-7 bg-gradient-to-r from-[#5D62F2] to-[#FD7C52]">
+                      <Avatar className="h-7 w-7 bg-primary">
                         <AvatarFallback className="bg-transparent"><Sparkles className="h-3 w-3 text-white" /></AvatarFallback>
                       </Avatar>
                     )}
 
-                    <div className={`rounded-lg px-3 py-2 max-w-[75%] text-sm ${message.role === 'user' ? 'bg-gradient-to-r from-[#5D62F2] to-[#FD7C52] text-white' : 'bg-muted'}`}>
+                    <div className={`rounded-lg px-3 py-2 max-w-[75%] text-sm ${message.role === 'user' ? 'bg-primary text-white' : 'bg-muted'}`}>
                       <div className="whitespace-pre-wrap">{message.content}</div>
                       {message.role === 'assistant' && message.actionLink && (
                         <div className="mt-2 pt-2 border-t border-current/20">
@@ -241,7 +241,7 @@ export const Aiva = () => {
 
                 {isLoading && (
                   <div className="flex gap-2 justify-start">
-                    <Avatar className="h-7 w-7 bg-gradient-to-r from-[#5D62F2] to-[#FD7C52]"><AvatarFallback className="bg-transparent"><Sparkles className="h-3 w-3 text-white" /></AvatarFallback></Avatar>
+                    <Avatar className="h-7 w-7 bg-primary"><AvatarFallback className="bg-transparent"><Sparkles className="h-3 w-3 text-white" /></AvatarFallback></Avatar>
                     <div className="rounded-lg px-3 py-2 bg-muted"><Loader2 className="h-4 w-4 animate-spin" /></div>
                   </div>
                 )}
@@ -250,7 +250,7 @@ export const Aiva = () => {
 
             <div className="flex gap-2">
               <Textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={handleKeyPress} placeholder="Ask Aiva anything..." className="min-h-[50px] resize-none text-sm" disabled={isLoading} />
-              <Button onClick={() => handleSend()} disabled={!input.trim() || isLoading} size="icon" className="h-[50px] w-[50px] bg-gradient-to-r from-[#5D62F2] to-[#FD7C52]">{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}</Button>
+              <Button onClick={() => handleSend()} disabled={!input.trim() || isLoading} size="icon" className="h-[50px] w-[50px] bg-primary">{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}</Button>
             </div>
           </CardContent>
         )}

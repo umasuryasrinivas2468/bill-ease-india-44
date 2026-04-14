@@ -1,14 +1,17 @@
 import React from 'react';
-import { Lightbulb, FileText, Users, Package, HelpCircle, BarChart3 } from 'lucide-react';
+import { Lightbulb, FileText, Users, Package, HelpCircle, BarChart3, Receipt, CreditCard, ShoppingCart, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const EXAMPLE_COMMANDS = [
-  { text: "Create an invoice for ABC Traders for ₹25,000 with GST", icon: FileText, category: "create" },
-  { text: "Add a vendor named XYZ Supplies from Delhi", icon: Users, category: "create" },
-  { text: "Add inventory item Laptop at ₹50000 with 10 units", icon: Package, category: "create" },
+  { text: "Create invoice for ABC Traders for ₹25,000 with 18% GST", icon: FileText, category: "create" },
+  { text: "Add expense ₹5000 for travel from MakeMyTrip", icon: Receipt, category: "create" },
+  { text: "Create sales order for Delta Corp for ₹1 lakh", icon: ShoppingCart, category: "create" },
+  { text: "Add purchase bill from XYZ Supplies for ₹15000", icon: Truck, category: "create" },
+  { text: "Record payment of ₹10000 from ABC Traders", icon: CreditCard, category: "action" },
+  { text: "Check stock of Laptop", icon: Package, category: "query" },
+  { text: "Add client named Rohit Sharma email rohit@test.com", icon: Users, category: "create" },
   { text: "What is GST reverse charge?", icon: HelpCircle, category: "question" },
-  { text: "Show me my P&L report overview", icon: BarChart3, category: "report" },
 ];
 
 interface ExampleCommandsProps {
@@ -34,7 +37,7 @@ export const ExampleCommands: React.FC<ExampleCommandsProps> = ({ onSelect, disa
               disabled={disabled}
               className={cn(
                 "justify-start h-auto py-2.5 px-3 text-left whitespace-normal text-xs font-normal",
-                "hover:bg-gradient-to-r hover:from-orange-500/10 hover:to-blue-600/10",
+                "hover:bg-primary/10",
                 "border border-transparent hover:border-orange-500/20 transition-all duration-200"
               )}
             >

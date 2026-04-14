@@ -128,15 +128,15 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, onLanguage
       {isListening && (
         <>
           <div
-            className="absolute inset-0 rounded-full bg-gradient-to-r from-orange-500/30 to-blue-600/30 animate-ping"
+            className="absolute inset-0 rounded-full bg-primary/30 animate-ping"
             style={{ animationDuration: '1.5s' }}
           />
           <div
-            className="absolute -inset-1 rounded-full bg-gradient-to-r from-orange-500/20 to-blue-600/20 transition-transform duration-75"
+            className="absolute -inset-1 rounded-full bg-primary/20 transition-transform duration-75"
             style={{ transform: `scale(${pulseScale})` }}
           />
           <div
-            className="absolute -inset-2 rounded-full bg-gradient-to-r from-orange-500/10 to-blue-600/10 transition-transform duration-75"
+            className="absolute -inset-2 rounded-full bg-primary/10 transition-transform duration-75"
             style={{ transform: `scale(${1 + volume * 0.9})` }}
           />
         </>
@@ -162,8 +162,8 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, onLanguage
         className={cn(
           "relative z-10 h-9 w-9 p-0 shrink-0 rounded-full transition-all duration-200",
           isListening
-            ? "bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/30"
-            : "bg-gradient-to-r from-orange-500/10 to-blue-600/10 hover:from-orange-500/20 hover:to-blue-600/20"
+            ? "bg-red-500 text-white hover:bg-red-600"
+            : "bg-primary/10 hover:bg-primary/20"
         )}
         title={isListening ? "Stop recording" : `Voice input (${voiceLang === 'en-IN' ? 'English' : 'Hindi'})`}
       >

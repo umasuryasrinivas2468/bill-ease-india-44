@@ -58,7 +58,6 @@ const salesMenuItems = [
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Sales Orders", url: "/inventory/sales-orders", icon: ShoppingCart, feature: "salesOrders" as const },
   { title: "Invoices", url: "/invoices", icon: FileText },
-  { title: "Receivables", url: "/reports/receivables", icon: TrendingUp },
   { title: "Working Capital", url: "/working-capital", icon: Banknote },
   { title: "Cash Memo", url: "/cash-memo", icon: Wallet },
   { title: "E Way Bills", url: "/coming-soon?feature=E%20Way%20Bills", icon: Truck },
@@ -74,7 +73,6 @@ const purchasesMenuItems = [
   { title: "Bills", url: "/purchase-bills", icon: FileText },
   { title: "Vendor Advances", url: "/vendor-advances", icon: Banknote },
   { title: "Bill Payments", url: "/vendor-bill-payments", icon: Wallet },
-  { title: "Payables", url: "/reports/payables", icon: TrendingDown },
   { title: "Recurring Bills", url: "/expenses?tab=recurring", icon: RefreshCw },
   { title: "Purchase Orders", url: "/inventory/purchase-orders", icon: Truck, feature: "purchaseOrders" as const },
 ];
@@ -163,12 +161,12 @@ export function AppSidebar() {
 
   const getNavCls = (path: string) =>
     isActive(path)
-      ? "rounded-xl bg-primary text-primary-foreground shadow-[0_16px_35px_-24px_hsl(var(--primary)/0.9)] hover:bg-primary/90"
+      ? "rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
       : "rounded-xl text-foreground/80 hover:bg-primary/10 hover:text-foreground";
 
   const collapsibleActiveCls = (paths: string[]) =>
     paths.some(p => currentPath.startsWith(p))
-      ? "rounded-xl bg-primary text-primary-foreground shadow-[0_16px_35px_-24px_hsl(var(--primary)/0.9)]"
+      ? "rounded-xl bg-primary text-primary-foreground"
       : "rounded-xl text-foreground/80 hover:bg-primary/10 hover:text-foreground";
 
   /* shared class for every top-level collapsible trigger */
@@ -186,7 +184,7 @@ export function AppSidebar() {
       onMouseLeave={handleMouseLeave}
     >
       {/* Header */}
-      <div className={`border border-white/40 bg-background/80 shadow-[0_20px_55px_-36px_hsl(var(--primary)/0.55)] backdrop-blur ${isCollapsed ? "rounded-2xl" : "rounded-[18px]"}`}>
+      <div className={`border border-border bg-background ${isCollapsed ? "rounded-2xl" : "rounded-[18px]"}`}>
         <div className={`flex items-center ${isCollapsed ? "justify-center px-2 py-2" : "justify-between px-3 py-3"}`}>
           {!isCollapsed && (
             <div className="flex flex-col">
@@ -214,7 +212,7 @@ export function AppSidebar() {
         )}
       </div>
 
-      <SidebarContent className={`mt-4 flex h-full flex-col overflow-y-auto border border-white/40 bg-background/75 shadow-[0_20px_55px_-38px_hsl(var(--primary)/0.45)] backdrop-blur ${isCollapsed ? "rounded-2xl px-1.5 py-2" : "rounded-[18px] px-2 py-3"}`}>
+      <SidebarContent className={`mt-4 flex h-full flex-col overflow-y-auto border border-border bg-background ${isCollapsed ? "rounded-2xl px-1.5 py-2" : "rounded-[18px] px-2 py-3"}`}>
         <div className="flex-1">
           <SidebarGroup>
             {!isCollapsed && (
@@ -247,7 +245,7 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/quotations','/clients','/invoices','/notifications','/cash-memo','/coming-soon','/inventory/sales-orders','/inventory/delivery-challans','/ca/recurring-invoices','/reports/receivables'])}`}
+                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/quotations','/clients','/invoices','/notifications','/cash-memo','/coming-soon','/inventory/sales-orders','/inventory/delivery-challans','/ca/recurring-invoices'])}`}
                         title="Sales"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsSalesOpen(!isSalesOpen)}>
@@ -297,7 +295,7 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/vendors','/expenses','/purchase-bills','/vendor-advances','/vendor-bill-payments','/inventory/purchase-orders','/reports/payables'])}`}
+                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/vendors','/expenses','/purchase-bills','/vendor-advances','/vendor-bill-payments','/inventory/purchase-orders'])}`}
                         title="Purchases"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsPurchasesOpen(!isPurchasesOpen)}>

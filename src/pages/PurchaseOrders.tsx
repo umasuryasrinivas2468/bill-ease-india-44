@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Edit, Check, DollarSign, X, Eye, Download, Mail, PackageCheck, Clock } from 'lucide-react';
+import { Plus, Search, Filter, Edit, Check, DollarSign, X, Eye, Download, Mail, PackageCheck, Clock, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,7 +39,7 @@ const OrderTimeline = ({ order }: { order: PurchaseOrder }) => {
 
   return (
     <div className="py-4">
-      <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
+      <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-slate-300">
         {steps.map((step, index) => {
           const isCompleted = currentStepIndex >= index || (index === 0);
           const isCurrent = currentStepIndex === index;
@@ -87,6 +87,7 @@ import { downloadOrderPDF, getOrderPDFBlob } from '@/utils/orderPDF';
 import { useSimpleBranding } from '@/hooks/useSimpleBranding';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { GST_TREATMENTS, INDIAN_STATES } from '@/constants/india';
+import { postPurchaseBillJournal } from '@/utils/autoJournalEntry';
 
 interface PurchaseOrderItem {
   id: string;
@@ -551,6 +552,74 @@ export default function PurchaseOrders() {
         description: 'Failed to mark as paid',
         variant: 'destructive',
       });
+    }
+  };
+
+  const convertToBill = async (order: PurchaseOrder) => {
+    try {
+      if (!user?.id) throw new Error('Not authenticated');
+      const ts = Date.now().toString().slice(-6);
+      const billNumber = `BILL-${ts}`;
+
+      const billItems = (order.items || []).map((item: any) => ({
+        item_details: item.product_name || '',
+        account: 'Purchase Account',
+        quantity: Number(item.quantity) || 1,
+        rate: Number(item.price) || 0,
+        tax: Number(item.tax_rate) || 0,
+        customer_details: '',
+        amount: (Number(item.quantity) || 1) * (Number(item.price) || 0),
+      }));
+
+      const subtotal = Number(order.subtotal) || order.items.reduce((s: number, it: any) => s + (Number(it.quantity) || 1) * (Number(it.price) || 0), 0);
+      const gstAmount = Number(order.tax_amount) || 0;
+      const totalAmount = Number(order.total_amount) || subtotal + gstAmount;
+
+      const billData = {
+        user_id: user.id,
+        vendor_id: (order as any).vendor_id || null,
+        vendor_name: order.vendor_name,
+        vendor_email: order.vendor_email || null,
+        vendor_gst_number: order.vendor_gst || null,
+        vendor_address: order.vendor_address || null,
+        bill_number: billNumber,
+        bill_date: new Date().toISOString().split('T')[0],
+        due_date: order.due_date,
+        items: billItems,
+        amount: subtotal,
+        gst_amount: gstAmount,
+        total_amount: totalAmount,
+        status: 'pending',
+        notes: `Converted from Purchase Order ${order.order_number}`,
+        order_number: order.order_number,
+      };
+
+      const { data, error } = await supabase
+        .from('purchase_bills')
+        .insert([billData])
+        .select()
+        .single();
+      if (error) throw error;
+
+      // Auto-create journal entry for the bill
+      try {
+        await postPurchaseBillJournal(user.id, {
+          bill_number: billNumber,
+          bill_date: billData.bill_date,
+          vendor_name: order.vendor_name,
+          amount: subtotal,
+          gst_amount: gstAmount,
+          total_amount: totalAmount,
+        });
+      } catch (journalErr) {
+        console.error('Auto journal failed (bill still created):', journalErr);
+      }
+
+      toast({ title: 'Bill Created', description: `${billNumber} created from ${order.order_number}` });
+      fetchPurchaseOrders();
+    } catch (err: any) {
+      console.error('Convert to bill error:', err);
+      toast({ title: 'Error', description: err.message || 'Failed to convert to bill', variant: 'destructive' });
     }
   };
 
@@ -1172,6 +1241,20 @@ export default function PurchaseOrders() {
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>Mark Received</TooltipContent>
+                          </Tooltip>
+                        )}
+                        {(order.status === 'confirmed' || order.status === 'received') && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => convertToBill(order)}
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Convert to Bill</TooltipContent>
                           </Tooltip>
                         )}
                         <Dialog>

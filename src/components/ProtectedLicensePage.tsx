@@ -18,7 +18,7 @@ export const ProtectedLicensePage: React.FC<ProtectedLicensePageProps> = ({
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="w-96">
           <CardContent className="flex flex-col items-center justify-center p-8">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-4" />
@@ -35,7 +35,7 @@ export const ProtectedLicensePage: React.FC<ProtectedLicensePageProps> = ({
   // Unauthorized state - will auto-redirect
   if (!isAuthorized) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="w-96 border-red-200">
           <CardContent className="flex flex-col items-center justify-center p-8">
             <Shield className="h-8 w-8 text-red-600 mb-4" />
@@ -54,7 +54,7 @@ export const ProtectedLicensePage: React.FC<ProtectedLicensePageProps> = ({
 
   // Authorized state - show the license generation page
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+    <div className="min-h-screen bg-background">
       {/* Payment verification banner */}
       <div className="bg-green-600 text-white py-2 px-4">
         <div className="max-w-4xl mx-auto flex items-center justify-center gap-2 text-sm">

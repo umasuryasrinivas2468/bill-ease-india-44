@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Search, Plus, Download, Eye, FileText, Trash2, Send, Upload, IndianRupee } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Search, Plus, Download, Eye, FileText, Trash2, Send, Upload, IndianRupee, Edit, MapPin, X, Save } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useInvoices, useDeleteInvoice, useRecordInvoicePayment, Invoice } from '@/hooks/useInvoices';
 import InvoiceViewer from '@/components/InvoiceViewer';
@@ -37,6 +38,17 @@ const Invoices = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useUser();
+  const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
+  const [editForm, setEditForm] = useState({
+    client_name: '',
+    client_email: '',
+    client_address: '',
+    due_date: '',
+    notes: '',
+  });
+  const [editItems, setEditItems] = useState<any[]>([]);
+  const [editGstRate, setEditGstRate] = useState(18);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSendInvoice = (invoice: Invoice) => {
     setInvoiceToSend(invoice);
@@ -115,6 +127,83 @@ const Invoices = () => {
           variant: "destructive",
         });
       }
+    }
+  };
+
+  const openEditDialog = (inv: Invoice) => {
+    setEditInvoice(inv);
+    setEditForm({
+      client_name: inv.client_name,
+      client_email: inv.client_email || '',
+      client_address: inv.client_address || '',
+      due_date: inv.due_date,
+      notes: inv.notes || '',
+    });
+    const items = Array.isArray(inv.items) ? inv.items : [];
+    setEditItems(items.map((it: any) => ({
+      description: it.description || it.product_name || it.name || '',
+      hsn_sac: it.hsn_sac || '',
+      quantity: Number(it.quantity) || 1,
+      rate: Number(it.rate || it.price) || 0,
+      amount: Number(it.amount) || (Number(it.quantity) || 1) * (Number(it.rate || it.price) || 0),
+      uom: it.uom || 'pcs',
+    })));
+    setEditGstRate(Number(inv.gst_rate) || 18);
+  };
+
+  const updateEditItem = (index: number, field: string, value: string | number) => {
+    const updated = [...editItems];
+    updated[index] = { ...updated[index], [field]: value };
+    if (field === 'quantity' || field === 'rate') {
+      updated[index].amount = Number(updated[index].quantity) * Number(updated[index].rate);
+    }
+    setEditItems(updated);
+  };
+
+  const addEditItem = () => {
+    setEditItems([...editItems, { description: '', hsn_sac: '', quantity: 1, rate: 0, amount: 0, uom: 'pcs' }]);
+  };
+
+  const removeEditItem = (index: number) => {
+    if (editItems.length > 1) setEditItems(editItems.filter((_: any, i: number) => i !== index));
+  };
+
+  const editSubtotal = editItems.reduce((s: number, it: any) => s + Number(it.amount || 0), 0);
+  const editGstAmount = editSubtotal * (editGstRate / 100);
+  const editTotal = editSubtotal + editGstAmount;
+
+  const handleSaveEdit = async () => {
+    if (!editInvoice || !user) return;
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('invoices')
+        .update({
+          client_name: editForm.client_name,
+          client_email: editForm.client_email || null,
+          client_address: editForm.client_address || null,
+          due_date: editForm.due_date,
+          notes: editForm.notes || null,
+          items: editItems,
+          amount: editSubtotal,
+          gst_amount: editGstAmount,
+          gst_rate: editGstRate,
+          total_amount: editTotal,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', editInvoice.id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Invoice updated', description: `${editInvoice.invoice_number} updated successfully` });
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      setEditInvoice(null);
+    } catch (err: any) {
+      console.error('Error updating invoice:', err);
+      toast({ title: 'Error', description: err.message || 'Failed to update invoice', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -339,6 +428,15 @@ const Invoices = () => {
                             <Button
                               size="sm"
                               variant="outline"
+                              onClick={() => openEditDialog(invoice)}
+                              className="transition-all hover:scale-105"
+                              title="Edit Invoice"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() => handleDownloadInvoice(invoice)}
                               className="transition-all hover:scale-105"
                             >
@@ -433,6 +531,15 @@ const Invoices = () => {
                       size="sm"
                       variant="outline"
                       className="flex-1 transition-all hover:scale-[1.02]"
+                      onClick={() => openEditDialog(invoice)}
+                    >
+                      <Edit className="h-3 w-3 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 transition-all hover:scale-[1.02]"
                       onClick={() => handleDownloadInvoice(invoice)}
                     >
                       <Download className="h-3 w-3 mr-1" />
@@ -472,6 +579,98 @@ const Invoices = () => {
           setSelectedInvoice(null);
         }}
       />
+
+      <Dialog open={!!editInvoice} onOpenChange={(open) => { if (!open) setEditInvoice(null); }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Invoice {editInvoice?.invoice_number}</DialogTitle>
+          </DialogHeader>
+          {editInvoice && (
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Customer Name</Label>
+                  <Input value={editForm.client_name} onChange={e => setEditForm({ ...editForm, client_name: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Customer Email</Label>
+                  <Input type="email" value={editForm.client_email} onChange={e => setEditForm({ ...editForm, client_email: e.target.value })} />
+                </div>
+                <div className="md:col-span-2">
+                  <Label className="flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5" /> Shipping Address
+                  </Label>
+                  <Textarea
+                    value={editForm.client_address}
+                    onChange={e => setEditForm({ ...editForm, client_address: e.target.value })}
+                    rows={2}
+                    placeholder="Enter shipping / delivery address"
+                  />
+                </div>
+                <div>
+                  <Label>Due Date</Label>
+                  <Input type="date" value={editForm.due_date} onChange={e => setEditForm({ ...editForm, due_date: e.target.value })} />
+                </div>
+                <div>
+                  <Label>GST Rate (%)</Label>
+                  <Input type="number" min="0" max="100" value={editGstRate} onChange={e => setEditGstRate(Number(e.target.value) || 0)} />
+                </div>
+              </div>
+
+              <div>
+                <Label className="mb-2 block">Line Items</Label>
+                <div className="space-y-2">
+                  {editItems.map((item: any, idx: number) => (
+                    <div key={idx} className="grid grid-cols-12 gap-2 items-center p-2 border rounded">
+                      <div className="col-span-4">
+                        <Input placeholder="Description" value={item.description} onChange={e => updateEditItem(idx, 'description', e.target.value)} />
+                      </div>
+                      <div className="col-span-1">
+                        <Input type="number" placeholder="Qty" min="1" value={item.quantity} onChange={e => updateEditItem(idx, 'quantity', parseInt(e.target.value) || 1)} />
+                      </div>
+                      <div className="col-span-3">
+                        <Input type="number" placeholder="Rate" min="0" step="0.01" value={item.rate} onChange={e => updateEditItem(idx, 'rate', parseFloat(e.target.value) || 0)} />
+                      </div>
+                      <div className="col-span-3 text-right font-medium text-sm">
+                        â‚¹{Number(item.amount || 0).toLocaleString('en-IN')}
+                      </div>
+                      <div className="col-span-1 text-right">
+                        <Button type="button" variant="ghost" size="sm" onClick={() => removeEditItem(idx)} disabled={editItems.length === 1}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <Button type="button" variant="outline" size="sm" className="mt-2 gap-1" onClick={addEditItem}>
+                  <Plus className="h-3.5 w-3.5" /> Add Item
+                </Button>
+              </div>
+
+              <div className="flex justify-end">
+                <Card className="w-64">
+                  <CardContent className="p-4 space-y-2 text-sm">
+                    <div className="flex justify-between"><span>Subtotal</span><span>â‚¹{editSubtotal.toLocaleString('en-IN')}</span></div>
+                    <div className="flex justify-between"><span>GST ({editGstRate}%)</span><span>â‚¹{editGstAmount.toLocaleString('en-IN')}</span></div>
+                    <div className="flex justify-between font-bold border-t pt-2"><span>Total</span><span>â‚¹{editTotal.toLocaleString('en-IN')}</span></div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div>
+                <Label>Notes</Label>
+                <Textarea value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} rows={2} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditInvoice(null)}>Cancel</Button>
+            <Button onClick={handleSaveEdit} disabled={isSaving} className="gap-1">
+              <Save className="h-4 w-4" /> {isSaving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {invoiceToSend && (
         <SendDocumentDialog

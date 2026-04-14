@@ -548,7 +548,7 @@ const Inventory = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100">
+        <Card className="border border-blue-200 bg-blue-50/50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-blue-800">Total Items</CardTitle>
           </CardHeader>
@@ -560,7 +560,7 @@ const Inventory = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-100">
+        <Card className="border border-amber-200 bg-amber-50/50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-amber-800">Low Stock Alerts</CardTitle>
           </CardHeader>
@@ -570,7 +570,7 @@ const Inventory = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-100">
+        <Card className="border border-emerald-200 bg-emerald-50/50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-emerald-800">Total Inventory Value</CardTitle>
           </CardHeader>

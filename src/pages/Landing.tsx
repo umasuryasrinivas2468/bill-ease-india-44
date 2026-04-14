@@ -67,16 +67,16 @@ const Landing = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-white/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <div className="h-8 w-8 bg-gradient-to-r from-blue-600 to-orange-500 rounded-lg flex items-center justify-center">
+              <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">A</span>
               </div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-orange-500 bg-clip-text text-transparent">
+              <h1 className="text-2xl font-bold text-primary">
                 Aczen
               </h1>
             </div>
@@ -84,7 +84,7 @@ const Landing = () => {
               <Button variant="ghost" asChild>
                 <Link to="/login">Sign In</Link>
               </Button>
-              <Button asChild className="bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600">
+              <Button asChild className="bg-primary hover:bg-primary/90">
                 <Link to="/clerk-login">Get Started</Link>
               </Button>
             </div>
@@ -96,7 +96,7 @@ const Landing = () => {
       <section className="py-20">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-5xl md:text-6xl font-bold mb-6">
-            <span className="bg-gradient-to-r from-blue-600 to-orange-500 bg-clip-text text-transparent">
+            <span className="text-primary">
               Smart Business
             </span>
             <br />
@@ -110,7 +110,7 @@ const Landing = () => {
             <Button 
               size="lg" 
               asChild
-              className="bg-gradient-to-r from-blue-600 to-orange-500 hover:from-blue-700 hover:to-orange-600 text-lg px-8 py-3"
+              className="bg-primary hover:bg-primary/90 text-lg px-8 py-3"
             >
               <Link to="/clerk-login">
                 Start Free Trial
@@ -140,7 +140,7 @@ const Landing = () => {
             {features.map((feature, index) => (
               <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
                 <CardHeader>
-                  <div className="h-12 w-12 bg-gradient-to-r from-blue-600 to-orange-500 rounded-lg flex items-center justify-center mb-4">
+                  <div className="h-12 w-12 bg-primary rounded-lg flex items-center justify-center mb-4">
                     <feature.icon className="h-6 w-6 text-white" />
                   </div>
                   <CardTitle className="text-xl">{feature.title}</CardTitle>
@@ -187,7 +187,7 @@ const Landing = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-orange-500">
+      <section className="py-20 bg-primary">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-4xl font-bold text-white mb-4">
             Ready to Transform Your Business?
@@ -214,7 +214,7 @@ const Landing = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <div className="h-8 w-8 bg-gradient-to-r from-blue-600 to-orange-500 rounded-lg flex items-center justify-center">
+                <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold text-sm">A</span>
                 </div>
                 <h3 className="text-xl font-bold">Aczen</h3>

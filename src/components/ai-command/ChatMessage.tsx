@@ -105,7 +105,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onNavigate })
       className={cn('flex gap-3 animate-in fade-in-0 slide-in-from-bottom-2 duration-300', isUser ? 'justify-end' : 'justify-start')}
     >
       {!isUser && (
-        <Avatar className="h-8 w-8 shrink-0 bg-gradient-to-br from-orange-500 to-blue-600">
+        <Avatar className="h-8 w-8 shrink-0 bg-primary">
           <AvatarFallback className="bg-transparent text-white">
             <Sparkles className="h-4 w-4" />
           </AvatarFallback>
@@ -115,7 +115,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onNavigate })
       <div
         className={cn(
           'max-w-[80%] rounded-2xl px-4 py-3 text-sm',
-          isUser ? 'bg-gradient-to-r from-orange-500 to-blue-600 text-white' : 'bg-muted/80 backdrop-blur-sm'
+          isUser ? 'bg-primary text-white' : 'bg-muted/80'
         )}
       >
         <div className="space-y-1 leading-relaxed">

@@ -224,7 +224,7 @@ const ComplianceMCA: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.08),transparent_30%)] p-4 md:p-6 pb-24">
+    <div className="min-h-screen bg-background p-4 md:p-6 pb-24">
       <div className="mx-auto max-w-6xl space-y-6">
 
         {/* ── Header ── */}
@@ -234,7 +234,7 @@ const ComplianceMCA: React.FC = () => {
               <Building2 className="h-3.5 w-3.5" />
               Compliance / MCA Filing
             </div>
-            <h1 className="mt-3 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-3xl font-bold text-transparent md:text-4xl">
+            <h1 className="mt-3 text-3xl font-bold text-foreground md:text-4xl">
               MCA Filing Module
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
@@ -311,7 +311,7 @@ const ComplianceMCA: React.FC = () => {
 
               {/* Quick actions */}
               <div className="space-y-3">
-                <Card className="rounded-[12px] border-white/60 bg-gradient-to-br from-primary/5 to-primary/10 backdrop-blur">
+                <Card className="rounded-[12px] border border-border bg-primary/5">
                   <CardContent className="p-5">
                     <div className="flex items-start gap-4">
                       <div className="rounded-xl bg-primary/10 p-3 text-primary">

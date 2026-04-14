@@ -13,7 +13,7 @@ export default function AccessDeniedPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md border-red-200 shadow-lg">
         <CardContent className="flex flex-col items-center justify-center p-8 text-center">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6">

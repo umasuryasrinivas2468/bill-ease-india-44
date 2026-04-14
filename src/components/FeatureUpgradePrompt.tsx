@@ -44,7 +44,7 @@ export const FeatureUpgradePrompt: React.FC<FeatureUpgradePromptProps> = ({
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-gray-50 to-gray-100 ${className}`}>
+    <div className={`min-h-screen flex items-center justify-center p-6 bg-background ${className}`}>
       <Card className="w-full max-w-2xl">
         <CardHeader className="text-center pb-4">
           <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">

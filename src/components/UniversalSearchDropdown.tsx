@@ -413,9 +413,6 @@ export function UniversalSearchDropdown({ open: externalOpen, onOpenChange: exte
           'dark:shadow-[0_24px_64px_-12px_rgba(0,0,0,0.50),inset_0_1px_0_0_rgba(255,255,255,0.05)]',
         )}
       >
-        {/* Ambient gradient orbs — give the glass depth */}
-        <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-[radial-gradient(circle,hsl(var(--primary)/0.13),transparent_65%)] blur-2xl" />
-        <div className="pointer-events-none absolute -bottom-6 -left-6 h-24 w-24 rounded-full bg-[radial-gradient(circle,hsl(var(--accent)/0.10),transparent_65%)] blur-2xl" />
 
         {/* ── Search input ── */}
         <div className="relative border-b border-white/50 dark:border-white/[0.08] px-4 py-3.5">

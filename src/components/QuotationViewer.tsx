@@ -119,7 +119,7 @@ const QuotationViewer: React.FC<QuotationViewerProps> = ({ quotation, isOpen, on
                 text-align: left; 
               }
               .items-table th { 
-                background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+                background: #f1f5f9;
                 font-weight: bold;
                 color: #1f2937;
                 font-size: 14px;

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { AlertCircle, Brain, FileImage, Loader2, ScanLine, WandSparkles } from "lucide-react";
+import { AlertCircle, Brain, FileImage, KeyRound, Loader2, ScanLine, WandSparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,8 @@ interface ExpenseOCRCaptureProps {
   onCreateDraft: (draft: Partial<CreateExpenseData> & { expense_date?: string }) => void;
 }
 
+const GEMINI_API_KEY_STORAGE_KEY = "billease_gemini_api_key";
+
 const RUPEE_SYMBOL = "\u20B9";
 
 const confidenceColorMap = {
@@ -26,11 +28,26 @@ const confidenceColorMap = {
 const formatRupee = (value?: string) =>
   value ? `${RUPEE_SYMBOL}${Number(value).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "N/A";
 
+const DEFAULT_GEMINI_API_KEY = "apikeygemini";
+
+const getSavedApiKey = (): string =>
+  localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || import.meta.env.VITE_GEMINI_API_KEY || DEFAULT_GEMINI_API_KEY;
+
+const saveApiKey = (key: string) => {
+  if (key) {
+    localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, key);
+  } else {
+    localStorage.removeItem(GEMINI_API_KEY_STORAGE_KEY);
+  }
+};
+
 const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) => {
   const { toast } = useToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [ocrResult, setOcrResult] = useState<ExpenseOCRResult | null>(null);
+  const [apiKey, setApiKey] = useState<string>(getSavedApiKey);
+  const [showApiKeyInput, setShowApiKeyInput] = useState(!getSavedApiKey());
 
   const extractedFields = useMemo(() => {
     if (!ocrResult) return [];
@@ -53,24 +70,43 @@ const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) 
     setOcrResult(null);
   };
 
+  const handleSaveApiKey = () => {
+    saveApiKey(apiKey.trim());
+    setShowApiKeyInput(false);
+    toast({ title: "API key saved", description: "Your Aczen AI API key has been saved locally." });
+  };
+
   const runOCR = async () => {
     if (!selectedFile) return;
 
+    const key = apiKey.trim();
+    if (!key) {
+      toast({
+        title: "API key required",
+          description: "Please enter your Aczen AI API key to extract expense data.",
+        variant: "destructive",
+      });
+      setShowApiKeyInput(true);
+      return;
+    }
+
     setIsProcessing(true);
     try {
-      const result = await extractExpenseWithGemini(selectedFile);
+      const result = await extractExpenseWithGemini(selectedFile, key);
       setOcrResult(result);
 
       toast({
         title: "AI extraction completed",
-        description: "Gemini AI has analyzed your document and extracted the expense fields.",
+        description: "Aczen AI has analyzed your document and extracted the expense fields.",
       });
     } catch (error) {
-      console.error("Gemini OCR error:", error);
+      console.error("Aczen OCR error:", error);
       const message = error instanceof Error ? error.message : "Unknown error";
       toast({
         title: "Extraction failed",
-        description: message,
+        description: message.includes("API key")
+          ? "Invalid Aczen AI API key. Please check and try again."
+          : `Could not process the document: ${message}`,
         variant: "destructive",
       });
     } finally {
@@ -119,6 +155,44 @@ const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) 
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {showApiKeyInput && (
+            <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4">
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+                <KeyRound className="h-4 w-4" />
+                Aczen AI API Key
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  type="password"
+                  placeholder="Enter your Aczen AI API key..."
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  className="border-white/20 bg-white/10 text-white placeholder:text-slate-400"
+                />
+                <Button
+                  type="button"
+                  onClick={handleSaveApiKey}
+                  disabled={!apiKey.trim()}
+                  className="bg-amber-500 text-white hover:bg-amber-600"
+                >
+                  Save
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-slate-300">
+                Get your free API key from{" "}
+                <a
+                  href="https://aistudio.google.com/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline text-amber-300"
+                >
+                  Google AI Studio
+                </a>
+                . Your key is stored locally in your browser.
+              </p>
+            </div>
+          )}
+
           <div className="grid gap-4 lg:grid-cols-[1.2fr,0.8fr]">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
               <div className="mb-3 flex items-center gap-2 text-sm font-medium">
@@ -127,7 +201,7 @@ const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) 
               </div>
               <Input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={handleFileChange} />
               <p className="mt-3 text-xs text-slate-300">
-                Powered by Google Gemini AI. Upload a clear photo or PDF of your bill/invoice for accurate extraction.
+                Powered by Aczen AI. Upload a clear photo or PDF of your bill/invoice for accurate extraction.
               </p>
               <div className="mt-4 flex gap-2">
                 <Button
@@ -144,7 +218,7 @@ const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) 
                   ) : (
                     <>
                       <ScanLine className="mr-2 h-4 w-4" />
-                      Extract with Gemini AI
+                      Extract with Aczen AI
                     </>
                   )}
                 </Button>
@@ -158,7 +232,7 @@ const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) 
             </div>
 
             <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-5">
-              <div className="mb-2 text-sm font-semibold">Gemini AI extracts</div>
+              <div className="mb-2 text-sm font-semibold">Aczen AI extracts</div>
               <ul className="space-y-2 text-sm text-slate-100">
                 <li>Vendor name and bill number</li>
                 <li>Expense date and GST number</li>
@@ -166,6 +240,7 @@ const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) 
                 <li>Payment mode and category hint</li>
                 <li>Raw extracted text for manual review</li>
               </ul>
+              {/* Change API Key button removed per request */}
             </div>
           </div>
         </CardContent>

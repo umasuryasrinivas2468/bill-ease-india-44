@@ -53,7 +53,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
   return (
     <SidebarProvider defaultOpen={false}>
-      <div className="flex min-h-screen w-full bg-[radial-gradient(circle_at_top_left,hsl(232_82%_88%/0.72),transparent_20%),linear-gradient(180deg,hsl(227_100%_97%)_0%,hsl(var(--background))_30%)] dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.24),transparent_20%),linear-gradient(180deg,hsl(226_30%_18%)_0%,hsl(var(--background))_30%)] pb-0 md:pb-0">
+      <div className="flex min-h-screen w-full bg-background pb-0 md:pb-0">
         <AppSidebar />
 
         <SidebarInset className="flex-1 w-full overflow-x-hidden bg-transparent">
@@ -104,10 +104,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                   <p className="mt-1 text-sm text-muted-foreground">Finance workspace</p>
                 </div>
                 <UniversalSearchDropdown />
-                <NotificationCenter />
-                <Button variant="ghost" className="h-11 rounded-full border border-primary/15 bg-background/70 px-4 flex items-center gap-2" onClick={() => setSettingsOpen(true)}>
+                <NotificationCenter compact />
+                <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full border border-primary/15 bg-background/70" onClick={() => setSettingsOpen(true)} aria-label="Settings">
                   <Settings className="h-4 w-4" />
-                  <span>Settings</span>
                 </Button>
               </div>
             </header>
@@ -126,12 +125,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
         <SheetContent
           side="right"
-          className="w-full sm:max-w-2xl p-0 flex flex-col border-l border-white/30 bg-[linear-gradient(160deg,hsl(225_100%_99%/0.97),hsl(var(--background)/0.98))] dark:bg-[linear-gradient(160deg,hsl(226_28%_16%/0.98),hsl(var(--background)/0.99))] shadow-[-24px_0_80px_-20px_hsl(var(--primary)/0.18)] backdrop-blur-xl"
+          className="w-full sm:max-w-2xl p-0 flex flex-col border-l border-border bg-background"
         >
-          {/* Decorative gradient orb */}
-          <div className="pointer-events-none absolute -top-24 right-0 h-64 w-64 rounded-full bg-[radial-gradient(circle,hsl(var(--primary)/0.12),transparent_70%)] blur-3xl" />
-
-          <SheetHeader className="relative z-10 flex flex-row items-center gap-3 border-b border-white/30 bg-white/40 px-6 py-4 dark:bg-white/5 backdrop-blur">
+          <SheetHeader className="flex flex-row items-center gap-3 border-b border-border bg-background px-6 py-4">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Settings className="h-4 w-4" />
             </div>
@@ -141,7 +137,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             </div>
           </SheetHeader>
 
-          <div className="relative z-10 flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto">
             <SettingsPage />
           </div>
         </SheetContent>

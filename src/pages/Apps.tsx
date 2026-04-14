@@ -119,7 +119,7 @@ const Apps = () => {
   }, [apps, searchQuery]);
 
   return (
-    <div className="min-h-full bg-gradient-to-b from-background via-background to-muted/30">
+    <div className="min-h-full bg-background">
       <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
         <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
@@ -198,7 +198,7 @@ const Apps = () => {
                   className="overflow-hidden border-0 bg-white shadow-[0_20px_60px_-30px_rgba(15,23,42,0.25)] ring-1 ring-border/60 transition-transform duration-200 hover:-translate-y-1"
                 >
                   <CardContent className="p-0">
-                    <div className={`bg-gradient-to-br ${app.tileClassName} p-6`}>
+                    <div className={`${app.tileClassName} p-6`}>
                       <div className="mb-10 flex items-start justify-between gap-4">
                         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-black shadow-sm">
                           <Icon className={`h-8 w-8 ${app.iconClassName}`} />

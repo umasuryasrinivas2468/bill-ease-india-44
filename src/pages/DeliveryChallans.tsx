@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Plus, Download, Trash2, FileText } from 'lucide-react';
+import { Plus, Download, Trash2, FileText, Truck, PackageCheck, PackageOpen } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { useDeliveryChallans } from '@/hooks/useDeliveryChallans';
 import { DeliveryChallanForm } from '@/components/DeliveryChallanForm';
 import { downloadDeliveryChallanPDF } from '@/utils/deliveryChallanPDF';
@@ -12,19 +15,25 @@ import { format } from 'date-fns';
 
 const DeliveryChallans = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const { challans, isLoading, createChallan, deleteChallan, isCreating } = useDeliveryChallans();
+  const { challans, isLoading, createChallan, updateChallan, deleteChallan, isCreating } = useDeliveryChallans();
   const { getBusinessInfo } = useEnhancedBusinessData();
   const businessData = getBusinessInfo();
 
+  const statusConfig: Record<string, { label: string; cls: string; icon: React.ElementType }> = {
+    pending: { label: 'Open', cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300', icon: PackageOpen },
+    in_transit: { label: 'In Transit', cls: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300', icon: Truck },
+    delivered: { label: 'Delivered', cls: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300', icon: PackageCheck },
+    cancelled: { label: 'Cancelled', cls: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300', icon: Trash2 },
+  };
+
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: any; label: string }> = {
-      pending: { variant: 'secondary', label: 'Pending' },
-      in_transit: { variant: 'default', label: 'In Transit' },
-      delivered: { variant: 'default', label: 'Delivered' },
-      cancelled: { variant: 'destructive', label: 'Cancelled' },
-    };
-    const config = variants[status] || variants.pending;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    const config = statusConfig[status] || statusConfig.pending;
+    const Icon = config.icon;
+    return <Badge className={config.cls + ' gap-1'}><Icon className="h-3 w-3" /> {config.label}</Badge>;
+  };
+
+  const handleStatusChange = (challanId: string, newStatus: string) => {
+    updateChallan({ id: challanId, delivery_status: newStatus as any });
   };
 
   const handleDownloadPDF = async (challan: any) => {
@@ -127,7 +136,27 @@ const DeliveryChallans = () => {
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    {getStatusBadge(challan.delivery_status)}
+                    <Select
+                      value={challan.delivery_status}
+                      onValueChange={(val) => handleStatusChange(challan.id, val)}
+                    >
+                      <SelectTrigger className="w-[140px] h-8 text-xs">
+                        <SelectValue>
+                          {getStatusBadge(challan.delivery_status)}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">
+                          <span className="flex items-center gap-1.5"><PackageOpen className="h-3 w-3 text-amber-600" /> Open</span>
+                        </SelectItem>
+                        <SelectItem value="in_transit">
+                          <span className="flex items-center gap-1.5"><Truck className="h-3 w-3 text-blue-600" /> In Transit</span>
+                        </SelectItem>
+                        <SelectItem value="delivered">
+                          <span className="flex items-center gap-1.5"><PackageCheck className="h-3 w-3 text-green-600" /> Delivered</span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Button
                       variant="outline"
                       size="sm"

@@ -14,7 +14,7 @@ const VirtualCFO = () => {
   };
 
   return (
-    <Card className="bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
+    <Card className="border border-purple-200 bg-purple-50/30">
       <CardHeader>
         <CardTitle className="flex items-center gap-3">
           <Brain className="h-6 w-6 text-purple-600" />
@@ -65,7 +65,7 @@ const VirtualCFO = () => {
 
         <Button 
           onClick={handleVirtualCFOClick}
-          className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+          className="w-full bg-primary hover:bg-primary/90 text-white"
           size="lg"
         >
           <Brain className="h-5 w-5 mr-2" />

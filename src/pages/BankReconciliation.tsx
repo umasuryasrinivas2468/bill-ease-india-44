@@ -126,7 +126,7 @@ const StatCard = ({ label, value, sub, color }: { label: string; value: string |
     amber: "text-amber-700 dark:text-amber-300",
   };
   return (
-    <div className={`rounded-xl border bg-gradient-to-br p-4 ${colors[color]}`}>
+    <div className={`rounded-xl border p-4 ${colors[color]}`}>
       <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
       <p className={`text-2xl font-bold ${textColors[color]}`}>{value}</p>
       {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
@@ -530,7 +530,7 @@ export default function BankReconciliation() {
               </div>
               {!isParsing && (
                 <span className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary">
-                  <Sparkles className="h-3 w-3" /> Gemini AI parsing
+                  <Sparkles className="h-3 w-3" /> Aczen AI parsing
                 </span>
               )}
               <input type="file" accept=".csv,.pdf,.txt" className="hidden" onChange={handleFileUpload} disabled={isParsing} />
@@ -1052,6 +1052,7 @@ export default function BankReconciliation() {
             <Button onClick={handleCreateJournal} disabled={isCreatingJournal || !bankAccountId || !counterAccountId} className="gap-2">
               {isCreatingJournal ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               {isCreatingJournal ? "Creating…" : "Create Journal Entry"}
+
             </Button>
           </DialogFooter>
         </DialogContent>

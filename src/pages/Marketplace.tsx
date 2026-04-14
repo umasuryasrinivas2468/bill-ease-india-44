@@ -86,7 +86,7 @@ const Marketplace = () => {
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
                 {app.icon_url ? (
                   <img src={app.icon_url} alt={app.name} className="w-8 h-8 rounded" />
                 ) : (

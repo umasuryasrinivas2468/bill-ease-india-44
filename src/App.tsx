@@ -27,8 +27,6 @@ import InventoryInsights from "./pages/InventoryInsights";
 import SalesOrders from "./pages/SalesOrders";
 import PurchaseOrders from "./pages/PurchaseOrders";
 import PurchaseBills from "./pages/PurchaseBills";
-import Receivables from "./pages/Receivables";
-import Payables from "./pages/Payables";
 import Banking from "./pages/Banking";
 import BankReconciliation from "./pages/BankReconciliation";
 import BankingSuccess from "./pages/BankingSuccess";
@@ -66,6 +64,8 @@ import RecurringInvoices from "./pages/RecurringInvoices";
 import WorkingCapital from "./pages/WorkingCapital";
 import VendorAdvances from "./pages/VendorAdvances";
 import VendorBillPayments from "./pages/VendorBillPayments";
+import Receivables from "./pages/Receivables";
+import Payables from "./pages/Payables";
 
 // License pages
 import StarterPage from "./pages/StarterPage";
@@ -183,8 +183,6 @@ function App() {
                         <Route path="/inventory/sales-orders" element={<PlanRestrictedSalesOrders />} />
                         <Route path="/inventory/purchase-orders" element={<PlanRestrictedPurchaseOrders />} />
                         <Route path="/purchase-bills" element={<PurchaseBills />} />
-                        <Route path="/reports/receivables" element={<Receivables />} />
-                        <Route path="/reports/payables" element={<Payables />} />
                         <Route path="/banking" element={<Banking />} />
                         <Route path="/banking/reconciliation" element={<BankReconciliation />} />
                         <Route path="/banking/success" element={<BankingSuccess />} />
@@ -207,6 +205,8 @@ function App() {
                         <Route path="/vendors" element={<Vendors />} />
                         <Route path="/vendor-advances" element={<VendorAdvances />} />
                         <Route path="/vendor-bill-payments" element={<VendorBillPayments />} />
+                        <Route path="/receivables" element={<Receivables />} />
+                        <Route path="/payables" element={<Payables />} />
 
                         {/* Plan Test Route - For development/testing */}
                         <Route path="/plan-test" element={<PlanTestPage />} />

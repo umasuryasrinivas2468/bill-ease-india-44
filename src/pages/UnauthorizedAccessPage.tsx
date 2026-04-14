@@ -19,7 +19,7 @@ export const UnauthorizedAccessPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="max-w-2xl mx-auto text-center">
         <Card className="border-red-200 shadow-lg">
           <CardHeader className="pb-4">

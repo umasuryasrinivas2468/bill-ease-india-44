@@ -33,7 +33,7 @@ const OrderTimeline = ({ order }: { order: SalesOrder }) => {
 
   return (
     <div className="py-4">
-      <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
+      <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-slate-300">
         {steps.map((step, index) => {
           const isCompleted = currentStepIndex >= index || (index === 0);
           const isCurrent = currentStepIndex === index;
@@ -832,20 +832,6 @@ export default function SalesOrders() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label htmlFor="payment-filter">Payment Status</Label>
-              <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Payment Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Payment Status</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="unpaid">Unpaid</SelectItem>
-                  <SelectItem value="partial">Partial</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -862,7 +848,6 @@ export default function SalesOrders() {
                 <TableHead>Order No</TableHead>
                 <TableHead>Customer</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Payment</TableHead>
                 <TableHead>Due Date</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Actions</TableHead>
@@ -883,11 +868,6 @@ export default function SalesOrders() {
                   <TableCell>
                     <Badge className={statusColors[order.status]}>
                       {order.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={paymentStatusColors[order.payment_status]}>
-                      {order.payment_status}
                     </Badge>
                   </TableCell>
                   <TableCell>{new Date(order.due_date).toLocaleDateString()}</TableCell>
@@ -946,20 +926,6 @@ export default function SalesOrders() {
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>Confirm</TooltipContent>
-                          </Tooltip>
-                        )}
-                        {order.payment_status !== 'paid' && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => markAsPaid(order.id)}
-                              >
-                                <DollarSign className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Mark Paid</TooltipContent>
                           </Tooltip>
                         )}
                         {(order.status === 'pending' || order.status === 'confirmed') && (
