@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Filter, ArrowUpDown } from 'lucide-react';
 import { useVendors, Vendor } from '@/hooks/useVendors';
+import { searchHSN, HSNEntry } from '@/constants/hsnCodes';
 
 interface InventoryItem {
   id: string;
@@ -43,6 +44,23 @@ const Inventory = () => {
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+
+  // HSN dropdown state
+  const [hsnQuery, setHsnQuery] = useState('');
+  const [showHsnDropdown, setShowHsnDropdown] = useState(false);
+  const hsnDropdownRef = useRef<HTMLDivElement>(null);
+  const hsnResults = searchHSN(hsnQuery);
+
+  // Close HSN dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (hsnDropdownRef.current && !hsnDropdownRef.current.contains(e.target as Node)) {
+        setShowHsnDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const [formData, setFormData] = useState({
     product_name: '',
@@ -383,15 +401,55 @@ const Inventory = () => {
                 </Select>
               </div>
               {formData.type === 'goods' && (
-                <div className="space-y-2">
+                <div className="space-y-2 relative">
                   <Label htmlFor="hsn_code">HSN Code</Label>
                   <Input
                     id="hsn_code"
                     value={formData.hsn_code}
-                    onChange={(e) => setFormData({ ...formData, hsn_code: e.target.value })}
-                    placeholder="e.g. 8471"
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFormData({ ...formData, hsn_code: value });
+                      setHsnQuery(value);
+                      setShowHsnDropdown(true);
+                    }}
+                    onFocus={() => {
+                      if (formData.hsn_code) {
+                        setHsnQuery(formData.hsn_code);
+                        setShowHsnDropdown(true);
+                      }
+                    }}
+                    placeholder="Type HSN code or product name..."
                     maxLength={8}
+                    autoComplete="off"
                   />
+                  {showHsnDropdown && hsnResults.length > 0 && (
+                    <div
+                      ref={hsnDropdownRef}
+                      className="absolute z-[100] top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-md border bg-white shadow-lg"
+                    >
+                      {hsnResults.map((entry) => (
+                        <button
+                          key={entry.code}
+                          type="button"
+                          className="w-full text-left px-3 py-2 hover:bg-slate-100 focus:bg-slate-100 border-b last:border-b-0 transition-colors"
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              hsn_code: entry.code,
+                              category: entry.category,
+                            });
+                            setShowHsnDropdown(false);
+                          }}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-mono text-sm font-semibold text-blue-700">{entry.code}</span>
+                            <Badge variant="secondary" className="text-xs shrink-0">{entry.category}</Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{entry.description}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
               {formData.type === 'services' && (

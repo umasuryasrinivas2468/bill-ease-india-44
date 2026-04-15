@@ -95,9 +95,66 @@ const toOCRResult = (data: ExtractedData): ExpenseOCRResult => {
   return result;
 };
 
-export const extractExpenseWithGemini = async (file: File): Promise<ExpenseOCRResult> => {
-  const fileBase64 = await fileToBase64(file);
-  const mimeType = getMimeType(file);
+const MAX_FILE_SIZE_MB = 15;
+const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024;
+
+const compressImage = (file: File, maxWidthPx = 2048): Promise<File> =>
+  new Promise((resolve, reject) => {
+    // Only compress raster images, not PDFs
+    if (!file.type.startsWith("image/")) {
+      resolve(file);
+      return;
+    }
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      // Skip compression if already small enough
+      if (img.width <= maxWidthPx && file.size <= MAX_FILE_SIZE) {
+        resolve(file);
+        return;
+      }
+      const scale = Math.min(1, maxWidthPx / img.width);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error("Image compression failed"));
+            return;
+          }
+          resolve(new File([blob], file.name, { type: "image/jpeg" }));
+        },
+        "image/jpeg",
+        0.85
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Could not load image for compression"));
+    };
+    img.src = url;
+  });
+
+export const extractExpenseWithGemini = async (
+  file: File,
+  _apiKey?: string
+): Promise<ExpenseOCRResult> => {
+  // Validate file size
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error(
+      `File is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is ${MAX_FILE_SIZE_MB} MB. Please upload a smaller or compressed file.`
+    );
+  }
+
+  // Compress large images to avoid payload limits
+  const processedFile = await compressImage(file);
+
+  const fileBase64 = await fileToBase64(processedFile);
+  const mimeType = getMimeType(processedFile);
 
   const { data, error } = await supabase.functions.invoke("expense-ocr", {
     body: { fileBase64, mimeType },

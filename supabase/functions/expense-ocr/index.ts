@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const EXTRACTION_PROMPT = `You are an expert Indian accountant. Analyze this bill/invoice/receipt and extract expense fields.
+const EXTRACTION_PROMPT = `You are an expert Indian accountant. Carefully read the ENTIRE document — every page, every section — and extract expense fields.
 
 Return ONLY valid JSON:
 
@@ -20,10 +20,11 @@ Return ONLY valid JSON:
   "gst_number": "string or null (15-char GSTIN)",
   "payment_mode": "cash|bank|credit_card|debit_card|upi|cheque or null",
   "category_hint": "one of: Office Rent, Office Supplies, Utilities, Communication, Printing & Stationery, Repairs & Maintenance, Insurance, Software & Subscriptions, Fuel & Transportation, Travel & Accommodation, Advertising & Marketing, Entertainment, Raw Materials, Purchase of Goods, Freight & Cartage, Professional Fees, Miscellaneous — or null",
-  "raw_text": "full readable text from document"
+  "raw_text": "full readable text from document (include ALL text you can read)"
 }
 
 Rules:
+- Read ALL pages of the document thoroughly before extracting.
 - Indian amounts in INR. Parse 1,23,456.78 correctly.
 - If CGST + SGST found separately, sum them for tax_amount.
 - Dates: convert DD/MM/YYYY or DD-MMM-YYYY to YYYY-MM-DD.
@@ -47,7 +48,46 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    console.log("[Expense-OCR] Processing document, mimeType:", mimeType);
+    // Validate base64 size (approx file size) — reject files over 15 MB
+    const approxBytes = (fileBase64.length * 3) / 4;
+    const MAX_FILE_SIZE = 15 * 1024 * 1024;
+    if (approxBytes > MAX_FILE_SIZE) {
+      throw new Error(
+        "File is too large (over 15 MB). Please upload a smaller or compressed file."
+      );
+    }
+
+    const isPdf = mimeType === "application/pdf";
+    console.log(
+      "[Expense-OCR] Processing document, mimeType:",
+      mimeType,
+      "size ~",
+      Math.round(approxBytes / 1024),
+      "KB",
+      isPdf ? "(PDF)" : "(Image)"
+    );
+
+    // Build the user content parts
+    const userContent: Array<Record<string, unknown>> = [
+      { type: "text", text: EXTRACTION_PROMPT },
+    ];
+
+    if (isPdf) {
+      // For PDFs, use inline_data format which Gemini handles natively
+      userContent.push({
+        type: "image_url",
+        image_url: {
+          url: `data:application/pdf;base64,${fileBase64}`,
+        },
+      });
+    } else {
+      userContent.push({
+        type: "image_url",
+        image_url: {
+          url: `data:${mimeType};base64,${fileBase64}`,
+        },
+      });
+    }
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -62,19 +102,11 @@ serve(async (req) => {
           messages: [
             {
               role: "user",
-              content: [
-                { type: "text", text: EXTRACTION_PROMPT },
-                {
-                  type: "image_url",
-                  image_url: {
-                    url: `data:${mimeType};base64,${fileBase64}`,
-                  },
-                },
-              ],
+              content: userContent,
             },
           ],
           temperature: 0.1,
-          max_tokens: 2048,
+          max_tokens: 8192,
         }),
       }
     );
@@ -85,17 +117,23 @@ serve(async (req) => {
       if (response.status === 429) {
         throw new Error("Rate limit exceeded. Please try again in a moment.");
       }
+      if (response.status === 413) {
+        throw new Error(
+          "File is too large for the AI service. Please upload a smaller or compressed file."
+        );
+      }
       throw new Error(`AI service error: ${response.status}`);
     }
 
     const result = await response.json();
+    const finishReason = result.choices?.[0]?.finish_reason;
     const content = result.choices?.[0]?.message?.content;
 
     if (!content) {
-      throw new Error("Empty response from AI");
+      throw new Error("Empty response from AI — the document may be unreadable or corrupted.");
     }
 
-    console.log("[Expense-OCR] Raw AI response:", content);
+    console.log("[Expense-OCR] Raw AI response length:", content.length, "finish_reason:", finishReason);
 
     // Parse JSON from response (may be wrapped in markdown)
     let jsonStr = content.trim();
@@ -104,7 +142,27 @@ serve(async (req) => {
       jsonStr = jsonMatch[1].trim();
     }
 
-    const extracted = JSON.parse(jsonStr);
+    let extracted: Record<string, unknown>;
+    try {
+      extracted = JSON.parse(jsonStr);
+    } catch {
+      // Response may have been truncated — attempt to salvage by closing the JSON
+      console.warn("[Expense-OCR] JSON parse failed, attempting to repair truncated response");
+      let repaired = jsonStr;
+      // Close any open string
+      const quoteCount = (repaired.match(/"/g) || []).length;
+      if (quoteCount % 2 !== 0) repaired += '"';
+      // Close open object
+      if (!repaired.trimEnd().endsWith("}")) repaired += "}";
+      try {
+        extracted = JSON.parse(repaired);
+      } catch {
+        console.error("[Expense-OCR] Could not parse AI response:", jsonStr.slice(0, 500));
+        throw new Error(
+          "Could not parse the AI response. The document may be too complex — try a clearer photo or a single-page scan."
+        );
+      }
+    }
 
     return new Response(JSON.stringify({ success: true, data: extracted }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
