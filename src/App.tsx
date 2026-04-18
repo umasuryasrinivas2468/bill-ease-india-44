@@ -152,6 +152,9 @@ function App() {
                 {/* Accept invite - public route */}
                 <Route path="/accept-invite" element={<AcceptInvite />} />
 
+                {/* Public payment page — no sidebar, no auth */}
+                <Route path="/pay" element={<PayLink />} />
+
                 {/* Routes with AppLayout (sidebar) */}
                 <Route path="/*" element={
                   <AppLayout>
@@ -226,9 +229,6 @@ function App() {
                         <Route path="/compliance/gst" element={<ComplianceGST />} />
                         <Route path="/reports/tds" element={<TDS />} />
                       </Route>
-
-                      {/* Public payment landing (customers) */}
-                      <Route path="/pay" element={<PayLink />} />
 
                       <Route path="*" element={<NotFound />} />
                     </Routes>

@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Plus, Download, Eye, FileText, Trash2, Send, Upload, IndianRupee, Edit, MapPin, X, Save } from 'lucide-react';
+import { Search, Plus, Download, Eye, FileText, Trash2, Send, Upload, IndianRupee, Edit, MapPin, X, Save, Link2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useInvoices, useDeleteInvoice, useRecordInvoicePayment, Invoice } from '@/hooks/useInvoices';
 import InvoiceViewer from '@/components/InvoiceViewer';
@@ -19,6 +19,7 @@ import { supabase } from '@/lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/clerk-react';
 import ImportDialog from '@/components/ImportDialog';
+import SharePaymentLinkDialog from '@/components/SharePaymentLinkDialog';
 import { normalizeUserId } from '@/lib/userUtils';
 
 const Invoices = () => {
@@ -38,6 +39,7 @@ const Invoices = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useUser();
+  const [payLinkInvoice, setPayLinkInvoice] = useState<Invoice | null>(null);
   const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
   const [editForm, setEditForm] = useState({
     client_name: '',
@@ -417,6 +419,17 @@ const Invoices = () => {
                                 <IndianRupee className="h-3 w-3" />
                               </Button>
                             )}
+                            {invoice.status !== 'paid' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setPayLinkInvoice(invoice)}
+                                className="transition-all hover:scale-105 border-orange-400 text-orange-600 hover:bg-orange-50"
+                                title="Payment Link"
+                              >
+                                <Link2 className="h-3 w-3" />
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               variant="outline"
@@ -516,6 +529,17 @@ const Invoices = () => {
                       >
                         <IndianRupee className="h-3 w-3 mr-1" />
                         Pay
+                      </Button>
+                    )}
+                    {invoice.status !== 'paid' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 transition-all hover:scale-[1.02] border-orange-400 text-orange-600 hover:bg-orange-50"
+                        onClick={() => setPayLinkInvoice(invoice)}
+                      >
+                        <Link2 className="h-3 w-3 mr-1" />
+                        Pay Link
                       </Button>
                     )}
                     <Button
@@ -685,6 +709,15 @@ const Invoices = () => {
           recipientEmail={invoiceToSend.client_email || ''}
           amount={invoiceToSend.total_amount}
           dueDate={invoiceToSend.due_date}
+        />
+      )}
+
+      {/* ── Payment Link Dialog ── */}
+      {payLinkInvoice && (
+        <SharePaymentLinkDialog
+          isOpen={!!payLinkInvoice}
+          onClose={() => setPayLinkInvoice(null)}
+          invoice={payLinkInvoice as any}
         />
       )}
 

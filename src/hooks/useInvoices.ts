@@ -28,6 +28,10 @@ export interface Invoice {
   items_with_product_id?: any[];
   notes?: string;
   created_at: string;
+  // Razorpay payment fields
+  payment_token?: string | null;
+  razorpay_payment_id?: string | null;
+  razorpay_route_account_id?: string | null;
 }
 
 export const useInvoices = () => {

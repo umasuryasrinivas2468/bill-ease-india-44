@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.bank-reconciliation]
 verify_jwt = false
+
+[functions.create-razorpay-account]
+verify_jwt = false
+
+[functions.create-razorpay-order]
+verify_jwt = false

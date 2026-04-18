@@ -5,6 +5,11 @@ import { ClerkProvider } from "@clerk/clerk-react";
 import App from "./App";
 import "./index.css";
 
+const noop = () => {};
+["log", "debug", "info", "warn", "error", "trace", "table", "group", "groupCollapsed", "groupEnd", "dir", "dirxml", "count", "countReset", "time", "timeEnd", "timeLog", "assert", "clear"].forEach((m) => {
+  (console as unknown as Record<string, unknown>)[m] = noop;
+});
+
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || "pk_test_cG9zaXRpdmUtc2N1bHBpbi00LmNsZXJrLmFjY291bnRzLmRldiQ";
 
 if (!PUBLISHABLE_KEY) {
