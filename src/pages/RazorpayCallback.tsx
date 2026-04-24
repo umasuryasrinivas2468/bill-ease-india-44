@@ -51,13 +51,28 @@ const RazorpayCallback: React.FC = () => {
         );
         const data = await resp.json();
         if (!resp.ok || !data.success) {
-          throw new Error(data.error || 'Failed to complete onboarding');
+          console.error('[RazorpayCallback] Edge function error response:', data);
+          const raw = data?.error;
+          const errMsg =
+            typeof raw === 'string'
+              ? raw
+              : raw?.description ||
+                raw?.message ||
+                raw?.code ||
+                (raw ? JSON.stringify(raw) : 'Failed to complete onboarding');
+          throw new Error(errMsg);
         }
         setState('success');
         setMessage(`Linked account: ${data.razorpay_account_id}`);
       } catch (err: any) {
+        console.error('[RazorpayCallback] Onboarding failed:', err);
         setState('error');
-        setMessage(err.message || 'Unknown error');
+        const msg =
+          typeof err === 'string'
+            ? err
+            : err?.message ||
+              (err ? JSON.stringify(err) : 'Unknown error');
+        setMessage(msg);
       }
     })();
   }, [code, stateParam, errorParam, errorDesc]);

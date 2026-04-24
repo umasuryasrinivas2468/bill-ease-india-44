@@ -23,7 +23,7 @@ const RAZORPAY_PARTNER_CLIENT_ID = Deno.env.get("RAZORPAY_PARTNER_CLIENT_ID")!;
 const RAZORPAY_PARTNER_CLIENT_SECRET = Deno.env.get(
   "RAZORPAY_PARTNER_CLIENT_SECRET",
 )!;
-const APP_URL = Deno.env.get("APP_URL") || "https://aczenbilz.com";
+const APP_URL = Deno.env.get("APP_URL") || "https://app.aczen.in";
 const RAZORPAY_MODE = Deno.env.get("RAZORPAY_MODE") || "live";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -88,11 +88,17 @@ serve(async (req) => {
     const tokenData = await tokenResp.json();
 
     if (!tokenResp.ok) {
-      console.error("[OAuthCallback] Token exchange failed:", tokenData);
+      console.error("[OAuthCallback] Token exchange failed:", JSON.stringify(tokenData));
+      const rzError = tokenData.error_description ||
+        (typeof tokenData.error === "string"
+          ? tokenData.error
+          : tokenData.error?.description || tokenData.error?.code) ||
+        `Razorpay token exchange returned ${tokenResp.status}`;
       return jsonResp(
         {
-          error: tokenData.error_description || tokenData.error ||
-            "Failed to exchange code for token",
+          error: String(rzError),
+          razorpay_raw: tokenData,
+          status: tokenResp.status,
         },
         400,
       );

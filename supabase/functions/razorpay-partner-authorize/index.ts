@@ -8,7 +8,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 //
 // Required Supabase secrets:
 //   RAZORPAY_PARTNER_CLIENT_ID
-//   APP_URL           — e.g. https://aczenbilz.com  (used for redirect_uri)
+//   APP_URL           — e.g. https://app.aczen.in   (used for redirect_uri)
 //   RAZORPAY_MODE     — "test" or "live"            (defaults to "live")
 // ═══════════════════════════════════════════════════════════════════
 
@@ -19,7 +19,7 @@ const corsHeaders = {
 };
 
 const RAZORPAY_PARTNER_CLIENT_ID = Deno.env.get("RAZORPAY_PARTNER_CLIENT_ID")!;
-const APP_URL = Deno.env.get("APP_URL") || "https://aczenbilz.com";
+const APP_URL = Deno.env.get("APP_URL") || "https://app.aczen.in";
 const RAZORPAY_MODE = Deno.env.get("RAZORPAY_MODE") || "live";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -86,13 +86,11 @@ serve(async (req) => {
     // Razorpay Partner Dashboard → Applications → your app (exact string match).
     const redirectUri = `${APP_URL.replace(/\/+$/, "")}/razorpay-callback`;
     const authorizeUrl = new URL("https://auth.razorpay.com/authorize");
-    authorizeUrl.searchParams.set("client_id", RAZORPAY_PARTNER_CLIENT_ID);
     authorizeUrl.searchParams.set("response_type", "code");
+    authorizeUrl.searchParams.set("client_id", RAZORPAY_PARTNER_CLIENT_ID);
     authorizeUrl.searchParams.set("redirect_uri", redirectUri);
-    authorizeUrl.searchParams.set("scope", "read_write");
+    authorizeUrl.searchParams.set("scope", "read_only");
     authorizeUrl.searchParams.set("state", state);
-    // mode is optional — Razorpay infers from the client_id, but passing it is explicit
-    authorizeUrl.searchParams.set("mode", RAZORPAY_MODE);
 
     console.log(`[PartnerAuthorize] Generated URL for user ${user_id}`);
 

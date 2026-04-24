@@ -76,7 +76,6 @@ import Payables from "./pages/Payables";
 import StarterPage from "./pages/StarterPage";
 import GrowthPage from "./pages/GrowthPage";
 import ScalePage from "./pages/ScalePage";
-import { LicenseVerificationHandler } from "./components/LicenseVerificationHandler";
 import { UnauthorizedAccessPage } from "./pages/UnauthorizedAccessPage";
 import PlanTestPage from "./pages/PlanTestPage";
 // Plan-restricted components
@@ -142,7 +141,6 @@ function App() {
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <LicenseVerificationHandler />
               <Routes>
                 {/* Public license pages without sidebar */}
                 <Route path="/starter.202512a" element={<StarterPage />} />
