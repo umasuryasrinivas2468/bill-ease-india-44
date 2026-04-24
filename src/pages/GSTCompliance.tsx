@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Calculator, Calendar, Scale } from 'lucide-react';
+import { FileText, Calculator, Calendar, Scale, Wallet } from 'lucide-react';
 import GSTSummaryReport from '@/components/reports/GSTSummaryReport';
 import GSTR3BSummary from '@/components/reports/GSTR3BSummary';
 import GSTMonthCalendar from '@/components/reports/GSTMonthCalendar';
+import GSTLiabilityDashboard from '@/components/reports/GSTLiabilityDashboard';
 
 const GSTCompliance = () => {
   const [activeTab, setActiveTab] = useState('summary');
@@ -25,11 +26,16 @@ const GSTCompliance = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 max-w-lg">
+        <TabsList className="grid w-full grid-cols-4 max-w-2xl">
           <TabsTrigger value="summary" className="gap-1.5">
             <Calculator className="h-4 w-4" />
             <span className="hidden sm:inline">GST Summary</span>
             <span className="sm:hidden">Summary</span>
+          </TabsTrigger>
+          <TabsTrigger value="liability" className="gap-1.5">
+            <Wallet className="h-4 w-4" />
+            <span className="hidden sm:inline">Liability & Payable</span>
+            <span className="sm:hidden">Payable</span>
           </TabsTrigger>
           <TabsTrigger value="gstr3b" className="gap-1.5">
             <FileText className="h-4 w-4" />
@@ -45,6 +51,10 @@ const GSTCompliance = () => {
 
         <TabsContent value="summary" className="mt-4">
           <GSTSummaryReport />
+        </TabsContent>
+
+        <TabsContent value="liability" className="mt-4">
+          <GSTLiabilityDashboard />
         </TabsContent>
 
         <TabsContent value="gstr3b" className="mt-4">

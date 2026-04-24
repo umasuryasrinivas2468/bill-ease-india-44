@@ -20,7 +20,15 @@ import { useTDSRules } from '@/hooks/useTDSRules';
 import { useProjects } from '@/hooks/useProjects';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Info, AlertCircle } from 'lucide-react';
+import { Info, AlertCircle, Receipt } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  evaluateRCM,
+  RCM_DEFAULT_CATEGORIES,
+  VendorGstStatus,
+  formatINR,
+} from '@/lib/gst';
+import { useBusinessData } from '@/hooks/useBusinessData';
 
 const expenseSchema = z.object({
   vendor_name: z.string().min(1, 'Vendor name is required'),
@@ -58,7 +66,13 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess, initialDa
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [selectedVendorTDS, setSelectedVendorTDS] = useState<any>(null);
   const [linkToProject, setLinkToProject] = useState(false);
+  const [rcmEnabled, setRcmEnabled] = useState<boolean | undefined>(undefined);
+  const [rcmRate, setRcmRate] = useState<number>(18);
+  const [vendorGstStatus, setVendorGstStatus] = useState<VendorGstStatus>('unknown');
   const isEditing = !!expense;
+
+  const { getBusinessInfo } = useBusinessData();
+  const sellerState = getBusinessInfo()?.state || '';
 
   const { data: categories = [] } = useExpenseCategories();
   const { data: projects = [] } = useProjects();
@@ -111,6 +125,28 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess, initialDa
   const selectedVendorId = watch('vendor_id');
   const selectedCategoryId = watch('category_id');
   const amount = watch('amount');
+  const selectedCategoryName = watch('category_name');
+
+  // Auto-suggest RCM when category is in the default RCM list
+  const rcmAutoSuggested = !!selectedCategoryName &&
+    RCM_DEFAULT_CATEGORIES.includes(selectedCategoryName);
+
+  // Derive vendor state + GST status from vendor record
+  const selectedVendor = vendors.find((v) => v.id === selectedVendorId);
+  const vendorState = selectedVendor?.state || '';
+
+  // Compute RCM payable live
+  const rcmResult = evaluateRCM(
+    {
+      category: selectedCategoryName || '',
+      vendorGstStatus,
+      amount: Number(amount) || 0,
+      rate: rcmRate,
+      explicitRcmFlag: rcmEnabled,
+    },
+    sellerState,
+    vendorState,
+  );
 
   // Auto-calculate TDS when amount changes
   useEffect(() => {
@@ -171,6 +207,13 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess, initialDa
 
   const onSubmit = async (data: ExpenseFormData) => {
     try {
+      const rcmFields = {
+        is_rcm: rcmResult.applicable,
+        rcm_rate: rcmResult.applicable ? rcmRate : 0,
+        rcm_amount: rcmResult.total_rcm_payable,
+        vendor_gst_status: vendorGstStatus,
+      };
+
       if (isEditing && expense) {
         // Update existing expense
         const updateData = {
@@ -182,6 +225,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess, initialDa
           description: data.description,
           amount: Number(data.amount),
           tax_amount: Number(data.tax_amount) || 0,
+          ...rcmFields,
           tds_amount: Number(data.tds_amount) || 0,
           tds_rule_id: data.tds_rule_id || undefined,
           total_amount: Number(data.amount) + (Number(data.tax_amount) || 0),
@@ -203,6 +247,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess, initialDa
           description: data.description,
           amount: Number(data.amount),
           tax_amount: Number(data.tax_amount) || 0,
+          ...rcmFields,
           tds_amount: Number(data.tds_amount) || 0,
           tds_rule_id: data.tds_rule_id || undefined,
           payment_mode: data.payment_mode,
@@ -231,13 +276,20 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess, initialDa
     const vendor = vendors.find(v => v.id === vendorId);
     if (vendor) {
       setValue('vendor_name', vendor.name);
-      
+
       // Auto-populate TDS if vendor has TDS enabled
       if (vendor.tds_enabled && vendor.linked_tds_section_id) {
         const tdsRule = tdsRules.find(r => r.id === vendor.linked_tds_section_id);
         setSelectedVendorTDS(tdsRule || null);
       } else {
         setSelectedVendorTDS(null);
+      }
+
+      // Infer GST status from vendor record
+      if (vendor.gst_number && vendor.gst_number.trim().length >= 15) {
+        setVendorGstStatus('registered');
+      } else {
+        setVendorGstStatus('unregistered');
       }
     }
   };
@@ -418,6 +470,93 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSuccess, initialDa
           />
           {errors.tax_amount && (
             <p className="text-sm text-red-500">{errors.tax_amount.message}</p>
+          )}
+        </div>
+
+        {/* Reverse Charge (RCM) — Feature #12 */}
+        <div className="md:col-span-2 space-y-3 border rounded-lg p-3 bg-purple-50/60 border-purple-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Receipt className="h-4 w-4 text-purple-700" />
+              <Label className="font-medium text-purple-900">
+                Reverse Charge (RCM)
+              </Label>
+              {rcmAutoSuggested && rcmEnabled === undefined && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-purple-200 text-purple-800">
+                  Suggested
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="rcm_toggle"
+                checked={rcmEnabled ?? rcmAutoSuggested}
+                onCheckedChange={(v) => setRcmEnabled(Boolean(v))}
+              />
+              <Label htmlFor="rcm_toggle" className="text-sm cursor-pointer">
+                Business pays GST to govt. (not vendor)
+              </Label>
+            </div>
+          </div>
+
+          {(rcmEnabled ?? rcmAutoSuggested) && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+              <div className="space-y-1">
+                <Label className="text-xs">GST Rate (%)</Label>
+                <Select
+                  value={rcmRate.toString()}
+                  onValueChange={(v) => setRcmRate(Number(v))}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5%</SelectItem>
+                    <SelectItem value="12">12%</SelectItem>
+                    <SelectItem value="18">18%</SelectItem>
+                    <SelectItem value="28">28%</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Vendor GST Status</Label>
+                <Select
+                  value={vendorGstStatus}
+                  onValueChange={(v) => setVendorGstStatus(v as VendorGstStatus)}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="registered">Registered</SelectItem>
+                    <SelectItem value="unregistered">Unregistered</SelectItem>
+                    <SelectItem value="composition">Composition</SelectItem>
+                    <SelectItem value="unknown">Unknown</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">RCM Payable</Label>
+                <div className="h-9 px-3 rounded-md border bg-white flex items-center text-sm font-medium text-purple-900">
+                  {formatINR(rcmResult.total_rcm_payable)}
+                </div>
+              </div>
+              <div className="md:col-span-3 text-xs text-purple-800 flex items-start gap-1.5">
+                <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span>
+                  {rcmResult.reason}
+                  {rcmResult.applicable && (
+                    <>
+                      {' — '}
+                      {rcmResult.igst > 0
+                        ? `IGST ${formatINR(rcmResult.igst)}`
+                        : `CGST ${formatINR(rcmResult.cgst)} + SGST ${formatINR(rcmResult.sgst)}`}
+                      . Post to RCM liability ledger on save.
+                    </>
+                  )}
+                </span>
+              </div>
+            </div>
           )}
         </div>
 

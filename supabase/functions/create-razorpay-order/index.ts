@@ -1,20 +1,64 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// ═══════════════════════════════════════════════════════════════════
+// create-razorpay-order (Partner OAuth flow)
+// - Loads the vendor's OAuth access_token from payment_settings
+// - Refreshes the token if expired (using refresh_token)
+// - Creates a Razorpay Order on behalf of the vendor via Bearer auth
+// - Returns order_id + public_token (frontend uses public_token as Checkout key)
+//
+// Required Supabase secrets:
+//   RAZORPAY_PARTNER_CLIENT_ID
+//   RAZORPAY_PARTNER_CLIENT_SECRET
+//   RAZORPAY_MODE ("test" or "live")
+// ═══════════════════════════════════════════════════════════════════
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Secrets set via: supabase secrets set RAZORPAY_KEY_ID=rzp_live_xxx RAZORPAY_KEY_SECRET=xxx
-const RAZORPAY_KEY_ID = Deno.env.get("RAZORPAY_KEY_ID")!;
-const RAZORPAY_KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET")!;
+const RAZORPAY_PARTNER_CLIENT_ID = Deno.env.get("RAZORPAY_PARTNER_CLIENT_ID")!;
+const RAZORPAY_PARTNER_CLIENT_SECRET = Deno.env.get(
+  "RAZORPAY_PARTNER_CLIENT_SECRET",
+)!;
+const RAZORPAY_MODE = Deno.env.get("RAZORPAY_MODE") || "live";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+function jsonResp(body: Record<string, any>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+// Refresh the vendor's access token via the partner client creds.
+// Returns the new tokens so callers can use them immediately AND persist them.
+async function refreshVendorToken(refreshToken: string) {
+  const resp = await fetch("https://auth.razorpay.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      client_id: RAZORPAY_PARTNER_CLIENT_ID,
+      client_secret: RAZORPAY_PARTNER_CLIENT_SECRET,
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      mode: RAZORPAY_MODE,
+    }),
+  });
+  const data = await resp.json();
+  if (!resp.ok) {
+    throw new Error(
+      data.error_description || data.error || "Token refresh failed",
+    );
+  }
+  return data;
+}
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -23,40 +67,100 @@ serve(async (req) => {
     const { invoice_id, token, amount } = await req.json();
 
     if (!invoice_id || !token || !amount) {
-      return new Response(
-        JSON.stringify({ error: "invoice_id, token, and amount are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      return jsonResp(
+        { error: "invoice_id, token, and amount are required" },
+        400,
       );
     }
 
-    // Use service role to bypass RLS and read the invoice
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { data: invoice, error: dbError } = await supabase
+    // ─ Load invoice + its vendor's payment settings ─
+    const { data: invoice, error: invErr } = await supabase
       .from("invoices")
-      .select("id, payment_token, razorpay_route_account_id, total_amount, status")
+      .select("id, user_id, payment_token, total_amount, status")
       .eq("id", invoice_id)
       .eq("payment_token", token)
       .single();
 
-    if (dbError || !invoice) {
-      return new Response(
-        JSON.stringify({ error: "Invalid invoice or token" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (invErr || !invoice) {
+      return jsonResp({ error: "Invalid invoice or token" }, 404);
     }
 
     if (invoice.status === "paid") {
-      return new Response(
-        JSON.stringify({ error: "Invoice is already paid" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      return jsonResp({ error: "Invoice is already paid" }, 400);
+    }
+
+    const { data: settings, error: settingsErr } = await supabase
+      .from("payment_settings")
+      .select(
+        "razorpay_account_id, razorpay_access_token, razorpay_refresh_token, razorpay_public_token, razorpay_token_expires_at",
+      )
+      .eq("user_id", invoice.user_id)
+      .maybeSingle();
+
+    if (settingsErr || !settings?.razorpay_access_token) {
+      return jsonResp(
+        {
+          error:
+            "Vendor has not activated online payments yet. Please contact them.",
+        },
+        400,
       );
     }
 
-    // Build Razorpay Order payload
-    const amountPaise = Math.round(Number(amount) * 100);
+    // ─ Refresh token if it's expired (or expires in the next 5 min) ─
+    let accessToken = settings.razorpay_access_token;
+    let publicToken = settings.razorpay_public_token;
+    const expiresAt = settings.razorpay_token_expires_at
+      ? new Date(settings.razorpay_token_expires_at)
+      : null;
+    const tokenStale = !expiresAt ||
+      expiresAt.getTime() - Date.now() < 5 * 60 * 1000;
 
-    const orderPayload: Record<string, any> = {
+    if (tokenStale && settings.razorpay_refresh_token) {
+      try {
+        const refreshed = await refreshVendorToken(
+          settings.razorpay_refresh_token,
+        );
+        accessToken = refreshed.access_token;
+        publicToken = refreshed.public_token || publicToken;
+
+        const newExpiresAt = refreshed.expires_in
+          ? new Date(Date.now() + Number(refreshed.expires_in) * 1000)
+            .toISOString()
+          : null;
+
+        await supabase
+          .from("payment_settings")
+          .update({
+            razorpay_access_token: refreshed.access_token,
+            razorpay_refresh_token: refreshed.refresh_token ||
+              settings.razorpay_refresh_token,
+            razorpay_public_token: publicToken,
+            razorpay_token_expires_at: newExpiresAt,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", invoice.user_id);
+
+        console.log(
+          `[RazorpayOrder] Refreshed token for user ${invoice.user_id}`,
+        );
+      } catch (err: any) {
+        console.error("[RazorpayOrder] Token refresh failed:", err);
+        return jsonResp(
+          {
+            error:
+              "Vendor's payment authorization has expired. They need to re-activate online payments.",
+          },
+          400,
+        );
+      }
+    }
+
+    // ─ Create Razorpay Order with vendor's Bearer token ─
+    const amountPaise = Math.round(Number(amount) * 100);
+    const orderPayload = {
       amount: amountPaise,
       currency: "INR",
       notes: {
@@ -65,60 +169,38 @@ serve(async (req) => {
       },
     };
 
-    // Razorpay Route: transfer money directly to vendor's linked account
-    if (invoice.razorpay_route_account_id) {
-      orderPayload.transfers = [
-        {
-          account: invoice.razorpay_route_account_id,
-          amount: amountPaise,
-          currency: "INR",
-          on_hold: 0,
-        },
-      ];
-      console.log(
-        `[RazorpayOrder] Route transfer → ${invoice.razorpay_route_account_id} for ₹${amount}`
-      );
-    }
-
-    // Create Razorpay Order via API
-    const auth = btoa(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`);
-
     const rzpResp = await fetch("https://api.razorpay.com/v1/orders", {
       method: "POST",
       headers: {
-        Authorization: `Basic ${auth}`,
+        Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(orderPayload),
     });
 
     const rzpData = await rzpResp.json();
-
     if (!rzpResp.ok) {
       console.error("[RazorpayOrder] API error:", rzpData);
-      return new Response(
-        JSON.stringify({
+      return jsonResp(
+        {
           error: rzpData.error?.description || "Razorpay order creation failed",
-        }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        },
+        400,
       );
     }
 
-    console.log(`[RazorpayOrder] Created order ${rzpData.id} for ₹${amount}`);
+    console.log(
+      `[RazorpayOrder] Created order ${rzpData.id} for ₹${amount} (vendor ${invoice.user_id})`,
+    );
 
-    return new Response(
-      JSON.stringify({
-        order_id: rzpData.id,
-        amount: rzpData.amount,
-        currency: rzpData.currency,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (err) {
-    console.error("[RazorpayOrder] Unhandled error:", err);
-    return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResp({
+      order_id: rzpData.id,
+      amount: rzpData.amount,
+      currency: rzpData.currency,
+      public_token: publicToken, // frontend uses this as Checkout key
+    });
+  } catch (err: any) {
+    console.error("[RazorpayOrder] Unhandled:", err);
+    return jsonResp({ error: err.message || "Internal error" }, 500);
   }
 });

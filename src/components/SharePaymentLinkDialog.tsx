@@ -44,7 +44,9 @@ const SharePaymentLinkDialog: React.FC<SharePaymentLinkDialogProps> = ({
   const [copied, setCopied] = useState(false);
 
   const balance = Number(invoice.total_amount) - Number(invoice.paid_amount || 0);
-  const isRouteActive = paymentSettings?.razorpay_account_status === 'activated';
+  const isPaymentsActive =
+    paymentSettings?.razorpay_account_status === 'activated' &&
+    !!paymentSettings?.razorpay_access_token;
 
   const paymentUrl = paymentToken
     ? `${window.location.origin}/pay?id=${invoice.id}&token=${paymentToken}`
@@ -55,15 +57,9 @@ const SharePaymentLinkDialog: React.FC<SharePaymentLinkDialogProps> = ({
     try {
       const token = crypto.randomUUID();
 
-      // Save token + auto-attach vendor's Razorpay Route account ID
-      const updatePayload: Record<string, any> = { payment_token: token };
-      if (paymentSettings?.razorpay_account_id) {
-        updatePayload.razorpay_route_account_id = paymentSettings.razorpay_account_id;
-      }
-
       const { error } = await supabase
         .from('invoices')
-        .update(updatePayload)
+        .update({ payment_token: token })
         .eq('id', invoice.id);
 
       if (error) throw error;
@@ -73,9 +69,9 @@ const SharePaymentLinkDialog: React.FC<SharePaymentLinkDialogProps> = ({
 
       toast({
         title: 'Payment link generated',
-        description: paymentSettings?.razorpay_account_id
-          ? 'Payments will route directly to your bank account.'
-          : 'You can now share this link with your client.',
+        description: isPaymentsActive
+          ? 'Payments will settle directly to your bank account.'
+          : 'Link generated. Activate online payments in Settings to receive money.',
       });
     } catch (err: any) {
       toast({
@@ -145,14 +141,14 @@ const SharePaymentLinkDialog: React.FC<SharePaymentLinkDialogProps> = ({
             </div>
           </div>
 
-          {/* Route status hint */}
-          {!paymentToken && !isRouteActive && paymentSettings !== undefined && (
+          {/* Activation hint */}
+          {!paymentToken && !isPaymentsActive && paymentSettings !== undefined && (
             <div className="flex items-start gap-2 bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-700">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
               <span>
-                Payment account not activated yet. Go to <strong>Settings → Payments</strong> to
-                activate. You can still generate a link, but money will go to the platform account
-                until Route is activated.
+                Online payments not activated yet. Go to <strong>Settings → Payments</strong> and
+                click "Activate Online Payments". Clients can't pay this link until activation is
+                complete.
               </span>
             </div>
           )}

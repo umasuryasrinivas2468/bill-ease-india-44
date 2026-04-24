@@ -18,7 +18,9 @@ import Clients from "./pages/Clients";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 import ClerkLogin from "./pages/ClerkLogin";
+import { AuthenticateWithRedirectCallback } from "@clerk/clerk-react";
 import Onboarding from "./pages/Onboarding";
 import Projects from "./pages/Projects";
 import TimeTracking from "./pages/TimeTracking";
@@ -53,6 +55,7 @@ import Loans from "./pages/Loans";
 import Payments from "./pages/Payments";
 import Vendors from "./pages/Vendors";
 import PayLink from "./pages/PayLink";
+import RazorpayCallback from "./pages/RazorpayCallback";
 import GST3Filing from "./pages/reports/GST3Filing";
 import Expenses from "./pages/Expenses";
 import GSTCompliance from "./pages/GSTCompliance";
@@ -155,12 +158,27 @@ function App() {
                 {/* Public payment page — no sidebar, no auth */}
                 <Route path="/pay" element={<PayLink />} />
 
+                {/* Razorpay OAuth callback — no sidebar */}
+                <Route path="/razorpay-callback" element={<RazorpayCallback />} />
+
+                {/* Public auth pages — no sidebar */}
+                <Route path="/signup/*" element={<Signup />} />
+
                 {/* Routes with AppLayout (sidebar) */}
                 <Route path="/*" element={
                   <AppLayout>
                     <Routes>
                       <Route path="/" element={<Index />} />
                       <Route path="/login" element={<Login />} />
+                      <Route
+                        path="/sso-callback"
+                        element={
+                          <AuthenticateWithRedirectCallback
+                            signInFallbackRedirectUrl="/dashboard"
+                            signUpFallbackRedirectUrl="/onboarding"
+                          />
+                        }
+                      />
                       <Route path="/clerk-login" element={<ClerkLogin />} />
 
                       {/* Protected Routes */}

@@ -21,6 +21,9 @@ import { supabase } from '@/lib/supabase';
 import { useSettingsValidation } from '@/hooks/useSettingsValidation';
 import SettingsPromptDialog from '@/components/SettingsPromptDialog';
 import { postInvoiceJournal } from '@/utils/autoJournalEntry';
+import { computeGSTBreakdown, formatINR } from '@/lib/gst';
+import { useBusinessData } from '@/hooks/useBusinessData';
+import GSTBreakdownDisplay from '@/components/GSTBreakdown';
 
 interface InvoiceItem {
   description: string;
@@ -39,6 +42,8 @@ const CreateInvoice = () => {
   const createInvoiceMutation = useCreateInvoice();
   const { data: inventoryItems = [], refetch: refetchInventory } = useInventory();
   const { isAllSettingsComplete, missingFields } = useSettingsValidation();
+  const { getBusinessInfo } = useBusinessData();
+  const sellerState = getBusinessInfo()?.state || '';
   
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showSettingsPrompt, setShowSettingsPrompt] = useState(false);
@@ -107,7 +112,16 @@ const CreateInvoice = () => {
   const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
   const discountAmount = subtotal * (discountPercentage / 100);
   const afterDiscount = subtotal - discountAmount;
-  const gstAmount = afterDiscount * (gstRate / 100);
+
+  // Auto GST split based on seller state vs buyer place_of_supply
+  const buyerState = selectedClient?.place_of_supply || '';
+  const gstBreakdown = computeGSTBreakdown(
+    afterDiscount,
+    gstRate,
+    sellerState,
+    buyerState,
+  );
+  const gstAmount = gstBreakdown.total_tax;
   const beforeRoundoff = afterDiscount + gstAmount - advance;
   const total = beforeRoundoff + roundoff;
 
@@ -163,6 +177,17 @@ const CreateInvoice = () => {
         }
       }
 
+      // Tax breakdown persisted alongside the line items — dashboards read from this.
+      const tax_meta = {
+        __tax_meta: true,
+        seller_state: sellerState,
+        buyer_state: buyerState,
+        intra_state: gstBreakdown.intraState,
+        cgst_amount: gstBreakdown.cgst,
+        sgst_amount: gstBreakdown.sgst,
+        igst_amount: gstBreakdown.igst,
+      };
+
       const invoiceData = {
         invoice_number: invoiceNumber,
         client_name: selectedClient.name,
@@ -181,8 +206,8 @@ const CreateInvoice = () => {
         status: 'pending' as const,
         invoice_date: invoiceDate,
         due_date: dueDate,
-        items: items,
-        items_with_product_id: items,
+        items: [...items, tax_meta],
+        items_with_product_id: [...items, tax_meta],
         notes: notes,
       };
 
@@ -570,10 +595,21 @@ const CreateInvoice = () => {
                 <span>After Discount:</span>
                 <span>₹{afterDiscount.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>GST ({gstRate}%):</span>
-                <span>₹{gstAmount.toFixed(2)}</span>
-              </div>
+              <GSTBreakdownDisplay
+                breakdown={gstBreakdown}
+                sellerState={sellerState}
+                buyerState={buyerState}
+              />
+              {!sellerState && (
+                <p className="text-xs text-amber-600">
+                  Tip: Set your business state in Settings → Business for accurate CGST/SGST vs IGST split.
+                </p>
+              )}
+              {sellerState && !buyerState && selectedClient && (
+                <p className="text-xs text-amber-600">
+                  Client has no Place of Supply set — defaulting to inter-state (IGST).
+                </p>
+              )}
               {advance > 0 && (
                 <div className="flex justify-between text-green-600">
                   <span>Advance:</span>

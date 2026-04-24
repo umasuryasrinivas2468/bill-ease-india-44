@@ -7,7 +7,8 @@ declare global {
 export interface RazorpayCheckoutOptions {
   amount: number; // in INR (converted to paise internally)
   currency?: string;
-  orderId?: string; // Razorpay order_id — required for Route transfers
+  orderId?: string;        // Razorpay order_id (required)
+  checkoutKey: string;     // vendor's public_token (Partner OAuth) OR rzp_live_xxx fallback
   businessName: string;
   description: string;
   invoiceId: string;
@@ -29,11 +30,11 @@ export const useRazorpay = () => {
   const isReady = typeof window !== 'undefined' && !!window.Razorpay;
 
   const openCheckout = (options: RazorpayCheckoutOptions) => {
-    const key = import.meta.env.VITE_RAZORPAY_KEY_ID;
+    const key = options.checkoutKey;
     if (!key) {
       options.onError?.({
         code: 'CONFIG_ERROR',
-        description: 'Razorpay key is not configured. Add VITE_RAZORPAY_KEY_ID to your .env file.',
+        description: 'Missing Razorpay checkout key (vendor has not activated online payments).',
         reason: 'missing_key',
       });
       return;

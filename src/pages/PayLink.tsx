@@ -85,8 +85,11 @@ const PayLink: React.FC = () => {
 
     const balance = Number(invoice.total_amount) - Number(invoice.paid_amount || 0);
 
-    // Try to create a Razorpay Order via Edge Function (enables Route transfers to vendor)
-    let orderId: string | undefined;
+    // Create a Razorpay Order. Required for signature verification.
+    // Also returns the vendor's public_token (used as the Checkout key under
+    // the Tech Partner OAuth flow — each vendor has their own key).
+    let orderId: string;
+    let checkoutKey: string;
     try {
       const resp = await fetch(`${SUPABASE_URL}/functions/v1/create-razorpay-order`, {
         method: 'POST',
@@ -100,17 +103,25 @@ const PayLink: React.FC = () => {
           amount: balance,
         }),
       });
-      if (resp.ok) {
-        const orderData = await resp.json();
-        if (orderData.order_id) orderId = orderData.order_id;
+      const orderData = await resp.json();
+      if (!resp.ok || !orderData.order_id) {
+        throw new Error(orderData.error || 'Failed to create payment order');
       }
-    } catch {
-      // Edge Function not deployed — falls back to direct checkout
+      orderId = orderData.order_id;
+      checkoutKey = orderData.public_token;
+      if (!checkoutKey) {
+        throw new Error('Vendor has not finished activating online payments yet.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Unable to initialize payment. Please try again.');
+      setState('ready');
+      return;
     }
 
     openCheckout({
       amount: balance,
-      ...(orderId && { orderId }),
+      orderId,
+      checkoutKey,
       businessName: 'Aczen Bilz',
       description: `Invoice ${invoice.invoice_number}`,
       invoiceId: invoice.id,
@@ -119,18 +130,41 @@ const PayLink: React.FC = () => {
         email: invoice.client_email || '',
       },
       onSuccess: async (response) => {
+        // Verify signature server-side before trusting the success callback.
+        // Without this, anyone could POST a fake razorpay_payment_id.
         try {
-          await publicSupabase.rpc('confirm_invoice_payment', {
-            p_invoice_id: invoiceId,
-            p_token: token,
-            p_razorpay_payment_id: response.razorpay_payment_id,
-            p_amount: balance,
-          });
-        } catch {
-          // Payment succeeded in Razorpay even if DB update fails
+          const verifyResp = await fetch(
+            `${SUPABASE_URL}/functions/v1/verify-razorpay-payment`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              },
+              body: JSON.stringify({
+                invoice_id: invoiceId,
+                token,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              }),
+            },
+          );
+          const verifyData = await verifyResp.json();
+          if (!verifyResp.ok || !verifyData.success) {
+            throw new Error(verifyData.error || 'Payment verification failed');
+          }
+          setPaymentId(response.razorpay_payment_id);
+          setState('success');
+        } catch (err: any) {
+          // Money was taken but we couldn't record it locally. The webhook
+          // will reconcile later — tell the user not to re-pay.
+          setError(
+            `Payment received but could not be confirmed instantly. Reference: ${response.razorpay_payment_id}. ` +
+              `Your invoice will update shortly — please do not pay again.`,
+          );
+          setState('error');
         }
-        setPaymentId(response.razorpay_payment_id);
-        setState('success');
       },
       onError: (err) => {
         setError(err.description || 'Payment failed. Please try again.');

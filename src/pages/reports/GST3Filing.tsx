@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useGST3Data } from '@/hooks/useGST3Data';
 import { useGST2AData, useGST2BData } from '@/hooks/useGST2Data';
+import GSTPenaltyCalculator from '@/components/reports/GSTPenaltyCalculator';
 
 const GST3Filing: React.FC = () => {
   const { gst3Data, totals } = useGST3Data();
@@ -20,6 +21,15 @@ const GST3Filing: React.FC = () => {
           <Button>File GST-3</Button>
         </div>
       </div>
+
+      {/* Feature #15 — Interest & Late Fee estimator, seeded with total tax */}
+      <GSTPenaltyCalculator
+        defaultTaxPayable={
+          (totals.integratedTax || 0) +
+          (totals.centralTax || 0) +
+          (totals.stateUTTax || 0)
+        }
+      />
 
       {/* GST summaries: GST-3, GST-2A, GST-2B */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

@@ -143,6 +143,10 @@ export interface Expense {
   description: string;
   amount: number;
   tax_amount: number;
+  is_rcm?: boolean;
+  rcm_rate?: number;
+  rcm_amount?: number;
+  vendor_gst_status?: string;
   tds_amount?: number;
   tds_rule_id?: string;
   total_amount: number;
@@ -180,6 +184,10 @@ export interface CreateExpenseData {
   description: string;
   amount: number;
   tax_amount?: number;
+  is_rcm?: boolean;
+  rcm_rate?: number;
+  rcm_amount?: number;
+  vendor_gst_status?: string;
   tds_amount?: number;
   tds_rule_id?: string;
   payment_mode: 'cash' | 'bank' | 'credit_card' | 'debit_card' | 'upi' | 'cheque';
