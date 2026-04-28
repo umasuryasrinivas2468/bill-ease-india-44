@@ -283,3 +283,221 @@ export function formatINR(n: number): string {
     maximumFractionDigits: 2,
   })}`;
 }
+
+// ─ Multi-rate invoice engine (Feature #16) ────────────────────────
+
+export interface MultiRateLineInput {
+  taxable: number; // pre-tax amount for this line (after per-line discount)
+  rate: number;    // 0 / 5 / 12 / 18 / 28 etc.
+}
+
+export interface RateBucket {
+  rate: number;
+  taxable: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  total_tax: number;
+}
+
+export interface MultiRateResult {
+  buckets: RateBucket[];
+  taxable: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  total_tax: number;
+  total: number;
+  intraState: boolean;
+}
+
+// Group lines by rate, compute GST per bucket, then sum.
+// This is how GST must actually be reported — one row per (rate, tax-head).
+export function computeMultiRateGST(
+  lines: MultiRateLineInput[],
+  sellerState: string | null | undefined,
+  buyerState: string | null | undefined,
+): MultiRateResult {
+  const intra = isSameState(sellerState, buyerState);
+  const groups = new Map<number, number>();
+
+  for (const ln of lines) {
+    const rate = Number(ln.rate) || 0;
+    const taxable = Number(ln.taxable) || 0;
+    groups.set(rate, (groups.get(rate) || 0) + taxable);
+  }
+
+  const buckets: RateBucket[] = [];
+  let total_tax = 0;
+  let totalTaxable = 0;
+  let cgstSum = 0;
+  let sgstSum = 0;
+  let igstSum = 0;
+
+  for (const [rate, taxable] of Array.from(groups.entries()).sort((a, b) => a[0] - b[0])) {
+    const bd = computeGSTBreakdown(taxable, rate, sellerState, buyerState);
+    buckets.push({
+      rate,
+      taxable: bd.taxable,
+      cgst: bd.cgst,
+      sgst: bd.sgst,
+      igst: bd.igst,
+      total_tax: bd.total_tax,
+    });
+    totalTaxable += bd.taxable;
+    cgstSum += bd.cgst;
+    sgstSum += bd.sgst;
+    igstSum += bd.igst;
+    total_tax += bd.total_tax;
+  }
+
+  return {
+    buckets,
+    taxable: round2(totalTaxable),
+    cgst: round2(cgstSum),
+    sgst: round2(sgstSum),
+    igst: round2(igstSum),
+    total_tax: round2(total_tax),
+    total: round2(totalTaxable + total_tax),
+    intraState: intra,
+  };
+}
+
+// ─ Inclusive / Exclusive tax calculator (Feature #17) ──────────────
+
+export type PricingMode = 'exclusive' | 'inclusive';
+
+export interface InclusiveExtractResult {
+  gross: number;     // what the user entered (line value including GST, if inclusive)
+  taxable: number;   // extracted pre-tax value
+  tax: number;       // GST component
+  rate: number;
+}
+
+// Extract taxable + tax from an inclusive gross value: taxable = gross / (1 + r/100).
+// For exclusive input, just returns { taxable: gross, tax: gross*r, gross: gross+tax }.
+export function extractTaxable(
+  amount: number,
+  rate: number,
+  mode: PricingMode,
+): InclusiveExtractResult {
+  const safeAmount = Number(amount) || 0;
+  const safeRate = Number(rate) || 0;
+
+  if (mode === 'inclusive') {
+    const taxable = round2(safeAmount / (1 + safeRate / 100));
+    const tax = round2(safeAmount - taxable);
+    return { gross: round2(safeAmount), taxable, tax, rate: safeRate };
+  }
+
+  // exclusive
+  const tax = round2((safeAmount * safeRate) / 100);
+  return {
+    gross: round2(safeAmount + tax),
+    taxable: round2(safeAmount),
+    tax,
+    rate: safeRate,
+  };
+}
+
+// ─ Invoice total rounding (Feature #19) ───────────────────────────
+
+export interface RoundingResult {
+  rounded: number;     // nearest rupee (banker's rounding — standard "round-half-up")
+  diff: number;        // rounded − original (the "Round Off" line on invoices)
+}
+
+// Round to nearest whole rupee (per CBIC circular practice).
+// Positive diff = amount rounded up (customer pays a bit more).
+// Negative diff = rounded down.
+export function roundInvoiceTotal(total: number): RoundingResult {
+  const safe = Number(total) || 0;
+  const rounded = Math.round(safe);
+  return { rounded, diff: round2(rounded - safe) };
+}
+
+// ─ Credit note tax reversal (Feature #20) ─────────────────────────
+
+export interface CreditNoteReversalInput {
+  original_taxable: number;      // original invoice pre-tax amount
+  original_tax: number;          // original total GST
+  return_taxable: number;        // taxable amount of goods returned / rate reduction
+  // Optional: if original had specific rate, caller can pass it for display.
+  rate?: number;
+}
+
+export interface CreditNoteReversalResult {
+  reversal_taxable: number;      // taxable to reduce
+  reversal_tax: number;          // GST to reverse
+  reversal_total: number;        // total credit note value
+  // Proportional allocation to CGST/SGST/IGST based on original mix.
+  cgst: number;
+  sgst: number;
+  igst: number;
+}
+
+// Proportionally reverse GST when goods are returned or invoice is reduced.
+// Uses original mix (intra vs inter) to split the reversal into CGST/SGST/IGST.
+export function computeCreditNoteReversal(
+  input: CreditNoteReversalInput,
+  sellerState: string | null | undefined,
+  buyerState: string | null | undefined,
+): CreditNoteReversalResult {
+  const origTax = Number(input.original_taxable) || 0;
+  const origGst = Number(input.original_tax) || 0;
+  const retTax = Math.min(Number(input.return_taxable) || 0, origTax);
+  if (origTax === 0) {
+    return {
+      reversal_taxable: 0,
+      reversal_tax: 0,
+      reversal_total: 0,
+      cgst: 0,
+      sgst: 0,
+      igst: 0,
+    };
+  }
+
+  const ratio = retTax / origTax;
+  const reversalTax = round2(origGst * ratio);
+  const intra = isSameState(sellerState, buyerState);
+
+  let cgst = 0;
+  let sgst = 0;
+  let igst = 0;
+  if (intra) {
+    const half = round2(reversalTax / 2);
+    cgst = half;
+    sgst = round2(reversalTax - half);
+  } else {
+    igst = reversalTax;
+  }
+
+  return {
+    reversal_taxable: round2(retTax),
+    reversal_tax: reversalTax,
+    reversal_total: round2(retTax + reversalTax),
+    cgst,
+    sgst,
+    igst,
+  };
+}
+
+// ─ GSTR-3B due date helper (Feature #25) ──────────────────────────
+
+// GSTR-3B is due 20th of the month FOLLOWING the return period.
+// E.g. return period 2026-03 → due 2026-04-20.
+export function gstr3bDueDate(period: string): string {
+  const [y, m] = period.split('-').map(Number);
+  if (!y || !m) return '';
+  const d = new Date(Date.UTC(y, m, 20)); // month=m (0-indexed next month)
+  return d.toISOString().slice(0, 10);
+}
+
+// Return the YYYY-MM of the month that comes `delta` months after `period`.
+// Used to navigate prior months / YoY same month.
+export function shiftMonth(period: string, delta: number): string {
+  const [y, m] = period.split('-').map(Number);
+  if (!y || !m) return period;
+  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}

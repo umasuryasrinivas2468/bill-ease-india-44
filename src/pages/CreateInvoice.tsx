@@ -21,7 +21,14 @@ import { supabase } from '@/lib/supabase';
 import { useSettingsValidation } from '@/hooks/useSettingsValidation';
 import SettingsPromptDialog from '@/components/SettingsPromptDialog';
 import { postInvoiceJournal } from '@/utils/autoJournalEntry';
-import { computeGSTBreakdown, formatINR } from '@/lib/gst';
+import {
+  computeMultiRateGST,
+  extractTaxable,
+  formatINR,
+  roundInvoiceTotal,
+  INDIAN_STATES,
+  PricingMode,
+} from '@/lib/gst';
 import { useBusinessData } from '@/hooks/useBusinessData';
 import GSTBreakdownDisplay from '@/components/GSTBreakdown';
 
@@ -33,6 +40,7 @@ interface InvoiceItem {
   rate: number;
   amount: number;
   uom: string;
+  gst_rate?: number; // per-item GST rate; falls back to invoice-level default when unset
 }
 
 const CreateInvoice = () => {
@@ -52,9 +60,12 @@ const CreateInvoice = () => {
   const [dueDate, setDueDate] = useState('');
   const [notes, setNotes] = useState('');
   const [gstRate, setGstRate] = useState(18);
+  const [pricingMode, setPricingMode] = useState<PricingMode>('exclusive');
+  const [placeOfSupplyOverride, setPlaceOfSupplyOverride] = useState<string>('');
   const [advance, setAdvance] = useState(0);
   const [discountPercentage, setDiscountPercentage] = useState(0);
   const [roundoff, setRoundoff] = useState(0);
+  const [autoRoundoff, setAutoRoundoff] = useState(true);
   const [currency, setCurrency] = useState('INR');
   const [shippingAddress, setShippingAddress] = useState('');
   const [items, setItems] = useState<InvoiceItem[]>([
@@ -109,21 +120,53 @@ const CreateInvoice = () => {
     setItems(updatedItems);
   };
 
-  const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
-  const discountAmount = subtotal * (discountPercentage / 100);
-  const afterDiscount = subtotal - discountAmount;
+  // Per-item GST: fall back to invoice-level default if line has no rate.
+  // Inclusive mode: each line's `amount` is gross (incl. GST) — extract the taxable.
+  const perLineExtracts = items.map((item) => {
+    const rate = item.gst_rate ?? gstRate;
+    return extractTaxable(item.amount, rate, pricingMode);
+  });
 
-  // Auto GST split based on seller state vs buyer place_of_supply
-  const buyerState = selectedClient?.place_of_supply || '';
-  const gstBreakdown = computeGSTBreakdown(
-    afterDiscount,
-    gstRate,
-    sellerState,
-    buyerState,
-  );
-  const gstAmount = gstBreakdown.total_tax;
-  const beforeRoundoff = afterDiscount + gstAmount - advance;
-  const total = beforeRoundoff + roundoff;
+  const grossSubtotal = items.reduce((sum, item) => sum + item.amount, 0); // what the user typed
+  const taxableSubtotal = perLineExtracts.reduce((sum, e) => sum + e.taxable, 0);
+
+  // Discount applies to the taxable value. Scale each line's taxable by (1 - d%).
+  const discountFactor = 1 - discountPercentage / 100;
+  const discountAmount = taxableSubtotal * (discountPercentage / 100);
+  const afterDiscountTaxable = taxableSubtotal - discountAmount;
+
+  // Buyer state: explicit override > client's place_of_supply.
+  const buyerState = placeOfSupplyOverride || selectedClient?.place_of_supply || '';
+
+  // Build per-rate buckets using the discounted taxable amounts.
+  const gstLines = items.map((item, idx) => ({
+    taxable: perLineExtracts[idx].taxable * discountFactor,
+    rate: item.gst_rate ?? gstRate,
+  }));
+  const gstResult = computeMultiRateGST(gstLines, sellerState, buyerState);
+
+  // Back-compat shape for GSTBreakdownDisplay (expects a single-rate breakdown).
+  // Use the first non-zero rate as display hint; numbers come from the multi-rate result.
+  const displayRate =
+    gstResult.buckets.find((b) => b.rate > 0)?.rate ??
+    (items[0]?.gst_rate ?? gstRate);
+  const gstBreakdown = {
+    taxable: gstResult.taxable,
+    rate: displayRate,
+    cgst: gstResult.cgst,
+    sgst: gstResult.sgst,
+    igst: gstResult.igst,
+    total_tax: gstResult.total_tax,
+    total: gstResult.total,
+    intraState: gstResult.intraState,
+  };
+
+  const gstAmount = gstResult.total_tax;
+  const beforeRoundoff = afterDiscountTaxable + gstAmount - advance;
+  // Auto-roundoff: round the final amount to the nearest rupee (CBIC practice).
+  const autoDiff = autoRoundoff ? roundInvoiceTotal(beforeRoundoff).diff : 0;
+  const effectiveRoundoff = autoRoundoff ? autoDiff : roundoff;
+  const total = beforeRoundoff + effectiveRoundoff;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,6 +229,10 @@ const CreateInvoice = () => {
         cgst_amount: gstBreakdown.cgst,
         sgst_amount: gstBreakdown.sgst,
         igst_amount: gstBreakdown.igst,
+        // Feature #16/#17: persist the rate-wise buckets so GSTR-1 HSN summary
+        // and period comparison can reconstruct the exact tax mix without re-deriving.
+        pricing_mode: pricingMode,
+        rate_buckets: gstResult.buckets,
       };
 
       const invoiceData = {
@@ -195,13 +242,13 @@ const CreateInvoice = () => {
         client_gst_number: selectedClient.gst_number,
         client_address: selectedClient.address,
         shipping_address: shippingAddress || null,
-        amount: subtotal,
+        amount: gstResult.taxable,
         gst_amount: gstAmount,
         total_amount: total,
         advance: advance,
         discount: discountAmount,
-        roundoff: roundoff,
-        gst_rate: gstRate,
+        roundoff: effectiveRoundoff,
+        gst_rate: displayRate,
         from_email: user?.emailAddresses?.[0]?.emailAddress || '',
         status: 'pending' as const,
         invoice_date: invoiceDate,
@@ -219,7 +266,7 @@ const CreateInvoice = () => {
           invoice_number: invoiceNumber,
           invoice_date: invoiceDate,
           client_name: selectedClient.name,
-          amount: subtotal,
+          amount: gstResult.taxable,
           gst_amount: gstAmount,
           total_amount: total,
         });
@@ -401,19 +448,60 @@ const CreateInvoice = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="gstRate">GST Rate (%)</Label>
+                  <Label htmlFor="gstRate">Default GST Rate (%)</Label>
                   <Select value={gstRate.toString()} onValueChange={(value) => setGstRate(Number(value))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select GST Rate" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="0">0% (Nil-rated)</SelectItem>
                       <SelectItem value="5">5%</SelectItem>
                       <SelectItem value="12">12%</SelectItem>
                       <SelectItem value="18">18%</SelectItem>
+                      <SelectItem value="28">28%</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Lines can override this with their own rate (multi-rate invoice).
+                  </p>
+                </div>
+                <CurrencySelector value={currency} onChange={setCurrency} label="Currency" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pricingMode">Pricing Mode</Label>
+                  <Select value={pricingMode} onValueChange={(v) => setPricingMode(v as PricingMode)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="exclusive">Exclusive (₹100 + GST)</SelectItem>
+                      <SelectItem value="inclusive">Inclusive (₹118 incl. GST)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <CurrencySelector value={currency} onChange={setCurrency} label="Currency" />
+                <div className="space-y-2">
+                  <Label htmlFor="posOverride">Place of Supply (override)</Label>
+                  <Select
+                    value={placeOfSupplyOverride || '__client'}
+                    onValueChange={(v) => setPlaceOfSupplyOverride(v === '__client' ? '' : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      <SelectItem value="__client">
+                        Use client default ({selectedClient?.place_of_supply || '—'})
+                      </SelectItem>
+                      {INDIAN_STATES.map((s) => (
+                        <SelectItem key={s.code} value={s.name}>
+                          {s.code} — {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -425,99 +513,128 @@ const CreateInvoice = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {items.map((item, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-8 gap-4 p-4 border rounded-lg">
-                  <div className="md:col-span-2">
-                    <Label htmlFor={`description-${index}`}>Item from Inventory</Label>
-                    <InventoryItemSelector
-                      value={item.description}
-                      onChange={(value, price, uom) => {
-                        console.log('CreateInvoice - Inventory item selected:', value, price, uom);
-                        
-                        const selectedInventoryItem = inventoryItems.find(inv => inv.product_name === value);
-                        
-                        const updates: Partial<InvoiceItem> = {
-                          description: value,
-                          product_id: selectedInventoryItem?.id || null,
-                          uom: uom || 'pcs',
-                        };
-                        
-                        if (price && typeof price === 'number' && price > 0) {
-                          updates.rate = price;
-                        }
-                        
-                        updateItemMultiple(index, updates);
-                      }}
-                      placeholder="Select from inventory"
-                    />
+              {items.map((item, index) => {
+                const effectiveRate = item.gst_rate ?? gstRate;
+                const extract = perLineExtracts[index];
+                return (
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-9 gap-3 p-4 border rounded-lg">
+                    <div className="md:col-span-2">
+                      <Label htmlFor={`description-${index}`}>Item from Inventory</Label>
+                      <InventoryItemSelector
+                        value={item.description}
+                        onChange={(value, price, uom) => {
+                          const selectedInventoryItem = inventoryItems.find(inv => inv.product_name === value);
+                          const updates: Partial<InvoiceItem> = {
+                            description: value,
+                            product_id: selectedInventoryItem?.id || null,
+                            uom: uom || 'pcs',
+                          };
+                          if (price && typeof price === 'number' && price > 0) {
+                            updates.rate = price;
+                          }
+                          updateItemMultiple(index, updates);
+                        }}
+                        placeholder="Select from inventory"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor={`hsn-sac-${index}`}>HSN/SAC</Label>
+                      <Input
+                        id={`hsn-sac-${index}`}
+                        value={item.hsn_sac}
+                        onChange={(e) => updateItem(index, 'hsn_sac', e.target.value)}
+                        placeholder="HSN"
+                      />
+                    </div>
+
+                    <div>
+                      <Label>UOM</Label>
+                      <Input
+                        value={item.uom || 'pcs'}
+                        readOnly
+                        className="bg-muted/50 uppercase text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor={`quantity-${index}`}>Qty</Label>
+                      <Input
+                        id={`quantity-${index}`}
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => updateItem(index, 'quantity', Number(e.target.value))}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor={`rate-${index}`}>
+                        Rate {pricingMode === 'inclusive' ? '(incl.)' : '(excl.)'}
+                      </Label>
+                      <Input
+                        id={`rate-${index}`}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.rate}
+                        onChange={(e) => updateItem(index, 'rate', Number(e.target.value))}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor={`gst-${index}`}>GST %</Label>
+                      <Select
+                        value={String(effectiveRate)}
+                        onValueChange={(v) => updateItem(index, 'gst_rate', Number(v))}
+                      >
+                        <SelectTrigger id={`gst-${index}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">0%</SelectItem>
+                          <SelectItem value="5">5%</SelectItem>
+                          <SelectItem value="12">12%</SelectItem>
+                          <SelectItem value="18">18%</SelectItem>
+                          <SelectItem value="28">28%</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label>Amount</Label>
+                      <Input
+                        value={item.amount.toFixed(2)}
+                        readOnly
+                        className="bg-gray-100"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-[11px]">Taxable</Label>
+                      <Input
+                        value={extract.taxable.toFixed(2)}
+                        readOnly
+                        className="bg-muted/30 text-xs"
+                      />
+                    </div>
+
+                    <div className="flex items-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeItem(index)}
+                        disabled={items.length === 1}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                  
-                  <div>
-                    <Label htmlFor={`hsn-sac-${index}`}>HSN/SAC</Label>
-                    <Input
-                      id={`hsn-sac-${index}`}
-                      value={item.hsn_sac}
-                      onChange={(e) => updateItem(index, 'hsn_sac', e.target.value)}
-                      placeholder="HSN/SAC Code"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label>UOM</Label>
-                    <Input
-                      value={item.uom || 'pcs'}
-                      readOnly
-                      className="bg-muted/50 uppercase text-xs"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor={`quantity-${index}`}>Quantity</Label>
-                    <Input
-                      id={`quantity-${index}`}
-                      type="number"
-                      min="1"
-                      value={item.quantity}
-                      onChange={(e) => updateItem(index, 'quantity', Number(e.target.value))}
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor={`rate-${index}`}>Rate (₹)</Label>
-                    <Input
-                      id={`rate-${index}`}
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={item.rate}
-                      onChange={(e) => updateItem(index, 'rate', Number(e.target.value))}
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label>Amount (₹)</Label>
-                    <Input
-                      value={item.amount.toFixed(2)}
-                      readOnly
-                      className="bg-gray-100"
-                    />
-                  </div>
-                  
-                  <div className="flex items-end">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeItem(index)}
-                      disabled={items.length === 1}
-                    >
-                      <Minus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               
               <Button type="button" onClick={addItem} variant="outline" className="w-full">
                 <Plus className="h-4 w-4 mr-2" />
@@ -566,10 +683,21 @@ const CreateInvoice = () => {
                   id="roundoff"
                   type="number"
                   step="0.01"
-                  value={roundoff}
-                  onChange={(e) => setRoundoff(Number(e.target.value))}
+                  value={autoRoundoff ? autoDiff : roundoff}
+                  onChange={(e) => {
+                    setAutoRoundoff(false);
+                    setRoundoff(Number(e.target.value));
+                  }}
                   placeholder="0.00"
                 />
+                <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoRoundoff}
+                    onChange={(e) => setAutoRoundoff(e.target.checked)}
+                  />
+                  Auto round to nearest rupee
+                </label>
               </div>
             </div>
           </CardContent>
@@ -582,8 +710,12 @@ const CreateInvoice = () => {
           <CardContent>
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span>Subtotal:</span>
-                <span>₹{subtotal.toFixed(2)}</span>
+                <span>Gross Line Total {pricingMode === 'inclusive' ? '(incl. GST)' : '(excl. GST)'}:</span>
+                <span>₹{grossSubtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Taxable Value:</span>
+                <span>₹{taxableSubtotal.toFixed(2)}</span>
               </div>
               {discountPercentage > 0 && (
                 <div className="flex justify-between text-red-600">
@@ -592,9 +724,28 @@ const CreateInvoice = () => {
                 </div>
               )}
               <div className="flex justify-between">
-                <span>After Discount:</span>
-                <span>₹{afterDiscount.toFixed(2)}</span>
+                <span>Taxable after Discount:</span>
+                <span>₹{afterDiscountTaxable.toFixed(2)}</span>
               </div>
+
+              {/* Rate-wise breakdown (Feature #16) */}
+              {gstResult.buckets.length > 0 && (
+                <div className="rounded border p-2 space-y-1 text-xs bg-muted/20">
+                  <div className="font-medium text-muted-foreground">Rate-wise GST</div>
+                  {gstResult.buckets.map((b) => (
+                    <div key={b.rate} className="flex justify-between">
+                      <span>
+                        {b.rate}% on ₹{b.taxable.toFixed(2)}
+                        {gstResult.intraState
+                          ? ` — CGST ₹${b.cgst.toFixed(2)} + SGST ₹${b.sgst.toFixed(2)}`
+                          : ` — IGST ₹${b.igst.toFixed(2)}`}
+                      </span>
+                      <span>₹{b.total_tax.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <GSTBreakdownDisplay
                 breakdown={gstBreakdown}
                 sellerState={sellerState}
@@ -616,10 +767,10 @@ const CreateInvoice = () => {
                   <span>-₹{advance.toFixed(2)}</span>
                 </div>
               )}
-              {roundoff !== 0 && (
+              {effectiveRoundoff !== 0 && (
                 <div className="flex justify-between">
-                  <span>Round Off:</span>
-                  <span>{roundoff >= 0 ? '+' : ''}₹{roundoff.toFixed(2)}</span>
+                  <span>Round Off{autoRoundoff ? ' (auto)' : ''}:</span>
+                  <span>{effectiveRoundoff >= 0 ? '+' : ''}₹{effectiveRoundoff.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-lg border-t pt-2">

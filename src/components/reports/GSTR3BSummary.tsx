@@ -6,6 +6,9 @@ import { useInvoices } from '@/hooks/useInvoices';
 import { usePurchaseBills } from '@/hooks/usePurchaseBills';
 import { useCreditNotes } from '@/hooks/useCreditNotes';
 import { useDebitNotes } from '@/hooks/useDebitNotes';
+import { useQuery } from '@tanstack/react-query';
+import { useUser } from '@clerk/clerk-react';
+import { supabase } from '@/lib/supabase';
 import { Download, FileSpreadsheet } from 'lucide-react';
 import { DateRangePicker } from '@/components/DateRangePicker';
 
@@ -22,11 +25,64 @@ type GSTRSummary = {
   itcAvailable: number;
 };
 
+// Inspect invoice items to pull out lines with gst_rate === 0 (nil-rated)
+// or explicit `exempt`/`non_gst` flags. Returns the line amounts.
+function splitOutwardByTaxability(invoices: any[]) {
+  let taxable = 0;
+  let gst = 0;
+  let nilRated = 0;
+  let exempted = 0;
+  let nonGST = 0;
+
+  for (const inv of invoices) {
+    const lines = Array.isArray(inv.items) ? inv.items : [];
+    let taxedInInvoice = 0;
+    for (const line of lines) {
+      if (!line || typeof line !== 'object' || (line as any).__tax_meta) continue;
+      const lineAmount = Number((line as any).amount) || 0;
+      const rate = Number((line as any).gst_rate ?? inv.gst_rate ?? 0);
+      if ((line as any).exempt) {
+        exempted += lineAmount;
+      } else if ((line as any).non_gst) {
+        nonGST += lineAmount;
+      } else if (rate === 0) {
+        nilRated += lineAmount;
+      } else {
+        taxedInInvoice += lineAmount;
+      }
+    }
+    // If no items broke down, fall back to the invoice-level amount+gst.
+    if (taxedInInvoice === 0 && lines.length === 0) {
+      taxable += Number(inv.amount) || 0;
+    } else {
+      taxable += taxedInInvoice;
+    }
+    gst += Number(inv.gst_amount) || 0;
+  }
+
+  return { taxable, gst, nilRated, exempted, nonGST };
+}
+
 const GSTR3BSummary: React.FC = () => {
+  const { user } = useUser();
   const { data: invoices = [] } = useInvoices();
   const { data: bills = [] } = usePurchaseBills();
   const { data: creditNotes = [] } = useCreditNotes();
   const { data: debitNotes = [] } = useDebitNotes();
+
+  // Pull RCM expenses directly — they are tracked in `expenses` with is_rcm=true.
+  const { data: rcmExpenses = [] } = useQuery({
+    queryKey: ['rcm-expenses-3b', user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('expenses')
+        .select('rcm_amount, amount, expense_date')
+        .eq('user_id', user!.id)
+        .eq('is_rcm', true);
+      return data || [];
+    },
+  });
 
   const [startDate, setStartDate] = React.useState<Date | undefined>();
   const [endDate, setEndDate] = React.useState<Date | undefined>();
@@ -43,9 +99,9 @@ const GSTR3BSummary: React.FC = () => {
     const cns = creditNotes.filter(cn => inRange(cn.credit_note_date) && cn.status !== 'cancelled');
     const pbs = bills.filter(b => inRange(b.bill_date));
     const dns = debitNotes.filter(dn => inRange(dn.debit_note_date) && dn.status !== 'cancelled');
+    const rcms = (rcmExpenses as any[]).filter(e => inRange(e.expense_date));
 
-    const outwardTaxableRaw = inv.reduce((s, i) => s + Number(i.amount), 0);
-    const outwardGSTRaw = inv.reduce((s, i) => s + Number(i.gst_amount), 0);
+    const outSplit = splitOutwardByTaxability(inv);
     const cnTaxable = cns.reduce((s, n) => s + Number(n.amount), 0);
     const cnGST = cns.reduce((s, n) => s + Number(n.gst_amount), 0);
 
@@ -54,22 +110,27 @@ const GSTR3BSummary: React.FC = () => {
     const dnTaxable = dns.reduce((s, n) => s + Number(n.amount), 0);
     const dnGST = dns.reduce((s, n) => s + Number(n.gst_amount), 0);
 
-    const outwardTaxable = Math.max(0, outwardTaxableRaw - cnTaxable);
-    const outwardGST = Math.max(0, outwardGSTRaw - cnGST);
+    const outwardTaxable = Math.max(0, outSplit.taxable - cnTaxable);
+    const outwardGST = Math.max(0, outSplit.gst - cnGST);
 
     const inwardTaxable = Math.max(0, inwardTaxableRaw - dnTaxable);
     const inwardGST = Math.max(0, inwardGSTRaw - dnGST);
 
-    const reverseCharge = 0;
-    const exempted = 0;
-    const nilRated = 0;
-    const nonGST = 0;
+    const reverseCharge = rcms.reduce(
+      (s, e) => s + (Number(e.rcm_amount) || 0),
+      0,
+    );
+    const exempted = outSplit.exempted;
+    const nilRated = outSplit.nilRated;
+    const nonGST = outSplit.nonGST;
 
-    const taxLiability = outwardGST;
-    const itcAvailable = inwardGST;
+    // Tax liability on outward + RCM payable (RCM is self-assessed; company pays it).
+    const taxLiability = outwardGST + reverseCharge;
+    // ITC available: purchase ITC + RCM (claimable as ITC next month).
+    const itcAvailable = inwardGST + reverseCharge;
 
     return { outwardTaxable, outwardGST, inwardTaxable, inwardGST, reverseCharge, exempted, nilRated, nonGST, taxLiability, itcAvailable };
-  }, [invoices, bills, creditNotes, debitNotes, startDate, endDate]);
+  }, [invoices, bills, creditNotes, debitNotes, rcmExpenses, startDate, endDate]);
 
   const downloadJSON = () => {
     const payload = {

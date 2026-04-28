@@ -71,6 +71,9 @@ import VendorAdvances from "./pages/VendorAdvances";
 import VendorBillPayments from "./pages/VendorBillPayments";
 import Receivables from "./pages/Receivables";
 import Payables from "./pages/Payables";
+import InvoiceIntelligence from "./pages/InvoiceIntelligence";
+import ExpenseIntelligence from "./pages/ExpenseIntelligence";
+import AczenCFO from "./pages/AczenCFO";
 
 // License pages
 import StarterPage from "./pages/StarterPage";
@@ -183,6 +186,9 @@ function App() {
                       <Route element={<ProtectedRoute />}>
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/invoices" element={<Invoices />} />
+                        <Route path="/invoices/intelligence" element={<InvoiceIntelligence />} />
+                        <Route path="/expenses/intelligence" element={<ExpenseIntelligence />} />
+                        <Route path="/aczen-cfo" element={<AczenCFO />} />
                         <Route path="/payment-received" element={<PaymentReceived />} />
                         <Route path="/working-capital" element={<WorkingCapital />} />
                         <Route path="/create-invoice" element={<CreateInvoice />} />
@@ -242,7 +248,9 @@ function App() {
                         <Route path="/accounting/manual-journals" element={<ManualJournals />} />
                         <Route path="/accounting/financial-statements" element={<FinancialStatements />} />
                         <Route path="/expenses" element={<Expenses />} />
-                        <Route path="/compliance/gst" element={<ComplianceGST />} />
+                        <Route path="/compliance/gst" element={<GSTCompliance />} />
+                        <Route path="/gst-compliance" element={<GSTCompliance />} />
+                        <Route path="/compliance/gst-legacy" element={<ComplianceGST />} />
                         <Route path="/reports/tds" element={<TDS />} />
                       </Route>
 

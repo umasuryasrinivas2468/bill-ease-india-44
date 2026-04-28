@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -8,9 +8,19 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   usePaymentSettings,
-  useStartRazorpayOnboarding,
+  useStartCustomOnboarding,
+  type CustomOnboardingInput,
 } from '@/hooks/usePaymentSettings';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -34,8 +44,8 @@ const statusConfig: Record<
     icon: <AlertCircle className="h-4 w-4" />,
   },
   created: {
-    label: 'Under Review',
-    color: 'bg-yellow-100 text-yellow-800',
+    label: 'Pre-filled — Awaiting Submission',
+    color: 'bg-blue-100 text-blue-800',
     icon: <Clock className="h-4 w-4" />,
   },
   needs_clarification: {
@@ -60,24 +70,111 @@ const statusConfig: Record<
   },
 };
 
+const businessTypeOptions: Array<{
+  value: CustomOnboardingInput['business_type'];
+  label: string;
+}> = [
+  { value: 'proprietorship', label: 'Proprietorship' },
+  { value: 'partnership', label: 'Partnership' },
+  { value: 'private_limited', label: 'Private Limited Company' },
+  { value: 'public_limited', label: 'Public Limited Company' },
+  { value: 'llp', label: 'LLP' },
+  { value: 'ngo', label: 'NGO' },
+  { value: 'trust', label: 'Trust' },
+  { value: 'society', label: 'Society' },
+  { value: 'huf', label: 'HUF' },
+  { value: 'individual', label: 'Individual' },
+  { value: 'not_yet_registered', label: 'Not Yet Registered' },
+];
+
+const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+
 const PaymentSetupCard: React.FC = () => {
   const { data: settings, isLoading } = usePaymentSettings();
-  const startOnboarding = useStartRazorpayOnboarding();
+  const startOnboarding = useStartCustomOnboarding();
   const { toast } = useToast();
+
+  const [form, setForm] = useState<CustomOnboardingInput>({
+    email: '',
+    phone: '',
+    legal_business_name: '',
+    business_type: 'proprietorship',
+    contact_name: '',
+    customer_facing_business_name: '',
+    business_pan: '',
+  });
 
   const status = settings?.razorpay_account_status || 'not_created';
   const cfg = statusConfig[status] || statusConfig.not_created;
   const isLinked = !!settings?.razorpay_access_token;
+  // A pre-created account exists, but the user never finished the OAuth redirect.
+  const hasDraftAccount =
+    !!settings?.razorpay_account_id && !settings?.razorpay_access_token;
 
-  const handleActivate = async () => {
+  const set = <K extends keyof CustomOnboardingInput>(
+    key: K,
+    value: CustomOnboardingInput[K],
+  ) => setForm((f) => ({ ...f, [key]: value }));
+
+  const handleActivate = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const trimmedEmail = form.email.trim();
+    const trimmedPhone = form.phone.trim();
+    const trimmedName = form.legal_business_name.trim();
+
+    if (!trimmedEmail || !trimmedPhone || !trimmedName) {
+      toast({
+        title: 'Missing details',
+        description:
+          'Email, phone, and legal business name are all required.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
+      toast({
+        title: 'Invalid email',
+        description: 'Please enter a valid email address.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!/^[0-9]{10}$/.test(trimmedPhone)) {
+      toast({
+        title: 'Invalid phone',
+        description: 'Phone must be a 10-digit number (without country code).',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const pan = (form.business_pan || '').trim().toUpperCase();
+    if (pan && !PAN_REGEX.test(pan)) {
+      toast({
+        title: 'Invalid PAN',
+        description: 'PAN must match the format ABCDE1234F.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
-      const { authorize_url } = await startOnboarding.mutateAsync();
-      // Hand off to Razorpay's hosted onboarding form
+      const { authorize_url } = await startOnboarding.mutateAsync({
+        ...form,
+        email: trimmedEmail,
+        phone: trimmedPhone,
+        legal_business_name: trimmedName,
+        contact_name: form.contact_name?.trim() || undefined,
+        customer_facing_business_name:
+          form.customer_facing_business_name?.trim() || undefined,
+        business_pan: pan || undefined,
+      });
       window.location.href = authorize_url;
-    } catch (err: any) {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Activation failed';
       toast({
         title: 'Activation Failed',
-        description: err.message,
+        description: message,
         variant: 'destructive',
       });
     }
@@ -132,21 +229,138 @@ const PaymentSetupCard: React.FC = () => {
             </div>
           )}
 
-          {/* Not yet linked — show activate flow */}
+          {/* Not yet linked — show KYC pre-fill form */}
           {!isLinked && (
-            <div className="space-y-4">
+            <form onSubmit={handleActivate} className="space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm space-y-2">
-                <p className="font-medium text-blue-900">What happens next</p>
+                <p className="font-medium text-blue-900">
+                  {hasDraftAccount
+                    ? 'Continue Razorpay onboarding'
+                    : 'How activation works'}
+                </p>
                 <ol className="text-blue-800 space-y-1 list-decimal pl-4 text-xs">
-                  <li>Click "Activate Online Payments" below.</li>
-                  <li>You'll be redirected to Razorpay's secure onboarding page.</li>
-                  <li>Enter your business info, bank details, and upload KYC documents.</li>
+                  <li>Pre-fill your business basics here.</li>
+                  <li>
+                    We hand you off to Razorpay's hosted onboarding form, with
+                    your details already populated.
+                  </li>
+                  <li>Upload KYC documents and bank info on Razorpay.</li>
                   <li>You'll come back here automatically once done.</li>
                 </ol>
               </div>
 
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="legal_business_name">
+                    Legal business name <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="legal_business_name"
+                    placeholder="As on PAN / GST"
+                    value={form.legal_business_name}
+                    onChange={(e) =>
+                      set('legal_business_name', e.target.value)
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="customer_facing_business_name">
+                    Brand / display name
+                  </Label>
+                  <Input
+                    id="customer_facing_business_name"
+                    placeholder="Shown to customers (optional)"
+                    value={form.customer_facing_business_name}
+                    onChange={(e) =>
+                      set('customer_facing_business_name', e.target.value)
+                    }
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="business_type">
+                    Business type <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={form.business_type}
+                    onValueChange={(v) =>
+                      set(
+                        'business_type',
+                        v as CustomOnboardingInput['business_type'],
+                      )
+                    }
+                  >
+                    <SelectTrigger id="business_type">
+                      <SelectValue placeholder="Select business type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {businessTypeOptions.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="contact_name">Contact person name</Label>
+                  <Input
+                    id="contact_name"
+                    placeholder="Authorised signatory"
+                    value={form.contact_name}
+                    onChange={(e) => set('contact_name', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">
+                    Business email <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="payments@yourbusiness.com"
+                    value={form.email}
+                    onChange={(e) => set('email', e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="phone">
+                    Business phone <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="phone"
+                    inputMode="numeric"
+                    placeholder="10-digit mobile (no +91)"
+                    value={form.phone}
+                    onChange={(e) =>
+                      set('phone', e.target.value.replace(/\D/g, '').slice(0, 10))
+                    }
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="business_pan">Business PAN (optional)</Label>
+                  <Input
+                    id="business_pan"
+                    placeholder="ABCDE1234F"
+                    value={form.business_pan}
+                    onChange={(e) =>
+                      set('business_pan', e.target.value.toUpperCase().slice(0, 10))
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Helps Razorpay skip a verification step. You can add it later
+                    on the onboarding form too.
+                  </p>
+                </div>
+              </div>
+
               <Button
-                onClick={handleActivate}
+                type="submit"
                 disabled={startOnboarding.isPending}
                 className="w-full sm:w-auto gap-2"
                 variant="orange"
@@ -154,17 +368,19 @@ const PaymentSetupCard: React.FC = () => {
                 {startOnboarding.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Redirecting...
+                    Preparing onboarding...
                   </>
                 ) : (
                   <>
                     <Zap className="h-4 w-4" />
-                    Activate Online Payments
+                    {hasDraftAccount
+                      ? 'Resume on Razorpay'
+                      : 'Continue to Razorpay'}
                     <ExternalLink className="h-3.5 w-3.5" />
                   </>
                 )}
               </Button>
-            </div>
+            </form>
           )}
 
           {/* Under review */}
@@ -219,8 +435,8 @@ const PaymentSetupCard: React.FC = () => {
 
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-2">
             <Shield className="h-3.5 w-3.5" />
-            Onboarding powered by Razorpay Tech Partners — your KYC data is
-            collected and encrypted by Razorpay, never stored on Aczen.
+            Onboarding powered by Razorpay Tech Partners — KYC documents and
+            bank details are collected by Razorpay, never stored on Aczen.
           </div>
         </CardContent>
       </Card>

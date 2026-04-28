@@ -31,6 +31,8 @@ import {
   FolderKanban,
   GitMerge,
   IndianRupee,
+  Brain,
+  Filter,
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import { useAuthorization } from "@/hooks/useAuthorization";
@@ -59,6 +61,7 @@ const salesMenuItems = [
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Sales Orders", url: "/inventory/sales-orders", icon: ShoppingCart, feature: "salesOrders" as const },
   { title: "Invoices", url: "/invoices", icon: FileText },
+  { title: "Invoice Intelligence", url: "/invoices/intelligence", icon: Filter },
   { title: "Payment Received", url: "/payment-received", icon: IndianRupee },
   { title: "Working Capital", url: "/working-capital", icon: Banknote },
   { title: "Cash Memo", url: "/cash-memo", icon: Wallet },
@@ -72,6 +75,7 @@ const salesMenuItems = [
 const purchasesMenuItems = [
   { title: "Vendors", url: "/vendors", icon: Users },
   { title: "Expenses", url: "/expenses", icon: Receipt },
+  { title: "Expense Intelligence", url: "/expenses/intelligence", icon: Filter },
   { title: "Bills", url: "/purchase-bills", icon: FileText },
   { title: "Vendor Advances", url: "/vendor-advances", icon: Banknote },
   { title: "Bill Payments", url: "/vendor-bill-payments", icon: Wallet },
@@ -101,6 +105,7 @@ const reportsMenuItems = [
   { title: "Financial Statements", url: "/accounting/financial-statements", icon: FileText },
   { title: "Profit Loss", url: "/accounting/profit-loss", icon: TrendingUp },
   { title: "Project P&L", url: "/accounting/project-profit-loss", icon: FolderKanban },
+  { title: "Aczen CFO", url: "/aczen-cfo", icon: Brain },
 ];
 
 const appsMenuItems = [

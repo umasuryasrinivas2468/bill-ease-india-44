@@ -19,12 +19,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const RAZORPAY_PARTNER_CLIENT_ID = Deno.env.get("RAZORPAY_PARTNER_CLIENT_ID")!;
-const RAZORPAY_PARTNER_CLIENT_SECRET = Deno.env.get(
-  "RAZORPAY_PARTNER_CLIENT_SECRET",
-)!;
-const APP_URL = Deno.env.get("APP_URL") || "https://app.aczen.in";
-const RAZORPAY_MODE = Deno.env.get("RAZORPAY_MODE") || "live";
+const RAZORPAY_PARTNER_CLIENT_ID =
+  (Deno.env.get("RAZORPAY_PARTNER_CLIENT_ID") || "").trim();
+const RAZORPAY_PARTNER_CLIENT_SECRET =
+  (Deno.env.get("RAZORPAY_PARTNER_CLIENT_SECRET") || "").trim();
+const APP_URL = (Deno.env.get("APP_URL") || "https://app.aczen.in").trim();
+const RAZORPAY_MODE = (Deno.env.get("RAZORPAY_MODE") || "live").trim();
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -71,7 +71,12 @@ serve(async (req) => {
     await supabase.from("razorpay_oauth_states").delete().eq("state", state);
 
     // ─ Exchange code for tokens ─
-    const redirectUri = `${APP_URL}/razorpay-callback`;
+    const redirectUri = `${APP_URL.replace(/\/+$/, "")}/razorpay-callback`;
+    console.log(
+      `[OAuthCallback] token exchange: client_id=${
+        RAZORPAY_PARTNER_CLIENT_ID.slice(0, 6)
+      }... secret_len=${RAZORPAY_PARTNER_CLIENT_SECRET.length} mode=${RAZORPAY_MODE} redirect_uri=${redirectUri}`,
+    );
     const tokenResp = await fetch("https://auth.razorpay.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
