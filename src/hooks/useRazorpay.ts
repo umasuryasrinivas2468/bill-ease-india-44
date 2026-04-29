@@ -54,6 +54,7 @@ export const useRazorpay = () => {
       amount: Math.round(options.amount * 100), // INR -> paise
       currency: options.currency || 'INR',
       name: options.businessName,
+      image: `${window.location.origin}/aczen-logo.png`,
       description: options.description,
       prefill: options.prefill || {},
       notes: {
