@@ -72,7 +72,7 @@ export const useRazorpay = () => {
         },
       },
       theme: {
-        color: '#F97316',
+        color: '#528FF0',
       },
     };
 

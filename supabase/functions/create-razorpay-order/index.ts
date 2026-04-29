@@ -180,7 +180,32 @@ serve(async (req) => {
 
     const rzpData = await rzpResp.json();
     if (!rzpResp.ok) {
-      console.error("[RazorpayOrder] API error:", rzpData);
+      console.error(
+        `[RazorpayOrder] API error (${rzpResp.status}):`,
+        rzpData,
+      );
+
+      // 401/403 with scope/auth errors usually mean the vendor's token was
+      // issued with insufficient scope (e.g. read_only) or has been revoked.
+      // Surface a specific "reconnect" message so the vendor knows what to do.
+      const code = rzpData.error?.code || "";
+      const desc = (rzpData.error?.description || "").toLowerCase();
+      const scopeIssue =
+        rzpResp.status === 401 ||
+        rzpResp.status === 403 ||
+        code === "BAD_REQUEST_ERROR" && /scope|unauthor|insufficient|access/.test(desc);
+
+      if (scopeIssue) {
+        return jsonResp(
+          {
+            error:
+              "The vendor's payment authorization is missing the right permissions (read_write). Please ask them to disconnect and reconnect online payments in Settings → Payments.",
+            needs_reconnect: true,
+          },
+          400,
+        );
+      }
+
       return jsonResp(
         {
           error: rzpData.error?.description || "Razorpay order creation failed",
