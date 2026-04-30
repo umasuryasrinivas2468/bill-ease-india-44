@@ -18,6 +18,21 @@ verify_jwt = false
 [functions.bank-reconciliation]
 verify_jwt = false
 
+[functions.create-payment-link]
+verify_jwt = false
+
+[functions.create-order-with-transfers]
+verify_jwt = false
+
+[functions.razorpay-transfer-webhook]
+verify_jwt = false
+
+[functions.calculate-transaction-fees]
+verify_jwt = false
+
+[functions.process-payouts]
+verify_jwt = false
+
 [functions.create-razorpay-account]
 verify_jwt = false
 

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import { useRazorpay } from '@/hooks/useRazorpay';
+import FeeBreakdown from '@/components/FeeBreakdown';
 import {
   CheckCircle2,
   AlertCircle,
@@ -125,6 +126,7 @@ const PayLink: React.FC = () => {
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [error, setError] = useState('');
   const [paymentId, setPaymentId] = useState('');
+  const [serviceFees, setServiceFees] = useState(0);
   const { openCheckout } = useRazorpay();
 
   useEffect(() => {
@@ -170,6 +172,7 @@ const PayLink: React.FC = () => {
     setState('processing');
 
     const balance = Number(invoice.total_amount) - Number(invoice.paid_amount || 0);
+    const totalWithFees = balance + serviceFees;
 
     let orderId: string;
     let checkoutKey: string;
@@ -183,7 +186,7 @@ const PayLink: React.FC = () => {
         body: JSON.stringify({
           invoice_id: invoiceId,
           token,
-          amount: balance,
+          amount: totalWithFees, // Use total with fees
         }),
       });
       const orderData = await resp.json();
@@ -202,7 +205,7 @@ const PayLink: React.FC = () => {
     }
 
     openCheckout({
-      amount: balance,
+      amount: totalWithFees,
       orderId,
       checkoutKey,
       businessName: 'Aczen',
@@ -385,6 +388,7 @@ const PayLink: React.FC = () => {
   if (!invoice) return null;
 
   const balance = Number(invoice.total_amount) - Number(invoice.paid_amount || 0);
+  const totalWithFees = balance + serviceFees;
   const items = Array.isArray(invoice.items) ? invoice.items : [];
 
   return (
@@ -532,6 +536,14 @@ const PayLink: React.FC = () => {
               </div>
             </div>
 
+            {/* Fee Breakdown */}
+            <FeeBreakdown 
+              totalAmount={balance} 
+              userId={invoice.id} 
+              className="mt-4"
+              onFeesCalculated={(fees) => setServiceFees(fees)}
+            />
+
             {/* Notes */}
             {invoice.notes && (
               <div className="rounded-2xl p-4 text-sm text-gray-700 border border-[#528FF0]/20 bg-gradient-to-br from-[#eef4ff]/80 to-white">
@@ -563,7 +575,7 @@ const PayLink: React.FC = () => {
                 ) : (
                   <>
                     <Zap className="h-5 w-5 fill-white" />
-                    Pay {formatCurrency(balance)}
+                    Pay {formatCurrency(totalWithFees > 0 ? totalWithFees : balance)}
                   </>
                 )}
               </span>

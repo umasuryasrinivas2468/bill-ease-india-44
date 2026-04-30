@@ -29,6 +29,7 @@ const INTENTS: { intent: string; re: RegExp }[] = [
   { intent: 'record_payment', re: /\b(record|mark|receive|collect)\b.*\b(payment|paid)\b/i },
   { intent: 'check_stock', re: /\b(check|show|what|how\s*much)\b.*\b(stock|inventory|quantity)\b/i },
   { intent: 'create_quotation', re: /\b(create|make|add|generate|send)\b.*\b(quotation|quote|estimate)\b/i },
+  { intent: 'create_payment_link', re: /\b(create|generate|make|send|share)\b.*\b(payment\s*link|pay\s*link)\b/i },
 ];
 
 // ── Navigation ──
@@ -738,6 +739,93 @@ const AICommandBar: React.FC = () => {
     return { recordType: 'quotation', recordId: data.id, message: `**Quotation created**\n- No: ${qNum}\n- Client: ${resolvedName}\n- Total: ₹${total.toLocaleString('en-IN')}\n- Valid for 30 days` };
   };
 
+  const handleCreatePaymentLink = async (prompt: string) => {
+    if (!user?.id) return null;
+
+    // Try to extract invoice number from prompt
+    const invoiceMatch = prompt.match(/\b(INV-\d{4}-\d{4})\b/i);
+    let invoiceNumber = invoiceMatch ? invoiceMatch[1] : null;
+
+    // If no invoice number, check for "latest" or "last" invoice
+    if (!invoiceNumber && /\b(latest|last|recent|newest)\b.*\binvoice\b/i.test(prompt)) {
+      const { data: latestInvoice } = await supabase
+        .from('invoices')
+        .select('id, invoice_number, client_name, client_email, client_phone, total_amount, status')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (latestInvoice) {
+        invoiceNumber = latestInvoice.invoice_number;
+      }
+    }
+
+    if (!invoiceNumber) {
+      return {
+        recordType: 'answer',
+        message: '**Please specify an invoice.**\nExamples:\n- "Create payment link for INV-2024-0001"\n- "Send payment link for latest invoice"\n- "Generate payment link for last invoice"',
+      };
+    }
+
+    // Fetch the invoice
+    const { data: invoice, error: invError } = await supabase
+      .from('invoices')
+      .select('id, invoice_number, client_name, client_email, client_phone, total_amount, status')
+      .eq('user_id', user.id)
+      .eq('invoice_number', invoiceNumber)
+      .single();
+
+    if (invError || !invoice) {
+      return {
+        recordType: 'answer',
+        message: `**Invoice ${invoiceNumber} not found.**\nPlease check the invoice number and try again.`,
+      };
+    }
+
+    if (invoice.status === 'paid') {
+      return {
+        recordType: 'answer',
+        message: `**Invoice ${invoiceNumber} is already paid.**\nNo payment link needed.`,
+      };
+    }
+
+    // Create payment link via edge function
+    try {
+      const { data: linkData, error: linkError } = await supabase.functions.invoke('create-payment-link', {
+        body: {
+          invoiceId: invoice.id,
+          userId: user.id,
+          customerName: invoice.client_name,
+          customerEmail: invoice.client_email,
+          customerPhone: invoice.client_phone,
+        },
+      });
+
+      if (linkError) throw linkError;
+
+      if (linkData?.success) {
+        invalidateAll();
+        return {
+          recordType: 'payment_link',
+          recordId: invoice.id,
+          message: `**Payment link created**\n- Invoice: ${linkData.invoiceNumber}\n- Client: ${invoice.client_name}\n- Amount: ₹${Number(linkData.amount).toLocaleString('en-IN')}\n- Link: ${linkData.paymentLink}\n\n✅ Share this link with your customer to collect payment.`,
+        };
+      } else {
+        throw new Error(linkData?.error || 'Payment link creation failed');
+      }
+    } catch (err: any) {
+      const errorMsg = err.message || 'Failed to create payment link';
+      if (errorMsg.includes('not activated') || errorMsg.includes('reconnect')) {
+        return {
+          recordType: 'answer',
+          message: `**Payment link creation failed**\n${errorMsg}\n\nGo to Settings → Payments to connect Razorpay.`,
+        };
+      }
+      throw err;
+    }
+  };
+
   // ── Pending action handler (yes/no) ──
 
   const handlePendingResponse = async (response: string) => {
@@ -833,6 +921,7 @@ const AICommandBar: React.FC = () => {
       case 'record_payment': return handleRecordPayment(prompt);
       case 'check_stock': return handleCheckStock(prompt);
       case 'create_quotation': return handleCreateQuotation(prompt);
+      case 'create_payment_link': return handleCreatePaymentLink(prompt);
       default: return null;
     }
   };
@@ -883,7 +972,21 @@ const AICommandBar: React.FC = () => {
       // 4. Try server-side AI
       try {
         const { data, error } = await supabase.functions.invoke('ai-command', {
-          body: { prompt, userId: user.id },
+          body: {
+            prompt,
+            userId: user.id,
+            voiceLanguage: 'english',
+            conversationHistory: messages
+              .slice(-10)
+              .map((m) => ({ role: m.role, content: m.content })),
+            dataContext: {
+              clientCount: performanceData?.clientCount,
+              vendorCount: performanceData?.vendorCount,
+              totalRevenue: performanceData?.totalRevenue,
+              totalExpenses: performanceData?.totalExpenses,
+              pendingInvoices: performanceData?.pendingInvoices,
+            },
+          },
         });
         if (error) throw error;
         if (data?.success !== false) {

@@ -55,6 +55,8 @@ const getRecordIcon = (type?: string) => {
       return <HelpCircle className="h-3 w-3" />;
     case 'report':
       return <BarChart3 className="h-3 w-3" />;
+    case 'payment_link':
+      return <ExternalLink className="h-3 w-3" />;
     default:
       return null;
   }
@@ -78,6 +80,8 @@ const getRecordPath = (type?: string) => {
       return '/purchase-orders';
     case 'inventory':
       return '/inventory';
+    case 'payment_link':
+      return '/invoices';
     case 'report':
       return '/reports';
     default:

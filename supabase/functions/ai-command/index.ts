@@ -18,6 +18,11 @@ interface ParsedCommand {
   imagePrompt?: string;
 }
 
+interface ConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 interface CreateResult {
   success: boolean;
   recordId?: string;
@@ -30,13 +35,27 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, userId, voiceLanguage: requestedVoiceLanguage } = await req.json();
+    const {
+      prompt,
+      userId,
+      voiceLanguage: requestedVoiceLanguage,
+      conversationHistory,
+      dataContext,
+    } = await req.json();
     const voiceLanguage = requestedVoiceLanguage === "hindi" || requestedVoiceLanguage === "telugu" || requestedVoiceLanguage === "english"
       ? requestedVoiceLanguage
       : "english";
 
+    // Validate and sanitize conversation history (max last 10 turns to keep context window manageable)
+    const history: ConversationMessage[] = Array.isArray(conversationHistory)
+      ? conversationHistory
+          .filter((m: any) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+          .slice(-10)
+      : [];
+
     console.log("[AI-Command] Processing prompt:", prompt);
     console.log("[AI-Command] User ID:", userId);
+    console.log("[AI-Command] History length:", history.length);
 
     if (!userId) {
       throw new Error("User ID is required");
@@ -52,12 +71,13 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Use Lovable AI (Gemini) for better accuracy
-    const result = await processWithLovableAI(prompt, LOVABLE_API_KEY, voiceLanguage);
+    const result = await processWithLovableAI(prompt, LOVABLE_API_KEY, voiceLanguage, history, dataContext);
     console.log("[AI-Command] Parsed result:", JSON.stringify(result));
 
     let recordId: string | undefined;
     let createSuccess = true;
     let createError: string | undefined;
+    let paymentLink: string | undefined;
 
     if (result.action === "create" && result.recordType && !result.isQuestion) {
       const createResult = await createRecord(supabase, userId, result.recordType, result.data);
@@ -68,6 +88,38 @@ serve(async (req) => {
         createSuccess = false;
         createError = createResult.error;
         console.error("[AI-Command] Failed to create record:", createError);
+      }
+    }
+
+    // Handle payment link generation
+    if (result.action === "payment_link" && result.data?.invoiceId) {
+      try {
+        const { data: linkData, error: linkError } = await supabase.functions.invoke(
+          "create-payment-link",
+          {
+            body: {
+              invoiceId: result.data.invoiceId,
+              userId: userId,
+              customerName: result.data.customerName,
+              customerEmail: result.data.customerEmail,
+              customerPhone: result.data.customerPhone,
+            },
+          }
+        );
+
+        if (linkError) throw linkError;
+
+        if (linkData?.success) {
+          paymentLink = linkData.paymentLink;
+          result.message = `**Payment link created**\n- Invoice: ${linkData.invoiceNumber}\n- Amount: ₹${Number(linkData.amount).toLocaleString("en-IN")}\n- Link: ${paymentLink}\n\nShare this link with your customer to collect payment.`;
+          recordId = result.data.invoiceId;
+        } else {
+          throw new Error(linkData?.error || "Payment link creation failed");
+        }
+      } catch (err: any) {
+        createSuccess = false;
+        createError = err.message || "Failed to create payment link";
+        console.error("[AI-Command] Payment link error:", createError);
       }
     }
 
@@ -96,6 +148,7 @@ serve(async (req) => {
         isQuestion: result.isQuestion,
         isReport: result.isReport,
         imageUrl: imageUrl,
+        paymentLink: paymentLink,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -472,6 +525,70 @@ async function createRecord(
         return { success: true, recordId: order.id };
       }
 
+      case "expense": {
+        const ts = Date.now().toString().slice(-6);
+        const amount = data.amount || 0;
+        const { data: expense, error } = await supabase
+          .from('expenses')
+          .insert({
+            user_id: userId,
+            vendor_name: data.vendorName || data.vendor || 'Unknown',
+            expense_number: `EXP-${ts}`,
+            expense_date: data.expenseDate || today,
+            category_name: data.category || 'General',
+            description: data.description || data.notes || 'Expense',
+            amount,
+            tax_amount: 0,
+            total_amount: amount,
+            payment_mode: data.paymentMode || 'bank',
+            status: 'pending',
+            posted_to_ledger: false,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        return { success: true, recordId: expense.id };
+      }
+
+      case "purchase_bill": {
+        const ts = Date.now().toString().slice(-6);
+        const billNumber = `BILL-${ts}`;
+        const subtotal = data.amount || data.subtotal || 0;
+        const gstRate = data.gstRate || 18;
+        const gstAmount = data.includeGst !== false ? Math.round(subtotal * gstRate / 100) : 0;
+        const totalAmount = subtotal + gstAmount;
+
+        const { data: bill, error } = await supabase
+          .from('purchase_bills')
+          .insert({
+            user_id: userId,
+            vendor_name: data.vendorName || data.supplierName || 'Unknown Vendor',
+            bill_number: billNumber,
+            bill_date: data.billDate || today,
+            due_date: calculateDueDate(data),
+            items: [{
+              item_details: data.description || data.notes || 'As per bill',
+              account: 'Purchase Account',
+              quantity: 1,
+              rate: subtotal,
+              tax: gstRate,
+              customer_details: '',
+              amount: subtotal,
+            }],
+            amount: subtotal,
+            gst_amount: gstAmount,
+            total_amount: totalAmount,
+            status: 'pending',
+            notes: data.notes || null,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        return { success: true, recordId: bill.id };
+      }
+
       default:
         return { success: false, error: `Unknown record type: ${recordType}` };
     }
@@ -484,7 +601,13 @@ async function createRecord(
   }
 }
 
-async function processWithLovableAI(prompt: string, apiKey: string, voiceLanguage: "english" | "hindi" | "telugu"): Promise<ParsedCommand> {
+async function processWithLovableAI(
+  prompt: string,
+  apiKey: string,
+  voiceLanguage: "english" | "hindi" | "telugu",
+  history: ConversationMessage[] = [],
+  dataContext?: Record<string, any>
+): Promise<ParsedCommand> {
   const speechLanguageInstruction =
     voiceLanguage === "hindi"
       ? 'Return "speechMessage" in Hindi (Devanagari script), concise and natural for voice.'
@@ -492,7 +615,26 @@ async function processWithLovableAI(prompt: string, apiKey: string, voiceLanguag
         ? 'Return "speechMessage" in Telugu script, concise and natural for voice.'
         : 'Return "speechMessage" in English.';
 
-  const systemPrompt = `You are an intelligent accounting assistant for BillEase, an Indian accounting and GST management application.
+  // Build a brief data context summary to help the AI understand the user's business
+  let dataContextNote = "";
+  if (dataContext && typeof dataContext === "object") {
+    const parts: string[] = [];
+    if (dataContext.clientCount != null) parts.push(`${dataContext.clientCount} clients`);
+    if (dataContext.vendorCount != null) parts.push(`${dataContext.vendorCount} vendors`);
+    if (dataContext.totalRevenue != null) parts.push(`revenue ₹${Number(dataContext.totalRevenue).toLocaleString("en-IN")}`);
+    if (dataContext.totalExpenses != null) parts.push(`expenses ₹${Number(dataContext.totalExpenses).toLocaleString("en-IN")}`);
+    if (dataContext.pendingInvoices != null) parts.push(`${dataContext.pendingInvoices} pending invoices`);
+    if (parts.length > 0) {
+      dataContextNote = `\n\n**USER'S BUSINESS SNAPSHOT:** ${parts.join(", ")}. Use this to give contextual answers.`;
+    }
+  }
+
+  const systemPrompt = `You are an intelligent accounting assistant for BillEase, an Indian accounting and GST management application.${dataContextNote}
+
+**CONVERSATION AWARENESS:**
+- You have access to the full conversation history. Use it to understand follow-up questions, resolve pronouns ("it", "that client", "same amount"), and avoid repeating information already given.
+- If the user says "same client" or "same amount", refer to the previous message to resolve it.
+- If a previous command failed or was ambiguous, acknowledge it and try to correct.
 
 **RESPONSE STYLE - CRITICAL:**
 - Be EXTREMELY concise. Use bullet points, not paragraphs.
@@ -511,11 +653,15 @@ Only operate within finance, banking, accounting, taxation, compliance, and busi
 - Be precise with numbers, tax rates, dates, and compliance details.
 - Reference current Indian tax laws (GST, TDS, Income Tax) accurately.
 - Professional BFSI tone. Finance terminology. Compliance-safe language.
+- When amounts are ambiguous (e.g., "same as before"), resolve from conversation history.
+- When entity names are ambiguous, ask for clarification rather than guessing.
 
 Your capabilities:
-1. **CREATE RECORDS** - Parse commands to create: invoices, clients, vendors, quotations, sales orders, purchase orders, inventory items, journal entries
+1. **CREATE RECORDS** - Parse commands to create: invoices, clients, vendors, quotations, sales orders, purchase orders, inventory items, journal entries, expenses, purchase bills
 2. **ANSWER QUESTIONS** - Provide expert guidance on GST, TDS, accounting principles, tax compliance, and app usage
 3. **GENERATE REPORTS** - Describe what reports would show (P&L, GST summary, outstanding receivables, inventory, cash flow, sales)
+4. **MULTI-STEP COMMANDS** - Handle commands like "Create invoice for Acme Corp for ₹50000 and also add them as a client"
+5. **PAYMENT LINKS** - Generate payment links for invoices (e.g., "Create payment link for invoice INV-2024-0001" or "Send payment link to client")
 
 **IMAGE GENERATION:**
 For questions/answers about financial concepts, reports, or explanations, set "generateImage": true and provide a descriptive "imagePrompt" for a relevant illustration. Examples:
@@ -543,6 +689,12 @@ When creating records, extract ALL possible fields from the user's input:
 - validityPeriod (days, default 30), termsConditions
 - items: [{name, description, quantity, rate, amount}]
 
+**For EXPENSES:**
+- vendorName, amount (REQUIRED), category, description, paymentMode (cash/upi/bank/cheque/credit_card), expenseDate
+
+**For PURCHASE BILLS:**
+- vendorName (REQUIRED), amount (REQUIRED), gstRate (default 18), billDate, dueDate, description, items
+
 **For VENDORS:** name (REQUIRED), email, phone, address, gstNumber, pan
 **For CLIENTS:** name (REQUIRED), email, phone, address, gstNumber
 **For INVENTORY:** productName (REQUIRED), sku, category, type, sellingPrice (REQUIRED), purchasePrice, quantity, reorderLevel
@@ -550,8 +702,8 @@ When creating records, extract ALL possible fields from the user's input:
 
 **Response Format** (ALWAYS respond in valid JSON):
 {
-  "action": "create" | "answer" | "report",
-  "recordType": "invoice" | "client" | "vendor" | "quotation" | "sales_order" | "purchase_order" | "inventory" | "journal" | "report" | "answer" | null,
+  "action": "create" | "answer" | "report" | "payment_link",
+  "recordType": "invoice" | "client" | "vendor" | "quotation" | "sales_order" | "purchase_order" | "inventory" | "journal" | "expense" | "purchase_bill" | "payment_link" | "report" | "answer" | null,
   "data": {},
   "message": "English only. Short, direct answer. Max 2-3 bullet points. No fluff.",
   "speechMessage": "Same meaning as message, but in requested speech language.",
@@ -561,6 +713,12 @@ When creating records, extract ALL possible fields from the user's input:
   "imagePrompt": "descriptive prompt for related illustration"
 }
 
+**For PAYMENT_LINK action:**
+- Set action: "payment_link"
+- Set recordType: "payment_link"
+- data should contain: { invoiceId: "uuid", invoiceNumber: "INV-2024-0001" } (extract from user's command)
+- If user says "send payment link for latest invoice" or "create payment link", you need to indicate this in the message
+
 **EXTRACTION RULES:**
 1. Parse natural language dates: "next week" = +7 days, "end of month", "in 15 days"
 2. Parse phone numbers in any format
@@ -568,7 +726,15 @@ When creating records, extract ALL possible fields from the user's input:
 4. Parse GST numbers: 15-character alphanumeric format
 5. Parse amounts: "25k" = 25000, "1 lakh" = 100000, "2.5L" = 250000
 6. Extract items if mentioned: "for 5 laptops at 50000 each"
-7. Default gstRate to 18 if GST is mentioned but rate isn't specified`;
+7. Default gstRate to 18 if GST is mentioned but rate isn't specified
+8. Resolve references from conversation history: "same client", "that vendor", "previous amount"`;
+
+  // Build messages array with conversation history
+  const messages: Array<{ role: string; content: string }> = [
+    { role: "system", content: systemPrompt },
+    ...history.map((m) => ({ role: m.role, content: m.content })),
+    { role: "user", content: prompt },
+  ];
 
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -578,12 +744,9 @@ When creating records, extract ALL possible fields from the user's input:
     },
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: prompt },
-      ],
+      messages,
       temperature: 0.2,
-      max_tokens: 2048,
+      max_tokens: 4096,
     }),
   });
 
