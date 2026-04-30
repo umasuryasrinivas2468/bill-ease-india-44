@@ -39,7 +39,6 @@ const formatCurrency = (value: number) => currencyFormatter.format(Math.max(0, v
 const formatCompactCurrency = (value: number) =>
   `${compactNumberFormatter.format(Math.max(0, value || 0))}`;
 
-
 const latestUpdates = [
   {
     title: 'New Dashboard Design',

@@ -1,8 +1,7 @@
 
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { SignedIn, SignedOut, SignUp } from '@clerk/clerk-react';
-import { FileText } from 'lucide-react';
 import { useAuth } from '@/components/ClerkAuthProvider';
 
 const Signup = () => {
@@ -19,12 +18,14 @@ const Signup = () => {
       <SignedOut>
         <div className="grid min-h-screen w-full grid-cols-1 bg-slate-50 dark:bg-slate-950 lg:grid-cols-2">
           {/* Left — Clerk signup */}
-          <div className="flex items-center justify-center px-4 py-10 sm:px-6 lg:px-10">
-            <div className="w-full max-w-xl">
-              <div className="mb-8 flex flex-col items-center text-center">
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600">
-                  <FileText className="h-5 w-5 text-white" />
-                </div>
+          <div className="flex items-center justify-center px-4 py-6 sm:px-6 lg:px-10">
+            <div className="w-full max-w-lg">
+              <div className="mb-6 flex flex-col items-center text-center">
+                <img
+                  src="/aczen-logo.png"
+                  alt="Aczen"
+                  className="mb-4 h-12 w-12 object-contain"
+                />
                 <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
                   Create your account
                 </h1>
@@ -33,7 +34,7 @@ const Signup = () => {
                 </p>
               </div>
 
-              <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none sm:p-6">
+              <div className="mx-auto max-w-md">
                 <SignUp
                   routing="path"
                   path="/signup"
@@ -41,10 +42,10 @@ const Signup = () => {
                   fallbackRedirectUrl="/onboarding"
                   appearance={{
                     elements: {
-                      rootBox: 'w-full',
-                      card: 'mx-auto w-full max-w-[28rem] border-none bg-transparent p-0 shadow-none',
+                      rootBox: 'flex w-full justify-center',
+                      card: 'w-full max-w-md border-none bg-transparent p-0 shadow-none',
                       header: 'hidden',
-                      main: 'gap-4',
+                      main: 'gap-3',
                       socialButtonsBlockButton:
                         'h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-800 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 normal-case',
                       socialButtonsBlockButtonText: 'text-sm font-medium',
@@ -52,14 +53,15 @@ const Signup = () => {
                       dividerRow: 'my-5',
                       dividerLine: 'bg-slate-200 dark:bg-slate-800',
                       dividerText: 'text-xs font-medium uppercase tracking-[0.18em] text-slate-400',
-                      formFieldLabel: 'mb-1.5 text-sm font-medium text-slate-700 dark:text-slate-300',
+                      formFieldLabel: 'mb-2 block text-sm font-medium leading-none text-slate-700 dark:text-slate-300',
                       formFieldInput:
                         'h-11 rounded-xl border-slate-200 px-3 dark:border-slate-800 dark:bg-slate-900',
-                      formFieldRow: 'gap-4',
+                      formFieldRow: 'gap-5',
+                      form: 'space-y-5',
                       formFieldAction: 'font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400',
                       formButtonPrimary:
-                        'mt-2 h-11 rounded-xl bg-slate-900 text-sm font-medium text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 normal-case shadow-none',
-                      footer: 'bg-transparent pt-4',
+                        'mt-3 h-12 rounded-xl bg-slate-900 text-sm font-medium text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 normal-case shadow-none',
+                      footer: 'hidden',
                       footerAction: 'text-center text-sm text-slate-500 dark:text-slate-400',
                       footerActionText: 'text-sm text-slate-500 dark:text-slate-400',
                       footerActionLink:
@@ -74,6 +76,15 @@ const Signup = () => {
                     },
                   }}
                 />
+                <p className="mt-5 text-center text-sm text-slate-500 dark:text-slate-400">
+                  Already have an account?{' '}
+                  <Link
+                    to="/login"
+                    className="font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+                  >
+                    Sign in
+                  </Link>
+                </p>
               </div>
             </div>
           </div>

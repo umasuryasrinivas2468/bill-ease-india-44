@@ -1,5 +1,6 @@
 
-import React from 'react';
+import React, { useState } from 'react';
+import { Sparkles, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +10,7 @@ import { BusinessInfo } from '@/hooks/useOnboardingData';
 import { validateGSTByCountry, getGSTPlaceholder, getGSTRateOptions, getCurrencySymbol } from '@/utils/countryValidation';
 import { validateIECNumber } from '@/utils/onboardingValidation';
 import { useToast } from '@/hooks/use-toast';
+import { lookupGstWithGemini } from '@/utils/geminiGstLookup';
 
 interface BusinessInfoStepProps {
   businessInfo: BusinessInfo;
@@ -24,6 +26,63 @@ export const BusinessInfoStep: React.FC<BusinessInfoStepProps> = ({
   isLoading = false,
 }) => {
   const { toast } = useToast();
+  const [isAiSearching, setIsAiSearching] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<{
+    businessName?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+  }>({});
+
+  const handleAiAutofill = async () => {
+    const gst = businessInfo.gstNumber?.trim().toUpperCase();
+    if (!gst) {
+      toast({
+        title: 'Enter a GST number',
+        description: 'Type the GST number first, then tap Auto-fill.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsAiSearching(true);
+    try {
+      const result = await lookupGstWithGemini(gst);
+
+      const suggestions: typeof aiSuggestions = {};
+      if (result.businessName) suggestions.businessName = result.businessName;
+      if (result.address) suggestions.address = result.address;
+      if (result.city) suggestions.city = result.city;
+      if (result.state) suggestions.state = result.state;
+      if (result.pincode) suggestions.pincode = result.pincode;
+
+      if (!Object.keys(suggestions).length) {
+        toast({
+          title: 'No match found',
+          description:
+            'Gemini could not find this GST number. Please fill the details manually.',
+        });
+        return;
+      }
+
+      setAiSuggestions(suggestions);
+
+      toast({
+        title: 'Suggestions ready',
+        description: 'Empty fields now show AI suggestions as placeholders. Click a field to type or click "Use" to apply.',
+      });
+    } catch (err) {
+      console.error('AI GST lookup failed', err);
+      toast({
+        title: 'AI lookup failed',
+        description: err instanceof Error ? err.message : 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAiSearching(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,8 +223,18 @@ export const BusinessInfoStep: React.FC<BusinessInfoStepProps> = ({
                 id="businessName"
                 value={businessInfo.businessName}
                 onChange={(e) => setBusinessInfo({ ...businessInfo, businessName: e.target.value })}
+                placeholder={aiSuggestions.businessName || ''}
                 required
               />
+              {aiSuggestions.businessName && !businessInfo.businessName && (
+                <button
+                  type="button"
+                  onClick={() => setBusinessInfo({ ...businessInfo, businessName: aiSuggestions.businessName! })}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 mt-1 flex items-center gap-1"
+                >
+                  <Sparkles className="h-3 w-3" /> Use AI suggestion
+                </button>
+              )}
             </div>
             <div>
               <Label htmlFor="ownerName">Owner Name *</Label>
@@ -232,13 +301,38 @@ export const BusinessInfoStep: React.FC<BusinessInfoStepProps> = ({
               <Label htmlFor="gstNumber">
                 {businessInfo.country === 'singapore' ? 'GST Registration Number' : 'GST Number'} *
               </Label>
-              <Input
-                id="gstNumber"
-                value={businessInfo.gstNumber}
-                onChange={(e) => setBusinessInfo({ ...businessInfo, gstNumber: e.target.value.toUpperCase() })}
-                placeholder={getGSTPlaceholder(businessInfo.country)}
-                required
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="gstNumber"
+                  value={businessInfo.gstNumber}
+                  onChange={(e) => setBusinessInfo({ ...businessInfo, gstNumber: e.target.value.toUpperCase() })}
+                  placeholder={getGSTPlaceholder(businessInfo.country)}
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleAiAutofill}
+                  disabled={isAiSearching || !businessInfo.gstNumber?.trim()}
+                  title="Auto-fill business name and address using Gemini AI"
+                  className="shrink-0"
+                >
+                  {isAiSearching ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                      Searching
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-1.5" />
+                      Auto-fill
+                    </>
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Tap Auto-fill to look up business name & address with Gemini AI.
+              </p>
             </div>
             <div>
               <Label htmlFor="gstRate">GST Rate (%)</Label>
@@ -266,8 +360,18 @@ export const BusinessInfoStep: React.FC<BusinessInfoStepProps> = ({
               id="address"
               value={businessInfo.address}
               onChange={(e) => setBusinessInfo({ ...businessInfo, address: e.target.value })}
+              placeholder={aiSuggestions.address || ''}
               required
             />
+            {aiSuggestions.address && !businessInfo.address && (
+              <button
+                type="button"
+                onClick={() => setBusinessInfo({ ...businessInfo, address: aiSuggestions.address! })}
+                className="text-xs text-indigo-600 hover:text-indigo-700 mt-1 flex items-center gap-1"
+              >
+                <Sparkles className="h-3 w-3" /> Use AI suggestion
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -277,8 +381,18 @@ export const BusinessInfoStep: React.FC<BusinessInfoStepProps> = ({
                 id="city"
                 value={businessInfo.city}
                 onChange={(e) => setBusinessInfo({ ...businessInfo, city: e.target.value })}
+                placeholder={aiSuggestions.city || ''}
                 required
               />
+              {aiSuggestions.city && !businessInfo.city && (
+                <button
+                  type="button"
+                  onClick={() => setBusinessInfo({ ...businessInfo, city: aiSuggestions.city! })}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 mt-1 flex items-center gap-1"
+                >
+                  <Sparkles className="h-3 w-3" /> Use
+                </button>
+              )}
             </div>
             <div>
               <Label htmlFor="state">State *</Label>
@@ -286,8 +400,18 @@ export const BusinessInfoStep: React.FC<BusinessInfoStepProps> = ({
                 id="state"
                 value={businessInfo.state}
                 onChange={(e) => setBusinessInfo({ ...businessInfo, state: e.target.value })}
+                placeholder={aiSuggestions.state || ''}
                 required
               />
+              {aiSuggestions.state && !businessInfo.state && (
+                <button
+                  type="button"
+                  onClick={() => setBusinessInfo({ ...businessInfo, state: aiSuggestions.state! })}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 mt-1 flex items-center gap-1"
+                >
+                  <Sparkles className="h-3 w-3" /> Use
+                </button>
+              )}
             </div>
             <div>
               <Label htmlFor="pincode">
@@ -297,8 +421,18 @@ export const BusinessInfoStep: React.FC<BusinessInfoStepProps> = ({
                 id="pincode"
                 value={businessInfo.pincode}
                 onChange={(e) => setBusinessInfo({ ...businessInfo, pincode: e.target.value })}
+                placeholder={aiSuggestions.pincode || ''}
                 required
               />
+              {aiSuggestions.pincode && !businessInfo.pincode && (
+                <button
+                  type="button"
+                  onClick={() => setBusinessInfo({ ...businessInfo, pincode: aiSuggestions.pincode! })}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 mt-1 flex items-center gap-1"
+                >
+                  <Sparkles className="h-3 w-3" /> Use
+                </button>
+              )}
             </div>
           </div>
 

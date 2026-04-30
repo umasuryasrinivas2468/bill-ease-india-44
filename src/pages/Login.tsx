@@ -5,7 +5,7 @@ import { SignedIn, SignedOut, useSignIn } from '@clerk/clerk-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { FileText, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/components/ClerkAuthProvider';
 
 const GoogleLogo = () => (
@@ -79,9 +79,11 @@ const Login = () => {
           <div className="flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
             <div className="w-full max-w-sm">
               <div className="mb-8 flex flex-col items-center text-center">
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600">
-                  <FileText className="h-5 w-5 text-white" />
-                </div>
+                <img
+                  src="/aczen-logo.png"
+                  alt="Aczen"
+                  className="mb-4 h-12 w-12 object-contain"
+                />
                 <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
                   Sign in to BillEase
                 </h1>

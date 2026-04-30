@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Save, Building, CreditCard, Users, Banknote } from 'lucide-react';
+import { Save, Building, CreditCard, Users, Banknote, Sparkles, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import SimpleBrandingManager from '@/components/SimpleBrandingManager';
@@ -15,6 +15,7 @@ import TeamManagement from '@/components/TeamManagement';
 import CAClientManager from '@/components/CAClientManager';
 import Support from './Support';
 import PaymentSetupCard from '@/components/PaymentSetupCard';
+import { lookupGstWithGemini } from '@/utils/geminiGstLookup';
 
 const Settings = () => {
   const { user } = useUser();
@@ -31,6 +32,15 @@ const Settings = () => {
     state: '',
     pincode: '',
   });
+
+  const [isAiSearching, setIsAiSearching] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<{
+    businessName?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+  }>({});
 
   const [bankDetails, setBankDetails] = useState({
     accountNumber: '',
@@ -63,6 +73,54 @@ const Settings = () => {
 
   const validateIFSCCode = (ifsc: string) => {
     return /^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc);
+  };
+
+  const handleAiAutofill = async () => {
+    const gst = businessInfo.gstNumber?.trim().toUpperCase();
+    if (!gst) {
+      toast({
+        title: 'Enter a GST number',
+        description: 'Type the GST number first, then tap Auto-fill.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsAiSearching(true);
+    try {
+      const result = await lookupGstWithGemini(gst);
+
+      const suggestions: typeof aiSuggestions = {};
+      if (result.businessName) suggestions.businessName = result.businessName;
+      if (result.address) suggestions.address = result.address;
+      if (result.city) suggestions.city = result.city;
+      if (result.state) suggestions.state = result.state;
+      if (result.pincode) suggestions.pincode = result.pincode;
+
+      if (!Object.keys(suggestions).length) {
+        toast({
+          title: 'No match found',
+          description: 'Gemini could not find this GST number. Please fill the details manually.',
+        });
+        return;
+      }
+
+      setAiSuggestions(suggestions);
+
+      toast({
+        title: 'Suggestions ready',
+        description: 'Empty fields now show AI suggestions as placeholders. Click "Use" to apply.',
+      });
+    } catch (err) {
+      console.error('AI GST lookup failed', err);
+      toast({
+        title: 'AI lookup failed',
+        description: err instanceof Error ? err.message : 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAiSearching(false);
+    }
   };
 
   const handleSaveBusinessInfo = async () => {
@@ -178,8 +236,17 @@ const Settings = () => {
                     id="businessName"
                     value={businessInfo.businessName}
                     onChange={(e) => setBusinessInfo({...businessInfo, businessName: e.target.value})}
-                    placeholder="Enter business name"
+                    placeholder={aiSuggestions.businessName || "Enter business name"}
                   />
+                  {aiSuggestions.businessName && !businessInfo.businessName && (
+                    <button
+                      type="button"
+                      onClick={() => setBusinessInfo({ ...businessInfo, businessName: aiSuggestions.businessName! })}
+                      className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                    >
+                      <Sparkles className="h-3 w-3" /> Use AI suggestion
+                    </button>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ownerName">Owner Name *</Label>
@@ -211,12 +278,37 @@ const Settings = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="gstNumber">GST Number</Label>
-                  <Input
-                    id="gstNumber"
-                    value={businessInfo.gstNumber}
-                    onChange={(e) => setBusinessInfo({...businessInfo, gstNumber: e.target.value})}
-                    placeholder="22AAAAA0000A1Z5"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="gstNumber"
+                      value={businessInfo.gstNumber}
+                      onChange={(e) => setBusinessInfo({...businessInfo, gstNumber: e.target.value.toUpperCase()})}
+                      placeholder="22AAAAA0000A1Z5"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleAiAutofill}
+                      disabled={isAiSearching || !businessInfo.gstNumber?.trim()}
+                      title="Auto-fill business name and address using Gemini AI"
+                      className="shrink-0"
+                    >
+                      {isAiSearching ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                          Searching
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-1.5" />
+                          Auto-fill
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Tap Auto-fill to look up business name & address with Gemini AI.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="pincode">PIN Code</Label>
@@ -224,22 +316,40 @@ const Settings = () => {
                     id="pincode"
                     value={businessInfo.pincode}
                     onChange={(e) => setBusinessInfo({...businessInfo, pincode: e.target.value})}
-                    placeholder="400001"
+                    placeholder={aiSuggestions.pincode || "400001"}
                   />
+                  {aiSuggestions.pincode && !businessInfo.pincode && (
+                    <button
+                      type="button"
+                      onClick={() => setBusinessInfo({ ...businessInfo, pincode: aiSuggestions.pincode! })}
+                      className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                    >
+                      <Sparkles className="h-3 w-3" /> Use
+                    </button>
+                  )}
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="address">Business Address *</Label>
                 <Textarea
                   id="address"
                   value={businessInfo.address}
                   onChange={(e) => setBusinessInfo({...businessInfo, address: e.target.value})}
-                  placeholder="Enter complete business address"
+                  placeholder={aiSuggestions.address || "Enter complete business address"}
                   rows={3}
                 />
+                {aiSuggestions.address && !businessInfo.address && (
+                  <button
+                    type="button"
+                    onClick={() => setBusinessInfo({ ...businessInfo, address: aiSuggestions.address! })}
+                    className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                  >
+                    <Sparkles className="h-3 w-3" /> Use AI suggestion
+                  </button>
+                )}
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="city">City *</Label>
@@ -247,8 +357,17 @@ const Settings = () => {
                     id="city"
                     value={businessInfo.city}
                     onChange={(e) => setBusinessInfo({...businessInfo, city: e.target.value})}
-                    placeholder="Mumbai"
+                    placeholder={aiSuggestions.city || "Mumbai"}
                   />
+                  {aiSuggestions.city && !businessInfo.city && (
+                    <button
+                      type="button"
+                      onClick={() => setBusinessInfo({ ...businessInfo, city: aiSuggestions.city! })}
+                      className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                    >
+                      <Sparkles className="h-3 w-3" /> Use
+                    </button>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="state">State *</Label>
@@ -256,8 +375,17 @@ const Settings = () => {
                     id="state"
                     value={businessInfo.state}
                     onChange={(e) => setBusinessInfo({...businessInfo, state: e.target.value})}
-                    placeholder="Maharashtra"
+                    placeholder={aiSuggestions.state || "Maharashtra"}
                   />
+                  {aiSuggestions.state && !businessInfo.state && (
+                    <button
+                      type="button"
+                      onClick={() => setBusinessInfo({ ...businessInfo, state: aiSuggestions.state! })}
+                      className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                    >
+                      <Sparkles className="h-3 w-3" /> Use
+                    </button>
+                  )}
                 </div>
               </div>
               

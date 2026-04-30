@@ -1,7 +1,17 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import {
   usePaymentSettings,
   useStartRazorpayOnboarding,
@@ -61,12 +71,99 @@ const PaymentSetupCard: React.FC = () => {
   const startOnboarding = useStartRazorpayOnboarding();
   const disconnect = useDisconnectRazorpay();
   const { toast } = useToast();
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [signatureDrawn, setSignatureDrawn] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isSigningRef = useRef(false);
 
   const status = settings?.razorpay_account_status || 'not_created';
   const cfg = statusConfig[status] || statusConfig.not_created;
   const isLinked = !!settings?.razorpay_access_token;
 
+  const prepareSignatureCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = Math.round(rect.width * ratio);
+    canvas.height = Math.round(rect.height * ratio);
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.scale(ratio, ratio);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#0f172a';
+  };
+
+  useEffect(() => {
+    if (!termsOpen) return;
+    setSignatureDrawn(false);
+    const timer = window.setTimeout(prepareSignatureCanvas, 0);
+    return () => window.clearTimeout(timer);
+  }, [termsOpen]);
+
+  const getCanvasPoint = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+  };
+
+  const beginSignature = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const { x, y } = getCanvasPoint(event);
+    isSigningRef.current = true;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const drawSignature = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isSigningRef.current) return;
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+
+    const { x, y } = getCanvasPoint(event);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    setSignatureDrawn(true);
+  };
+
+  const endSignature = () => {
+    isSigningRef.current = false;
+  };
+
+  const clearSignature = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    prepareSignatureCanvas();
+    setSignatureDrawn(false);
+  };
+
   const handleActivate = async () => {
+    if (!acceptedTerms || !signatureDrawn) {
+      toast({
+        title: 'Acceptance required',
+        description: 'Please accept the terms and draw your digital signature.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       const { authorize_url } = await startOnboarding.mutateAsync();
       // Hand off to Razorpay's hosted onboarding form
@@ -185,7 +282,7 @@ const PaymentSetupCard: React.FC = () => {
               </div>
 
               <Button
-                onClick={handleActivate}
+                onClick={() => setTermsOpen(true)}
                 disabled={startOnboarding.isPending}
                 className="w-full sm:w-auto gap-2"
                 variant="brand"
@@ -288,6 +385,123 @@ const PaymentSetupCard: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={termsOpen} onOpenChange={setTermsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Razorpay Onboarding Terms</DialogTitle>
+            <DialogDescription>
+              Please review and sign before continuing to Razorpay's secure onboarding page.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[42vh] space-y-4 overflow-y-auto rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
+            <div>
+              <p className="font-semibold text-foreground">Payment collection authorization</p>
+              <p className="mt-1">
+                You authorize Aczen to initiate the Razorpay partner onboarding flow for your
+                business account and to securely store connection details required to create
+                payment links and verify payment status.
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Razorpay KYC and settlement</p>
+              <p className="mt-1">
+                Your business, KYC, and bank details are collected by Razorpay on Razorpay's
+                hosted pages. Settlements, activation, holds, refunds, disputes, and compliance
+                reviews are governed by Razorpay's policies and approval process.
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Your responsibility</p>
+              <p className="mt-1">
+                You confirm that the information submitted to Razorpay is accurate, belongs to
+                the business you operate, and that you are authorized to connect payment
+                collection for this account.
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Aczen role</p>
+              <p className="mt-1">
+                Aczen provides software integration for invoice payments. Aczen does not hold
+                customer funds, perform KYC approval, or control Razorpay settlement timelines.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 rounded-lg border p-3">
+              <Checkbox
+                id="razorpay-terms"
+                checked={acceptedTerms}
+                onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
+              />
+              <Label htmlFor="razorpay-terms" className="text-sm font-normal leading-relaxed">
+                I have read and agree to the Razorpay onboarding terms above, and I authorize
+                Aczen to start the Razorpay connection flow for my business.
+              </Label>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="digital-signature">Digital signature</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearSignature}
+                  className="h-8 px-2 text-xs"
+                >
+                  Clear
+                </Button>
+              </div>
+              <canvas
+                ref={canvasRef}
+                id="digital-signature"
+                className="h-32 w-full touch-none rounded-lg border bg-white shadow-inner"
+                onPointerDown={beginSignature}
+                onPointerMove={drawSignature}
+                onPointerUp={endSignature}
+                onPointerCancel={endSignature}
+                onPointerLeave={endSignature}
+              />
+              <p className="text-xs text-muted-foreground">
+                Draw your signature above to confirm this authorization.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setTermsOpen(false)}
+              disabled={startOnboarding.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleActivate}
+              disabled={!acceptedTerms || !signatureDrawn || startOnboarding.isPending}
+              variant="brand"
+              className="gap-2"
+            >
+              {startOnboarding.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Redirecting...
+                </>
+              ) : (
+                <>
+                  Accept & Continue
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
