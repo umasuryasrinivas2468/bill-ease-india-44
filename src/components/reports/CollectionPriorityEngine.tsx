@@ -25,7 +25,7 @@ const CollectionPriorityEngine: React.FC = () => {
         const dueDate = i.due_date ? new Date(i.due_date) : null;
         const overdueDays = dueDate ? Math.max(0, Math.ceil((today.getTime() - dueDate.getTime()) / 86400000)) : 0;
         const client = clients.find((c: any) => c.name === i.client_name);
-        const risk = client?.risk_score ?? 50;
+        const risk = (client as any)?.risk_score ?? 50;
 
         // amount: log-scaled to 0..40
         const amountScore = Math.min(40, Math.log10(Math.max(1, balance)) * 7);

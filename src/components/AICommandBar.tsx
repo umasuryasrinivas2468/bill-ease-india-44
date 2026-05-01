@@ -980,11 +980,11 @@ const AICommandBar: React.FC = () => {
               .slice(-10)
               .map((m) => ({ role: m.role, content: m.content })),
             dataContext: {
-              clientCount: performanceData?.clientCount,
-              vendorCount: performanceData?.vendorCount,
-              totalRevenue: performanceData?.totalRevenue,
-              totalExpenses: performanceData?.totalExpenses,
-              pendingInvoices: performanceData?.pendingInvoices,
+              clientCount: (performanceData as any)?.clientsCount,
+              vendorCount: (performanceData as any)?.vendorsCount,
+              totalRevenue: (performanceData as any)?.totalRevenue,
+              totalExpenses: (performanceData as any)?.totalExpenses,
+              pendingInvoices: (performanceData as any)?.pendingInvoices,
             },
           },
         });
