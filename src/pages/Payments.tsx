@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Copy, ExternalLink, Link as LinkIcon, Loader2 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Copy, ExternalLink, Link as LinkIcon, Loader2, RefreshCw } from 'lucide-react';
 import { useUser } from '@clerk/clerk-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,11 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { useVendors } from '@/hooks/useVendors';
 import { supabase } from '@/lib/supabase';
 import { normalizeUserId } from '@/lib/userUtils';
+
+type LinkStatus = 'created' | 'partially_paid' | 'paid' | 'expired' | 'cancelled' | 'unknown';
 
 type GeneratedLink = {
   id: string;
@@ -20,6 +23,8 @@ type GeneratedLink = {
   description: string;
   url: string;
   createdAt: string;
+  status?: LinkStatus;
+  amountPaid?: number;
 };
 
 const formatINR = (amount: number) =>
