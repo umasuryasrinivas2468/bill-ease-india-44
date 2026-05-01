@@ -139,7 +139,26 @@ const WorkingCapital: React.FC = () => {
         </div>
       </div>
 
-      <InvoiceViewer invoice={selectedInvoice} isOpen={!!selectedInvoice} onClose={() => setSelectedInvoice(null)} />
+      <InvoiceViewer
+        invoice={selectedInvoice}
+        isOpen={!!selectedInvoice}
+        onClose={() => setSelectedInvoice(null)}
+        extraAction={
+          selectedInvoice ? (
+            appliedMap[selectedInvoice.id] ? (
+              <span className="text-sm text-green-600 font-medium px-3">Applied — awaiting verification</span>
+            ) : (
+              <Button
+                size="sm"
+                onClick={() => handleApply(selectedInvoice)}
+                disabled={applyMutation.isPending}
+              >
+                {applyMutation.isPending ? 'Applying...' : 'Apply for Trade Invoice'}
+              </Button>
+            )
+          ) : null
+        }
+      />
     </div>
   );
 };

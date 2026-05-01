@@ -15,9 +15,10 @@ interface InvoiceViewerProps {
   invoice: Invoice | null;
   isOpen: boolean;
   onClose: () => void;
+  extraAction?: React.ReactNode;
 }
 
-const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose }) => {
+const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose, extraAction }) => {
   const printRef = useRef<HTMLDivElement>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<InvoiceTemplate>('professional');
   const { user } = useUser();
@@ -70,7 +71,8 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
         <DialogHeader>
           <div className="flex justify-between items-center">
             <DialogTitle>Invoice {invoice.invoice_number}</DialogTitle>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              {extraAction}
               <InvoiceTemplateSelector 
                 value={selectedTemplate} 
                 onChange={setSelectedTemplate} 

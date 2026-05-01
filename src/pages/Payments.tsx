@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Copy, ExternalLink, Link as LinkIcon, Loader2 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Copy, ExternalLink, Link as LinkIcon, Loader2, RefreshCw } from 'lucide-react';
 import { useUser } from '@clerk/clerk-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,11 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { useVendors } from '@/hooks/useVendors';
 import { supabase } from '@/lib/supabase';
 import { normalizeUserId } from '@/lib/userUtils';
+
+type LinkStatus = 'created' | 'partially_paid' | 'paid' | 'expired' | 'cancelled' | 'unknown';
 
 type GeneratedLink = {
   id: string;
@@ -20,6 +23,8 @@ type GeneratedLink = {
   description: string;
   url: string;
   createdAt: string;
+  status?: LinkStatus;
+  amountPaid?: number;
 };
 
 const formatINR = (amount: number) =>
@@ -82,6 +87,8 @@ const Payments: React.FC = () => {
           description: description || `Payment request for ${selectedVendor.name}`,
           url,
           createdAt: new Date().toISOString(),
+          status: 'created',
+          amountPaid: 0,
         },
         ...current,
       ]);
@@ -102,6 +109,63 @@ const Payments: React.FC = () => {
   const copyLink = async (url: string) => {
     await navigator.clipboard.writeText(url);
     toast({ title: 'Copied', description: 'Payment link copied to clipboard.' });
+  };
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const refreshStatuses = async () => {
+    if (!user?.id || generatedLinks.length === 0) return;
+    setIsRefreshing(true);
+    try {
+      const ids = generatedLinks
+        .map((l) => l.id)
+        .filter((id) => id && !id.includes('-')); // Razorpay IDs don't contain dashes; skip uuid fallbacks
+      if (ids.length === 0) return;
+      const { data, error } = await supabase.functions.invoke('check-payment-link-status', {
+        body: { userId: normalizeUserId(user.id), paymentLinkIds: ids },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      const results = data?.results || {};
+      setGeneratedLinks((current) =>
+        current.map((l) => {
+          const r = results[l.id];
+          if (!r) return l;
+          return { ...l, status: r.status as LinkStatus, amountPaid: r.amount_paid ?? l.amountPaid };
+        })
+      );
+    } catch (e: any) {
+      toast({ title: 'Could not refresh status', description: e.message, variant: 'destructive' });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Auto-refresh statuses on mount and every 30s while there are unpaid links
+  useEffect(() => {
+    const hasPending = generatedLinks.some((l) => l.status !== 'paid' && l.status !== 'cancelled' && l.status !== 'expired');
+    if (!hasPending || generatedLinks.length === 0) return;
+    refreshStatuses();
+    const t = setInterval(refreshStatuses, 30000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generatedLinks.length]);
+
+  const statusBadge = (status?: LinkStatus) => {
+    switch (status) {
+      case 'paid':
+        return <Badge className="bg-green-600 hover:bg-green-600">Paid</Badge>;
+      case 'partially_paid':
+        return <Badge className="bg-amber-500 hover:bg-amber-500">Partially Paid</Badge>;
+      case 'expired':
+        return <Badge variant="secondary">Expired</Badge>;
+      case 'cancelled':
+        return <Badge variant="destructive">Cancelled</Badge>;
+      case 'created':
+        return <Badge variant="outline">Not Paid</Badge>;
+      default:
+        return <Badge variant="outline">Pending</Badge>;
+    }
   };
 
   return (
@@ -173,8 +237,25 @@ const Payments: React.FC = () => {
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base">Generated Links</CardTitle>
-            <CardDescription>Links created in this session appear here.</CardDescription>
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <CardTitle className="text-base">Generated Links</CardTitle>
+                <CardDescription>Status updates automatically every 30 seconds.</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refreshStatuses}
+                disabled={isRefreshing || generatedLinks.length === 0}
+              >
+                {isRefreshing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                Refresh
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {generatedLinks.length === 0 ? (
@@ -187,9 +268,19 @@ const Payments: React.FC = () => {
                   <div key={link.id} className="rounded-md border p-4">
                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div className="min-w-0">
-                        <div className="font-medium">{link.vendorName}</div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium">{link.vendorName}</span>
+                          {statusBadge(link.status)}
+                        </div>
                         <div className="text-sm text-muted-foreground">{link.description}</div>
-                        <div className="mt-1 text-sm font-semibold">{formatINR(link.amount)}</div>
+                        <div className="mt-1 text-sm font-semibold">
+                          {formatINR(link.amount)}
+                          {link.status === 'partially_paid' && link.amountPaid != null && (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              (Paid: {formatINR(link.amountPaid)})
+                            </span>
+                          )}
+                        </div>
                         <div className="mt-2 truncate text-xs text-muted-foreground">{link.url}</div>
                       </div>
                       <div className="flex shrink-0 gap-2">
