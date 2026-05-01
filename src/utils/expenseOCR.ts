@@ -44,17 +44,22 @@ const LABEL_PATTERNS = {
   tax: /\b(gst|tax|cgst|sgst|igst|vat)\b/i,
 };
 
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const normalizeOCRText = (input: string) => {
   let text = input;
   for (const broken of BROKEN_RUPEE_SYMBOLS) {
-    text = text.replaceAll(broken, RUPEE_SYMBOL);
+    text = text.replace(new RegExp(escapeRegExp(broken), "g"), RUPEE_SYMBOL);
   }
   return text.replace(/[|]/g, " ").replace(/\u00A0/g, " ");
 };
 
 const normalizeAmount = (value: string) =>
-  BROKEN_RUPEE_SYMBOLS.reduce((amount, broken) => amount.replaceAll(broken, ""), value)
-    .replaceAll(RUPEE_SYMBOL, "")
+  BROKEN_RUPEE_SYMBOLS.reduce(
+    (amount, broken) => amount.replace(new RegExp(escapeRegExp(broken), "g"), ""),
+    value
+  )
+    .replace(new RegExp(escapeRegExp(RUPEE_SYMBOL), "g"), "")
     .replace(/[, ]/g, "")
     .replace(/[^\d.]/g, "");
 
