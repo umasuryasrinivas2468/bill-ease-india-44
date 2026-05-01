@@ -237,8 +237,25 @@ const Payments: React.FC = () => {
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base">Generated Links</CardTitle>
-            <CardDescription>Links created in this session appear here.</CardDescription>
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <CardTitle className="text-base">Generated Links</CardTitle>
+                <CardDescription>Status updates automatically every 30 seconds.</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refreshStatuses}
+                disabled={isRefreshing || generatedLinks.length === 0}
+              >
+                {isRefreshing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                Refresh
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {generatedLinks.length === 0 ? (
@@ -251,9 +268,19 @@ const Payments: React.FC = () => {
                   <div key={link.id} className="rounded-md border p-4">
                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div className="min-w-0">
-                        <div className="font-medium">{link.vendorName}</div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium">{link.vendorName}</span>
+                          {statusBadge(link.status)}
+                        </div>
                         <div className="text-sm text-muted-foreground">{link.description}</div>
-                        <div className="mt-1 text-sm font-semibold">{formatINR(link.amount)}</div>
+                        <div className="mt-1 text-sm font-semibold">
+                          {formatINR(link.amount)}
+                          {link.status === 'partially_paid' && link.amountPaid != null && (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              (Paid: {formatINR(link.amountPaid)})
+                            </span>
+                          )}
+                        </div>
                         <div className="mt-2 truncate text-xs text-muted-foreground">{link.url}</div>
                       </div>
                       <div className="flex shrink-0 gap-2">
