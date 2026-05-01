@@ -177,8 +177,8 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose 
                     <td className="border border-border p-2 text-foreground">{item.description}</td>
                     <td className="border border-border p-2 text-foreground">{item.hsn_sac || '-'}</td>
                     <td className="border border-border p-2 text-right text-foreground">{item.quantity}</td>
-                    <td className="border border-border p-2 text-right text-foreground">₹{item.rate.toFixed(2)}</td>
-                    <td className="border border-border p-2 text-right text-foreground">₹{item.amount.toFixed(2)}</td>
+                    <td className="border border-border p-2 text-right text-foreground">₹{Number(item.rate ?? 0).toFixed(2)}</td>
+                    <td className="border border-border p-2 text-right text-foreground">₹{Number(item.amount ?? 0).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
