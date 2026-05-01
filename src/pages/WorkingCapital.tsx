@@ -5,7 +5,44 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@clerk/clerk-react';
 import { useMutation } from '@tanstack/react-query';
-import { useToast } from '@/hooks/use-toast';
+import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+
+// Inline toast component rendered inside the dialog
+const InlineToast: React.FC<{
+  type: 'success' | 'error';
+  title: string;
+  description?: string;
+  onDismiss?: () => void;
+}> = ({ type, title, description, onDismiss }) => {
+  const isSuccess = type === 'success';
+  return (
+    <div
+      className={`flex items-start gap-2 rounded-md px-3 py-2 text-sm animate-in fade-in slide-in-from-top-2 duration-300 ${isSuccess
+          ? 'bg-green-50 text-green-800 border border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800'
+          : 'bg-red-50 text-red-800 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800'
+        }`}
+    >
+      {isSuccess ? (
+        <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0 text-green-600 dark:text-green-400" />
+      ) : (
+        <XCircle className="h-4 w-4 mt-0.5 shrink-0 text-red-600 dark:text-red-400" />
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="font-medium">{title}</div>
+        {description && <div className="text-xs mt-0.5 opacity-80">{description}</div>}
+      </div>
+      {onDismiss && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="ml-auto shrink-0 text-xs opacity-60 hover:opacity-100 transition-opacity"
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
+};
 
 const WorkingCapital: React.FC = () => {
   const { data: invoices, isLoading } = useInvoices();
@@ -13,7 +50,19 @@ const WorkingCapital: React.FC = () => {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [appliedMap, setAppliedMap] = useState<Record<string, boolean>>({});
   const { user } = useUser();
-  const { toast } = useToast();
+
+  // Inline toast state (shown inside dialog)
+  const [inlineToast, setInlineToast] = useState<{
+    type: 'success' | 'error';
+    title: string;
+    description?: string;
+  } | null>(null);
+
+  // Auto-dismiss inline toast after 5s
+  const showInlineToast = (t: typeof inlineToast) => {
+    setInlineToast(t);
+    setTimeout(() => setInlineToast(null), 5000);
+  };
 
   const applyMutation = useMutation({
     mutationFn: async (invoice: Invoice) => {
@@ -40,18 +89,66 @@ const WorkingCapital: React.FC = () => {
       return data;
     },
     onSuccess: (_data, invoice) => {
-      // `invoice` is the variables passed to mutate
       setAppliedMap(prev => ({ ...prev, [invoice.id]: true }));
-      toast({ title: 'Application submitted', description: `Applied for invoice ${invoice.invoice_number}` });
+      showInlineToast({
+        type: 'success',
+        title: 'Application submitted',
+        description: `Successfully applied for invoice ${invoice.invoice_number}`,
+      });
     },
     onError: (err: any) => {
-      toast({ title: 'Apply failed', description: String(err.message || err), variant: 'destructive' });
+      showInlineToast({
+        type: 'error',
+        title: 'Application failed',
+        description: String(err.message || err),
+      });
     }
   });
 
   const handleApply = (invoice: Invoice) => {
     if (appliedMap[invoice.id]) return;
     applyMutation.mutate(invoice);
+  };
+
+  // Build the extraAction block for the dialog
+  const buildExtraAction = () => {
+    if (!selectedInvoice) return null;
+    return (
+      <div className="flex flex-col gap-2">
+        {/* Inline toast inside dialog */}
+        {inlineToast && (
+          <InlineToast
+            type={inlineToast.type}
+            title={inlineToast.title}
+            description={inlineToast.description}
+            onDismiss={() => setInlineToast(null)}
+          />
+        )}
+        <div className="flex items-center gap-2">
+          {appliedMap[selectedInvoice.id] ? (
+            <span className="inline-flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400 font-medium px-3 py-1 rounded-md bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Applied — awaiting verification
+            </span>
+          ) : (
+            <Button
+              size="sm"
+              onClick={() => handleApply(selectedInvoice)}
+              disabled={applyMutation.isPending}
+            >
+              {applyMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Applying...
+                </>
+              ) : (
+                'Apply for Trade Invoice'
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -124,12 +221,32 @@ const WorkingCapital: React.FC = () => {
                   <div className="font-semibold">{selectedInvoice.status}</div>
                 </div>
 
+                {/* Inline toast in sidebar panel */}
+                {inlineToast && (
+                  <InlineToast
+                    type={inlineToast.type}
+                    title={inlineToast.title}
+                    description={inlineToast.description}
+                    onDismiss={() => setInlineToast(null)}
+                  />
+                )}
+
                 <div className="pt-2">
                   {appliedMap[selectedInvoice.id] ? (
-                    <div className="text-sm text-green-600 font-medium">Applied — awaiting verification</div>
+                    <div className="inline-flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400 font-medium px-3 py-1.5 rounded-md bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Applied — awaiting verification
+                    </div>
                   ) : (
                     <Button onClick={() => handleApply(selectedInvoice)} disabled={applyMutation.isPending}>
-                      {applyMutation.isPending ? 'Applying...' : 'Apply for Trade Invoice'}
+                      {applyMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Applying...
+                        </>
+                      ) : (
+                        'Apply for Trade Invoice'
+                      )}
                     </Button>
                   )}
                 </div>
@@ -142,22 +259,8 @@ const WorkingCapital: React.FC = () => {
       <InvoiceViewer
         invoice={selectedInvoice}
         isOpen={!!selectedInvoice}
-        onClose={() => setSelectedInvoice(null)}
-        extraAction={
-          selectedInvoice ? (
-            appliedMap[selectedInvoice.id] ? (
-              <span className="text-sm text-green-600 font-medium px-3">Applied — awaiting verification</span>
-            ) : (
-              <Button
-                size="sm"
-                onClick={() => handleApply(selectedInvoice)}
-                disabled={applyMutation.isPending}
-              >
-                {applyMutation.isPending ? 'Applying...' : 'Apply for Trade Invoice'}
-              </Button>
-            )
-          ) : null
-        }
+        onClose={() => { setSelectedInvoice(null); setInlineToast(null); }}
+        extraAction={buildExtraAction()}
       />
     </div>
   );

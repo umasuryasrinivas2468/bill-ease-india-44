@@ -18,13 +18,14 @@ import {
   Receipt, Users, CreditCard, Banknote, Upload,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { postPaymentReceivedJournal, postCustomerAdvanceJournal } from "@/utils/autoJournalEntry";
 
 const INDIAN_STATES = [
-  "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat",
-  "Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh",
-  "Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab",
-  "Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand",
-  "West Bengal","Delhi","Jammu & Kashmir","Ladakh","Chandigarh","Puducherry",
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat",
+  "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh",
+  "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
+  "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand",
+  "West Bengal", "Delhi", "Jammu & Kashmir", "Ladakh", "Chandigarh", "Puducherry",
 ];
 
 const fmtINR = (n: number) =>
@@ -187,6 +188,21 @@ export default function PaymentReceived() {
         }
       }
 
+      // Post journal entry: Bank Dr, Accounts Receivable Cr
+      for (const alloc of allocations) {
+        try {
+          await postPaymentReceivedJournal(userId, {
+            invoice_number: alloc.invoice_number || 'Unknown',
+            date: invoiceForm.payment_date,
+            client_name: invoiceForm.customer_name,
+            amount: alloc.allocated,
+            payment_mode: invoiceForm.payment_mode === 'cash' ? 'cash' : undefined,
+          });
+        } catch (journalErr) {
+          console.error('Journal posting failed for invoice payment:', alloc.invoice_number, journalErr);
+        }
+      }
+
       toast({ title: "Payment recorded", description: `${fmtINR(Number(invoiceForm.amount))} from ${invoiceForm.customer_name}` });
       setInvoiceForm({ ...emptyInvoicePayment });
       setShowDialog(false);
@@ -224,6 +240,20 @@ export default function PaymentReceived() {
         notes: advanceForm.notes || null,
       });
       if (error) throw error;
+
+      // Post journal entry: Bank/Cash Dr, Customer Advances Cr
+      try {
+        await postCustomerAdvanceJournal(userId, {
+          customer_name: advanceForm.customer_name,
+          date: advanceForm.payment_date,
+          amount: Number(advanceForm.amount) || 0,
+          payment_mode: advanceForm.payment_mode === 'cash' ? 'cash' : undefined,
+          reference_number: advanceForm.reference_number || undefined,
+          tax_amount: Number(advanceForm.tax_amount) || 0,
+        });
+      } catch (journalErr) {
+        console.error('Journal posting failed for customer advance:', journalErr);
+      }
 
       toast({ title: "Advance recorded", description: `${fmtINR(Number(advanceForm.amount))} from ${advanceForm.customer_name}` });
       setAdvanceForm({ ...emptyAdvance });

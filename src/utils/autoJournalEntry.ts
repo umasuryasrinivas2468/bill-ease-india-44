@@ -349,6 +349,74 @@ export const postAdvanceAdjustmentJournal = async (
 };
 
 /**
+ * Payment Link collected via Razorpay → Debit Bank, Credit Accounts Receivable
+ */
+export const postPaymentLinkJournal = async (
+  userId: string,
+  payment: {
+    payment_link_id: string;
+    date: string;
+    vendor_name: string;
+    amount: number;
+    description?: string;
+  }
+) => {
+  const uid = normalizeUserId(userId);
+  const bankId = await getOrCreateAccount(uid, 'Bank Account', 'Asset');
+  const arId = await getOrCreateAccount(uid, 'Accounts Receivable', 'Asset');
+
+  return createJournal(
+    uid,
+    payment.date,
+    `Payment link collected – ${payment.vendor_name}${payment.description ? ' – ' + payment.description : ''}`,
+    [
+      { account_id: bankId, debit: payment.amount, credit: 0, line_narration: `Razorpay collection from ${payment.vendor_name}` },
+      { account_id: arId, debit: 0, credit: payment.amount, line_narration: `Clear receivable – payment link ${payment.payment_link_id}` },
+    ]
+  );
+};
+
+/**
+ * Customer Advance received → Debit Bank/Cash, Credit Customer Advances (Liability)
+ */
+export const postCustomerAdvanceJournal = async (
+  userId: string,
+  advance: {
+    customer_name: string;
+    date: string;
+    amount: number;
+    payment_mode?: string;
+    reference_number?: string;
+    tax_amount?: number;
+  }
+) => {
+  const uid = normalizeUserId(userId);
+  const bankName = advance.payment_mode === 'cash' ? 'Cash Account' : 'Bank Account';
+  const bankId = await getOrCreateAccount(uid, bankName, 'Asset');
+  const advanceLiabilityId = await getOrCreateAccount(uid, 'Customer Advances', 'Liability');
+
+  const lines: JournalLineInput[] = [
+    { account_id: bankId, debit: advance.amount, credit: 0, line_narration: `Advance from ${advance.customer_name}${advance.reference_number ? ' – Ref: ' + advance.reference_number : ''}` },
+    { account_id: advanceLiabilityId, debit: 0, credit: advance.amount, line_narration: `Customer advance – ${advance.customer_name}` },
+  ];
+
+  // If GST collected on advance (GST on advance receipts)
+  if (advance.tax_amount && advance.tax_amount > 0) {
+    const gstId = await getOrCreateAccount(uid, 'Output GST on Advances', 'Liability');
+    // Adjust: advance liability reduces by tax, GST liability added
+    lines[1].credit = advance.amount - advance.tax_amount;
+    lines.push({ account_id: gstId, debit: 0, credit: advance.tax_amount, line_narration: `GST on advance – ${advance.customer_name}` });
+  }
+
+  return createJournal(
+    uid,
+    advance.date,
+    `Customer Advance – ${advance.customer_name}`,
+    lines
+  );
+};
+
+/**
  * Convert accepted Quotation → Sales Order data shape
  */
 export const quotationToSalesOrderData = (
