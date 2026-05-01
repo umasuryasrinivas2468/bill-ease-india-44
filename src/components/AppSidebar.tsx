@@ -170,13 +170,13 @@ export function AppSidebar() {
 
   const getNavCls = (path: string) =>
     isActive(path)
-      ? "rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
-      : "rounded-xl text-foreground/80 hover:bg-primary/10 hover:text-foreground";
+      ? "rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90"
+      : "rounded-xl text-foreground font-medium hover:bg-primary/10 hover:text-foreground";
 
   const collapsibleActiveCls = (paths: string[]) =>
     paths.some(p => currentPath.startsWith(p))
-      ? "rounded-xl bg-primary text-primary-foreground"
-      : "rounded-xl text-foreground/80 hover:bg-primary/10 hover:text-foreground";
+      ? "rounded-xl bg-primary text-primary-foreground font-semibold"
+      : "rounded-xl text-foreground font-medium hover:bg-primary/10 hover:text-foreground";
 
   /* shared class for every top-level collapsible trigger */
   const triggerCls = isCollapsed
