@@ -15,9 +15,10 @@ interface InvoiceViewerProps {
   invoice: Invoice | null;
   isOpen: boolean;
   onClose: () => void;
+  extraAction?: React.ReactNode;
 }
 
-const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose }) => {
+const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose, extraAction }) => {
   const printRef = useRef<HTMLDivElement>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<InvoiceTemplate>('professional');
   const { user } = useUser();
