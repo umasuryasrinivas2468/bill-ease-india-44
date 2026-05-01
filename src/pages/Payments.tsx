@@ -87,6 +87,8 @@ const Payments: React.FC = () => {
           description: description || `Payment request for ${selectedVendor.name}`,
           url,
           createdAt: new Date().toISOString(),
+          status: 'created',
+          amountPaid: 0,
         },
         ...current,
       ]);
