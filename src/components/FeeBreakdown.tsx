@@ -118,23 +118,7 @@ export const FeeBreakdown: React.FC<FeeBreakdownProps> = ({ totalAmount, userId,
   }
 
   if (error || !fees) {
-    // Show error for debugging
-    return (
-      <div className={`space-y-2 ${className}`}>
-        <div className="flex items-center gap-2 text-xs text-red-500">
-          <TrendingDown className="h-3.5 w-3.5" />
-          <span className="font-semibold">Fee Calculation Issue</span>
-        </div>
-        <div className="text-xs text-red-600 bg-red-50 p-3 rounded-lg">
-          {error || 'Could not load fee structure'}
-          <div className="mt-2 text-[10px] text-gray-500">
-            <div>URL: {SUPABASE_URL}</div>
-            <div>User ID: {userId}</div>
-            <div>Amount: ₹{totalAmount}</div>
-          </div>
-        </div>
-      </div>
-    );
+    return null; // Silently fail - fees are optional info
   }
 
   const totalWithFees = totalAmount + fees.total_fees;

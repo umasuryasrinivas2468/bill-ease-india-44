@@ -87,6 +87,7 @@ import { InventoryItem } from '@/hooks/useInventory';
 import { downloadOrderPDF, getOrderPDFBlob } from '@/utils/orderPDF';
 import { useSimpleBranding } from '@/hooks/useSimpleBranding';
 import { salesOrderToInvoiceData, postInvoiceJournal } from '@/utils/autoJournalEntry';
+import { processSalesInventory } from '@/services/inventoryAutomationService';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SalesOrderItem {
@@ -108,6 +109,7 @@ interface SalesOrder {
   client_email?: string;
   client_phone?: string;
   client_address?: string;
+  shipping_address?: string;
   order_date: string;
   due_date: string;
   total_amount: number;
@@ -397,23 +399,14 @@ export default function SalesOrders() {
       if (status === 'delivered') {
         const order = orders.find(o => o.id === orderId);
         if (order && order.items) {
-          for (const item of order.items) {
-            if (item.product_id) {
-              const { data: inventoryItem } = await supabase
-                .from('inventory')
-                .select('stock_quantity, type')
-                .eq('id', item.product_id)
-                .single();
-
-              if (inventoryItem && inventoryItem.type === 'goods') {
-                const newStock = Math.max(0, (inventoryItem.stock_quantity || 0) - item.quantity);
-                await supabase
-                  .from('inventory')
-                  .update({ stock_quantity: newStock })
-                  .eq('id', item.product_id);
-              }
-            }
-          }
+          await processSalesInventory(user!.id, {
+            id: order.id,
+            document_number: order.order_number,
+            date: new Date().toISOString().split('T')[0],
+            party_name: order.client_name,
+            items: order.items,
+            source_type: 'sales_order',
+          });
         }
       }
 
@@ -446,6 +439,17 @@ export default function SalesOrders() {
         .select()
         .single();
       if (error) throw error;
+
+      if (order.status !== 'delivered') {
+        await processSalesInventory(user.id, {
+          id: data.id,
+          document_number: invoiceNumber,
+          date: invoiceData.invoice_date,
+          party_name: order.client_name,
+          items: invoiceData.items,
+          source_type: 'invoice',
+        });
+      }
 
       // Auto-create journal entry for the invoice
       try {
@@ -516,6 +520,7 @@ export default function SalesOrders() {
       client_email: order.client_email || '',
       client_phone: order.client_phone || '',
       client_address: order.client_address || '',
+      shipping_address: order.shipping_address || '',
       order_date: new Date(order.order_date),
       due_date: new Date(order.due_date),
       notes: order.notes || '',

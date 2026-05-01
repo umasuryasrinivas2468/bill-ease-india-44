@@ -17,10 +17,10 @@ import InventoryItemSelector from '@/components/InventoryItemSelector';
 import { CurrencySelector, CurrencyDisplay } from '@/components/CurrencySelector';
 import { formatCurrencyAmount } from '@/utils/currencyUtils';
 import { useInventory } from '@/hooks/useInventory';
-import { supabase } from '@/lib/supabase';
 import { useSettingsValidation } from '@/hooks/useSettingsValidation';
 import SettingsPromptDialog from '@/components/SettingsPromptDialog';
 import { postInvoiceJournal } from '@/utils/autoJournalEntry';
+import { processSalesInventory } from '@/services/inventoryAutomationService';
 import {
   computeMultiRateGST,
   extractTaxable,
@@ -274,22 +274,21 @@ const CreateInvoice = () => {
         console.error('Auto journal creation failed (invoice still created):', journalErr);
       }
 
-      // Update inventory stock for items that have product_id (only for goods, not services)
-      for (const item of items) {
-        if (item.product_id) {
-          const inventoryItem = inventoryItems.find(inv => inv.id === item.product_id);
-          if (inventoryItem && inventoryItem.type === 'goods') {
-            await updateInventoryStock(item.product_id, item.quantity);
-          }
-        }
-      }
+      await processSalesInventory(user!.id, {
+        id: createdInvoice.id,
+        document_number: invoiceNumber,
+        date: invoiceDate,
+        party_name: selectedClient.name,
+        items: [...items, tax_meta],
+        source_type: 'invoice',
+      });
 
       // Refresh inventory data
       refetchInventory();
       
       toast({
         title: "Success",
-        description: "Invoice created successfully and inventory updated!",
+        description: "Invoice created successfully, stock issued, and COGS posted!",
       });
       
       navigate('/invoices');
@@ -319,42 +318,6 @@ const CreateInvoice = () => {
       description: "Please fill in all required business information, bank details, and upload your business logo.",
       variant: "default",
     });
-  };
-
-  const updateInventoryStock = async (productId: string, quantity: number) => {
-    try {
-      const inventoryItem = inventoryItems.find(item => item.id === productId);
-      if (!inventoryItem) {
-        console.warn(`Inventory item with ID "${productId}" not found`);
-        return;
-      }
-
-      // Skip stock update for services
-      if (inventoryItem.type === 'services') {
-        console.log(`Skipping stock update for service: ${inventoryItem.product_name}`);
-        return;
-      }
-
-      if (inventoryItem.stock_quantity < quantity) {
-        throw new Error(`Insufficient stock for ${inventoryItem.product_name}. Available: ${inventoryItem.stock_quantity}, Required: ${quantity}`);
-      }
-
-      const newStockQuantity = inventoryItem.stock_quantity - quantity;
-      
-      const { error } = await supabase
-        .from('inventory')
-        .update({ stock_quantity: newStockQuantity })
-        .eq('id', productId);
-
-      if (error) {
-        throw error;
-      }
-
-      console.log(`Updated stock for ${inventoryItem.product_name}: ${inventoryItem.stock_quantity} -> ${newStockQuantity}`);
-    } catch (error) {
-      console.error('Error updating inventory stock:', error);
-      throw error;
-    }
   };
 
   return (

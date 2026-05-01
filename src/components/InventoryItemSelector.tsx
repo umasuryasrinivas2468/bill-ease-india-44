@@ -84,7 +84,7 @@ const InventoryItemSelector: React.FC<InventoryItemSelectorProps> = ({
               value={item.product_name} 
               className="hover:bg-gray-100 cursor-pointer"
             >
-              {`${item.product_name} — ₹${item.selling_price} (${item.type === 'service' ? 'N/A' : item.stock_quantity} ${(item as any).uom || 'pcs'})`}
+              {`${item.product_name} — ₹${item.selling_price} (${item.type === 'services' ? 'N/A' : item.stock_quantity} ${(item as any).uom || 'pcs'})`}
             </SelectItem>
           ))
         ) : (

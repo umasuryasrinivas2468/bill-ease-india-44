@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase';
 import { useUser } from '@clerk/clerk-react';
 import { postCashMemoJournal } from '@/utils/autoJournalEntry';
 import { Plus, Minus, Printer, ShoppingCart } from 'lucide-react';
+import { processSalesInventory } from '@/services/inventoryAutomationService';
 
 type CashMemoItem = {
   id: string;
@@ -163,18 +164,17 @@ const CashMemo = () => {
         notes: `Cash Memo | Payment: ${paymentMode}${notes ? ` | ${notes}` : ''}`,
       };
 
-      const { error: invoiceError } = await supabase.from('invoices').insert([invoicePayload]);
+      const { data: invoice, error: invoiceError } = await supabase.from('invoices').insert([invoicePayload]).select().single();
       if (invoiceError) throw invoiceError;
 
-      for (const item of items) {
-        const stockItem = inventoryItems.find(inv => inv.id === item.product_id);
-        if (stockItem?.type === 'goods') {
-          await supabase
-            .from('inventory')
-            .update({ stock_quantity: Number(stockItem.stock_quantity || 0) - Number(item.quantity || 0) })
-            .eq('id', item.product_id);
-        }
-      }
+      await processSalesInventory(user.id, {
+        id: invoice.id,
+        document_number: memoNumber,
+        date: memoDate,
+        party_name: customerName || 'Walk-in Customer',
+        items,
+        source_type: 'cash_memo',
+      });
 
       await postCashMemoJournal(user.id, {
         memo_number: memoNumber,

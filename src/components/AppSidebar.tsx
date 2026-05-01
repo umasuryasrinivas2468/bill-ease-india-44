@@ -62,6 +62,7 @@ const salesMenuItems = [
   { title: "Sales Orders", url: "/inventory/sales-orders", icon: ShoppingCart, feature: "salesOrders" as const },
   { title: "Invoices", url: "/invoices", icon: FileText },
   { title: "Invoice Intelligence", url: "/invoices/intelligence", icon: Filter },
+  { title: "Payment Links", url: "/payments", icon: Wallet },
   { title: "Payment Received", url: "/payment-received", icon: IndianRupee },
   { title: "Working Capital", url: "/working-capital", icon: Banknote },
   { title: "Cash Memo", url: "/cash-memo", icon: Wallet },
@@ -253,7 +254,7 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/quotations','/clients','/invoices','/notifications','/cash-memo','/coming-soon','/inventory/sales-orders','/inventory/delivery-challans','/ca/recurring-invoices'])}`}
+                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/quotations','/clients','/invoices','/payments','/payment-received','/notifications','/cash-memo','/coming-soon','/inventory/sales-orders','/inventory/delivery-challans','/ca/recurring-invoices'])}`}
                         title="Sales"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsSalesOpen(!isSalesOpen)}>

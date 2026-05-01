@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Plus, Edit, Trash2, Package, AlertTriangle, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, AlertTriangle, X, Activity, TrendingUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@clerk/clerk-react';
@@ -16,6 +16,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Search, Filter, ArrowUpDown } from 'lucide-react';
 import { useVendors, Vendor } from '@/hooks/useVendors';
 import { searchHSN, HSNEntry } from '@/constants/hsnCodes';
+import { useInventoryAlerts, useInventoryMovements } from '@/hooks/useInventory';
+import { postStockAdjustment } from '@/services/inventoryAutomationService';
 
 interface InventoryItem {
   id: string;
@@ -26,6 +28,10 @@ interface InventoryItem {
   purchase_price?: number;
   selling_price: number;
   stock_quantity: number;
+  average_cost?: number;
+  stock_value?: number;
+  valuation_method?: 'average' | 'fifo';
+  negative_stock_policy?: 'block' | 'warn' | 'allow';
   reorder_level: number;
   supplier_name?: string;
   supplier_contact?: string;
@@ -38,6 +44,8 @@ const Inventory = () => {
   const { user } = useUser();
   const { toast } = useToast();
   const { data: vendors } = useVendors();
+  const { data: movements = [] } = useInventoryMovements();
+  const { data: alerts = [] } = useInventoryAlerts();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -72,6 +80,8 @@ const Inventory = () => {
     stock_quantity: '',
     reorder_level: '',
     uom: 'pcs',
+    valuation_method: 'average' as 'average' | 'fifo',
+    negative_stock_policy: 'block' as 'block' | 'warn' | 'allow',
     hsn_code: '',
     sac_code: '',
     supplier_name: '',
@@ -129,6 +139,8 @@ const Inventory = () => {
       stock_quantity: '',
       reorder_level: '',
       uom: 'pcs',
+      valuation_method: 'average',
+      negative_stock_policy: 'block',
       hsn_code: '',
       sac_code: '',
       supplier_name: '',
@@ -150,6 +162,8 @@ const Inventory = () => {
       stock_quantity: item.stock_quantity.toString(),
       reorder_level: item.reorder_level.toString(),
       uom: (item as any).uom || 'pcs',
+      valuation_method: item.valuation_method || 'average',
+      negative_stock_policy: item.negative_stock_policy || 'block',
       hsn_code: (item as any).hsn_code || '',
       sac_code: (item as any).sac_code || '',
       supplier_name: item.supplier_name || '',
@@ -175,6 +189,7 @@ const Inventory = () => {
       return;
     }
 
+    const requestedStock = formData.type === 'services' ? 0 : (parseFloat(formData.stock_quantity) || 0);
     const itemData = {
       user_id: user.id,
       product_name: formData.product_name,
@@ -183,9 +198,12 @@ const Inventory = () => {
       type: formData.type,
       purchase_price: formData.purchase_price ? parseFloat(formData.purchase_price) : null,
       selling_price: parseFloat(formData.selling_price),
-      stock_quantity: formData.type === 'services' ? null : (parseInt(formData.stock_quantity) || 0),
+      stock_quantity: formData.type === 'services' ? null : requestedStock,
       reorder_level: formData.type === 'services' ? null : (parseInt(formData.reorder_level) || 10),
       uom: formData.uom || 'pcs',
+      base_uom: formData.uom || 'pcs',
+      valuation_method: formData.valuation_method,
+      negative_stock_policy: formData.negative_stock_policy,
       hsn_code: formData.type === 'goods' ? (formData.hsn_code || null) : null,
       sac_code: formData.type === 'services' ? (formData.sac_code || null) : null,
       supplier_name: formData.supplier_name || null,
@@ -196,19 +214,58 @@ const Inventory = () => {
     setIsLoading(true);
     try {
       if (editingItem) {
+        const previousStock = Number(editingItem.stock_quantity || 0);
+        const stockDelta = formData.type === 'goods' ? requestedStock - previousStock : 0;
+        const updateData = {
+          ...itemData,
+          stock_quantity: formData.type === 'services' ? null : previousStock,
+        };
+
         const { error } = await supabase
           .from('inventory')
-          .update(itemData)
+          .update(updateData)
           .eq('id', editingItem.id);
 
         if (error) throw error;
+
+        if (stockDelta !== 0) {
+          await postStockAdjustment(user.id, {
+            item_id: editingItem.id,
+            item_name: formData.product_name,
+            quantity_delta: stockDelta,
+            unit_cost: parseFloat(formData.purchase_price) || editingItem.average_cost || editingItem.purchase_price || 0,
+            reason: 'Manual stock adjustment',
+          });
+        }
+
         toast({ title: "Success", description: "Item updated successfully!" });
       } else {
-        const { error } = await supabase
+        const insertData = {
+          ...itemData,
+          stock_quantity: formData.type === 'services' ? null : 0,
+        };
+
+        const { data: createdItem, error } = await supabase
           .from('inventory')
-          .insert([itemData]);
+          .insert([insertData])
+          .select('id')
+          .single();
 
         if (error) throw error;
+
+        if (formData.type === 'goods' && requestedStock > 0) {
+          await postStockAdjustment(user.id, {
+            item_id: createdItem.id,
+            item_name: formData.product_name,
+            quantity_delta: requestedStock,
+            unit_cost: parseFloat(formData.purchase_price) || 0,
+            reason: 'Opening stock',
+            source_type: 'opening_stock',
+            source_id: createdItem.id,
+            adjustment_number: `OPEN-${formData.sku || Date.now().toString().slice(-6)}`,
+          });
+        }
+
         toast({ title: "Success", description: "Item added successfully!" });
       }
 
@@ -284,12 +341,14 @@ const Inventory = () => {
 
   const getTotalValue = () => {
     return inventory.reduce((sum, item) => {
-      if (item.type === 'goods' && item.purchase_price && item.stock_quantity !== null) {
-        return sum + (item.purchase_price * item.stock_quantity);
+      if (item.type === 'goods' && item.stock_quantity !== null) {
+        return sum + Number(item.stock_value || ((item.purchase_price || 0) * item.stock_quantity));
       }
       return sum;
     }, 0);
   };
+
+  const cogsTotal = movements.reduce((sum: number, movement: any) => sum + Number(movement.cogs_amount || 0), 0);
 
   const lowStockItems = getLowStockItems();
 
@@ -515,6 +574,33 @@ const Inventory = () => {
                       min="0"
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="valuation_method">Valuation</Label>
+                    <Select value={formData.valuation_method} onValueChange={(value: 'average' | 'fifo') => setFormData({ ...formData, valuation_method: value })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="average">Weighted Average</SelectItem>
+                        <SelectItem value="fifo">FIFO</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="negative_stock_policy">Negative Stock</Label>
+                    <Select value={formData.negative_stock_policy} onValueChange={(value: 'block' | 'warn' | 'allow') => setFormData({ ...formData, negative_stock_policy: value })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="block">Block</SelectItem>
+                        <SelectItem value="warn">Warn</SelectItem>
+                        <SelectItem value="allow">Allow</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </>
               )}
 
@@ -637,7 +723,7 @@ const Inventory = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="border border-blue-200 bg-blue-50/50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-blue-800">Total Items</CardTitle>
@@ -666,10 +752,42 @@ const Inventory = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-emerald-900">₹{getTotalValue().toFixed(2)}</div>
-            <div className="text-xs text-emerald-600 mt-1">Based on purchase price</div>
+            <div className="text-xs text-emerald-600 mt-1">Ledger valuation</div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-violet-200 bg-violet-50/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-violet-800">COGS Posted</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-violet-900">â‚¹{cogsTotal.toFixed(2)}</div>
+            <div className="text-xs text-violet-600 mt-1">From inventory outward</div>
           </CardContent>
         </Card>
       </div>
+
+      {alerts.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Activity className="h-4 w-4" />
+              Automation Alerts
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-2 md:grid-cols-2">
+            {alerts.slice(0, 4).map((alert: any) => (
+              <div key={alert.id} className="rounded-md border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium">{alert.title}</span>
+                  <Badge variant={alert.severity === 'critical' ? 'destructive' : 'secondary'}>{alert.severity}</Badge>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">{alert.message}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Low Stock Alerts */}
       {lowStockItems.length > 0 && (
@@ -767,6 +885,8 @@ const Inventory = () => {
                   <TableHead>HSN/SAC</TableHead>
                   <TableHead>UOM</TableHead>
                   <TableHead className="text-right">Stock</TableHead>
+                  <TableHead className="text-right">Avg Cost</TableHead>
+                  <TableHead className="text-right">Value</TableHead>
                   <TableHead className="text-right">Selling Price</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -798,6 +918,8 @@ const Inventory = () => {
                         </span>
                       )}
                     </TableCell>
+                    <TableCell className="text-right">₹{Number(item.average_cost || item.purchase_price || 0).toFixed(2)}</TableCell>
+                    <TableCell className="text-right">₹{Number(item.stock_value || 0).toFixed(2)}</TableCell>
                     <TableCell className="text-right font-medium">₹{item.selling_price.toFixed(2)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
@@ -816,6 +938,55 @@ const Inventory = () => {
           </div>
         )}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <TrendingUp className="h-4 w-4" />
+            Real-time Stock Ledger
+          </CardTitle>
+          <CardDescription>Purchases, sales, returns, adjustments, valuation, and COGS movements</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {movements.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No stock movements posted yet.</p>
+          ) : (
+            <div className="max-h-96 overflow-auto rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Party</TableHead>
+                    <TableHead className="text-right">In</TableHead>
+                    <TableHead className="text-right">Out</TableHead>
+                    <TableHead className="text-right">Value In</TableHead>
+                    <TableHead className="text-right">Value Out</TableHead>
+                    <TableHead className="text-right">COGS</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {movements.slice(0, 50).map((movement: any) => (
+                    <TableRow key={movement.id}>
+                      <TableCell>{movement.movement_date}</TableCell>
+                      <TableCell>
+                        <div className="text-sm font-medium">{movement.source_number || movement.source_type}</div>
+                        <div className="text-xs text-muted-foreground">{movement.movement_type}</div>
+                      </TableCell>
+                      <TableCell>{movement.party_name || '-'}</TableCell>
+                      <TableCell className="text-right">{Number(movement.quantity_in || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-right">{Number(movement.quantity_out || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-right">₹{Number(movement.value_in || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-right">₹{Number(movement.value_out || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-right">₹{Number(movement.cogs_amount || 0).toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
     </div>
   );

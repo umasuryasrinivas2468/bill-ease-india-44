@@ -88,6 +88,7 @@ import { useSimpleBranding } from '@/hooks/useSimpleBranding';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { GST_TREATMENTS, INDIAN_STATES } from '@/constants/india';
 import { postPurchaseBillJournal } from '@/utils/autoJournalEntry';
+import { processPurchaseBillInventory } from '@/services/inventoryAutomationService';
 
 interface PurchaseOrderItem {
   id: string;
@@ -494,23 +495,15 @@ export default function PurchaseOrders() {
       if (status === 'received') {
         const order = orders.find(o => o.id === orderId);
         if (order && order.items) {
-          for (const item of order.items) {
-            if (item.product_id) {
-              const { data: inventoryItem } = await supabase
-                .from('inventory')
-                .select('stock_quantity, type')
-                .eq('id', item.product_id)
-                .single();
-
-              if (inventoryItem && inventoryItem.type === 'goods') {
-                const newStock = (inventoryItem.stock_quantity || 0) + item.quantity;
-                await supabase
-                  .from('inventory')
-                  .update({ stock_quantity: newStock })
-                  .eq('id', item.product_id);
-              }
-            }
-          }
+          await processPurchaseBillInventory(user!.id, {
+            id: order.id,
+            bill_number: order.order_number,
+            bill_date: new Date().toISOString().split('T')[0],
+            vendor_id: (order as any).vendor_id || null,
+            vendor_name: order.vendor_name,
+            items: order.items,
+            source_type: 'purchase_order',
+          });
         }
       }
 
@@ -562,6 +555,7 @@ export default function PurchaseOrders() {
       const billNumber = `BILL-${ts}`;
 
       const billItems = (order.items || []).map((item: any) => ({
+        product_id: item.product_id || null,
         item_details: item.product_name || '',
         account: 'Purchase Account',
         quantity: Number(item.quantity) || 1,
@@ -601,6 +595,17 @@ export default function PurchaseOrders() {
         .single();
       if (error) throw error;
 
+      const { inventoryAmount } = order.status === 'received'
+        ? { inventoryAmount: subtotal }
+        : await processPurchaseBillInventory(user.id, {
+            id: data.id,
+            bill_number: billNumber,
+            bill_date: billData.bill_date,
+            vendor_id: (order as any).vendor_id || null,
+            vendor_name: order.vendor_name,
+            items: billItems,
+          });
+
       // Auto-create journal entry for the bill
       try {
         await postPurchaseBillJournal(user.id, {
@@ -610,6 +615,7 @@ export default function PurchaseOrders() {
           amount: subtotal,
           gst_amount: gstAmount,
           total_amount: totalAmount,
+          inventory_amount: inventoryAmount,
         });
       } catch (journalErr) {
         console.error('Auto journal failed (bill still created):', journalErr);

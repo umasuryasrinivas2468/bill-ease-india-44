@@ -12,6 +12,14 @@ export interface InventoryItem {
   purchase_price?: number;
   selling_price: number;
   stock_quantity: number;
+  average_cost?: number;
+  stock_value?: number;
+  valuation_method?: 'average' | 'fifo';
+  negative_stock_policy?: 'block' | 'warn' | 'allow';
+  track_batch?: boolean;
+  track_serial?: boolean;
+  base_uom?: string;
+  default_warehouse_id?: string | null;
   reorder_level: number;
   uom: string;
   supplier_name?: string;
@@ -50,7 +58,72 @@ export const useInventory = () => {
       return data as InventoryItem[];
     },
     enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 15 * 1000,
     retry: 3,
+  });
+};
+
+export interface InventoryMovement {
+  id: string;
+  item_id: string;
+  movement_type: string;
+  source_type: string;
+  source_number?: string;
+  party_name?: string;
+  movement_date: string;
+  quantity_in: number;
+  quantity_out: number;
+  unit_cost: number;
+  value_in: number;
+  value_out: number;
+  cogs_amount: number;
+  notes?: string;
+}
+
+export const useInventoryMovements = () => {
+  const { user } = useUser();
+
+  return useQuery({
+    queryKey: ['inventory-movements', user?.id],
+    queryFn: async () => {
+      if (!user?.id) throw new Error('User not authenticated');
+
+      const { data, error } = await supabase
+        .from('inventory_movements' as any)
+        .select('*')
+        .eq('user_id', user.id)
+        .order('movement_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      if (error) throw error;
+      return data as InventoryMovement[];
+    },
+    enabled: !!user?.id,
+    staleTime: 15 * 1000,
+  });
+};
+
+export const useInventoryAlerts = () => {
+  const { user } = useUser();
+
+  return useQuery({
+    queryKey: ['inventory-alerts', user?.id],
+    queryFn: async () => {
+      if (!user?.id) throw new Error('User not authenticated');
+
+      const { data, error } = await supabase
+        .from('inventory_alerts' as any)
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_resolved', false)
+        .order('generated_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id,
+    staleTime: 15 * 1000,
   });
 };

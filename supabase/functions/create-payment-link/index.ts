@@ -51,28 +51,47 @@ serve(async (req) => {
   }
 
   try {
-    const { invoiceId, userId, customerName, customerEmail, customerPhone } = await req.json();
+    const {
+      invoiceId,
+      userId,
+      amount,
+      description,
+      vendor,
+      customerName,
+      customerEmail,
+      customerPhone,
+    } = await req.json();
 
-    if (!invoiceId || !userId) {
-      return jsonResp({ error: "invoiceId and userId are required" }, 400);
+    if (!userId) {
+      return jsonResp({ error: "userId is required" }, 400);
+    }
+
+    const isStandaloneLink = !invoiceId;
+    const directAmount = Number(amount || 0);
+    if (isStandaloneLink && (!Number.isFinite(directAmount) || directAmount <= 0)) {
+      return jsonResp({ error: "amount is required for direct payment links" }, 400);
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Load invoice
-    const { data: invoice, error: invErr } = await supabase
-      .from("invoices")
-      .select("id, invoice_number, user_id, total_amount, client_name, client_email, client_phone, status, due_date")
-      .eq("id", invoiceId)
-      .eq("user_id", userId)
-      .single();
+    let invoice: any = null;
+    if (invoiceId) {
+      const { data: invoiceData, error: invErr } = await supabase
+        .from("invoices")
+        .select("id, invoice_number, user_id, total_amount, client_name, client_email, client_phone, status, due_date")
+        .eq("id", invoiceId)
+        .eq("user_id", userId)
+        .single();
 
-    if (invErr || !invoice) {
-      return jsonResp({ error: "Invoice not found" }, 404);
-    }
+      if (invErr || !invoiceData) {
+        return jsonResp({ error: "Invoice not found" }, 404);
+      }
 
-    if (invoice.status === "paid") {
-      return jsonResp({ error: "Invoice is already paid" }, 400);
+      if (invoiceData.status === "paid") {
+        return jsonResp({ error: "Invoice is already paid" }, 400);
+      }
+
+      invoice = invoiceData;
     }
 
     // Load vendor's payment settings
@@ -128,29 +147,45 @@ serve(async (req) => {
     }
 
     // Create Razorpay Payment Link
-    const amountPaise = Math.round(Number(invoice.total_amount) * 100);
-    const dueDate = invoice.due_date ? new Date(invoice.due_date).getTime() / 1000 : undefined;
+    const linkAmount = invoice ? Number(invoice.total_amount) : directAmount;
+    const amountPaise = Math.round(linkAmount * 100);
+    const dueDate = invoice?.due_date ? new Date(invoice.due_date).getTime() / 1000 : undefined;
+    const payerName = invoice
+      ? customerName || invoice.client_name || "Customer"
+      : vendor?.name || customerName || "Vendor";
+    const payerEmail = invoice
+      ? customerEmail || invoice.client_email || undefined
+      : vendor?.email || customerEmail || undefined;
+    const payerPhone = invoice
+      ? customerPhone || invoice.client_phone || undefined
+      : vendor?.phone || customerPhone || undefined;
+    const linkDescription = invoice
+      ? `Payment for Invoice ${invoice.invoice_number}`
+      : description || `Payment request for ${payerName}`;
 
     const paymentLinkPayload: any = {
       amount: amountPaise,
       currency: "INR",
-      description: `Payment for Invoice ${invoice.invoice_number}`,
+      description: linkDescription,
       customer: {
-        name: customerName || invoice.client_name || "Customer",
-        email: customerEmail || invoice.client_email || undefined,
-        contact: customerPhone || invoice.client_phone || undefined,
+        name: payerName,
+        email: payerEmail,
+        contact: payerPhone,
       },
       notify: {
-        sms: !!(customerPhone || invoice.client_phone),
-        email: !!(customerEmail || invoice.client_email),
+        sms: !!payerPhone,
+        email: !!payerEmail,
       },
       reminder_enable: true,
       notes: {
-        invoice_id: invoiceId,
-        invoice_number: invoice.invoice_number,
-        source: "aczen_bilz_ai_command",
+        invoice_id: invoiceId || "",
+        invoice_number: invoice?.invoice_number || "",
+        vendor_id: vendor?.id || "",
+        source: invoice ? "aczen_invoice_payment_link" : "aczen_vendor_payment_link",
       },
-      callback_url: `${Deno.env.get("PUBLIC_APP_URL") || "https://app.aczen.in"}/invoices/${invoiceId}`,
+      callback_url: invoice
+        ? `${Deno.env.get("PUBLIC_APP_URL") || "https://app.aczen.in"}/invoices/${invoiceId}`
+        : `${Deno.env.get("PUBLIC_APP_URL") || "https://app.aczen.in"}/payments`,
       callback_method: "get",
     };
 
@@ -194,24 +229,26 @@ serve(async (req) => {
       );
     }
 
-    // Store payment link in invoice
-    await supabase
-      .from("invoices")
-      .update({
-        payment_link: rzpData.short_url || rzpData.url,
-        payment_link_id: rzpData.id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", invoiceId);
+    if (invoiceId) {
+      await supabase
+        .from("invoices")
+        .update({
+          payment_link: rzpData.short_url || rzpData.url,
+          payment_link_id: rzpData.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", invoiceId);
+    }
 
-    console.log(`[PaymentLink] Created payment link ${rzpData.id} for invoice ${invoice.invoice_number}`);
+    console.log(`[PaymentLink] Created payment link ${rzpData.id} for ${invoice ? `invoice ${invoice.invoice_number}` : `vendor ${payerName}`}`);
 
     return jsonResp({
       success: true,
       paymentLink: rzpData.short_url || rzpData.url,
       paymentLinkId: rzpData.id,
-      amount: invoice.total_amount,
-      invoiceNumber: invoice.invoice_number,
+      amount: linkAmount,
+      invoiceNumber: invoice?.invoice_number || null,
+      vendorName: invoice ? null : payerName,
     });
   } catch (err: any) {
     console.error("[PaymentLink] Unhandled:", err);

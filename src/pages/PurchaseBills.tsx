@@ -15,9 +15,13 @@ import { useUser } from '@clerk/clerk-react';
 import { useVendors } from '@/hooks/useVendors';
 import { Badge } from '@/components/ui/badge';
 import { postPurchaseBillJournal, postVendorPaymentJournal } from '@/utils/autoJournalEntry';
+import { processPurchaseBillInventory } from '@/services/inventoryAutomationService';
+import InventoryItemSelector from '@/components/InventoryItemSelector';
+import { useInventory } from '@/hooks/useInventory';
 
 type BillItem = {
   id: string;
+  product_id?: string | null;
   item_details: string;
   account: string;
   quantity: number;
@@ -78,6 +82,7 @@ const parseBillMeta = (notes?: string | null): BillMeta => {
 
 const emptyItem = (): BillItem => ({
   id: makeId(),
+  product_id: null,
   item_details: '',
   account: '',
   quantity: 1,
@@ -91,6 +96,7 @@ const PurchaseBills = () => {
   const { user } = useUser();
   const { toast } = useToast();
   const { data: vendors = [] } = useVendors();
+  const { data: inventoryItems = [], refetch: refetchInventory } = useInventory();
   const [bills, setBills] = useState<PurchaseBillRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -249,8 +255,17 @@ const PurchaseBills = () => {
         status: 'pending',
       };
 
-      const { error } = await supabase.from('purchase_bills' as any).insert([payload]);
+      const { data: bill, error } = await supabase.from('purchase_bills' as any).insert([payload]).select().single();
       if (error) throw error;
+
+      const { inventoryAmount } = await processPurchaseBillInventory(user.id, {
+        id: bill.id,
+        bill_number: formData.bill_number,
+        bill_date: formData.bill_date,
+        vendor_id: formData.vendor_id || null,
+        vendor_name: formData.vendor_name,
+        items,
+      });
 
       await postPurchaseBillJournal(user.id, {
         bill_number: formData.bill_number,
@@ -259,6 +274,7 @@ const PurchaseBills = () => {
         amount: billTotals.amount,
         gst_amount: billTotals.gstAmount,
         total_amount: billTotals.total,
+        inventory_amount: inventoryAmount,
       });
 
       toast({
@@ -268,6 +284,7 @@ const PurchaseBills = () => {
       setIsDialogOpen(false);
       resetForm();
       fetchBills();
+      refetchInventory();
     } catch (error) {
       console.error('Error saving purchase bill:', error);
       toast({
@@ -397,7 +414,27 @@ const PurchaseBills = () => {
                   <TableBody>
                     {items.map(item => (
                       <TableRow key={item.id}>
-                        <TableCell><Input value={item.item_details} onChange={(e) => updateItem(item.id, 'item_details', e.target.value)} /></TableCell>
+                        <TableCell className="min-w-64">
+                          <InventoryItemSelector
+                            value={item.item_details}
+                            onChange={(value) => {
+                              const selected = inventoryItems.find(inv => inv.product_name === value);
+                              setItems(prev => prev.map(current => {
+                                if (current.id !== item.id) return current;
+                                const rate = Number((selected as any)?.purchase_price || current.rate || 0);
+                                return {
+                                  ...current,
+                                  product_id: selected?.id || null,
+                                  item_details: value,
+                                  rate,
+                                  amount: Number(current.quantity || 0) * rate,
+                                };
+                              }));
+                            }}
+                            placeholder="Select inventory item"
+                          />
+                          <Input className="mt-2" value={item.item_details} onChange={(e) => updateItem(item.id, 'item_details', e.target.value)} placeholder="Or enter description" />
+                        </TableCell>
                         <TableCell><Input value={item.account} onChange={(e) => updateItem(item.id, 'account', e.target.value)} /></TableCell>
                         <TableCell><Input type="number" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value || 0))} /></TableCell>
                         <TableCell><Input type="number" value={item.rate} onChange={(e) => updateItem(item.id, 'rate', Number(e.target.value || 0))} /></TableCell>

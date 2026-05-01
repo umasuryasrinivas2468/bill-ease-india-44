@@ -183,20 +183,54 @@ export const postCashMemoJournal = async (
 };
 
 /**
- * Purchase Bill → Debit Expense/Purchase + Input GST, Credit Accounts Payable
+ * Purchase Bill -> Debit Inventory Asset/Purchase Expense + Input GST, Credit Accounts Payable
  */
 export const postPurchaseBillJournal = async (
   userId: string,
-  bill: { bill_number: string; bill_date: string; vendor_name: string; amount: number; gst_amount: number; total_amount: number }
+  bill: {
+    bill_number: string;
+    bill_date: string;
+    vendor_name: string;
+    amount: number;
+    gst_amount: number;
+    total_amount: number;
+    inventory_amount?: number;
+  }
 ) => {
   const uid = normalizeUserId(userId);
   const purchaseId = await getOrCreateAccount(uid, 'Purchase Account', 'Expense');
+  const inventoryId = bill.inventory_amount && bill.inventory_amount > 0
+    ? await getOrCreateAccount(uid, 'Inventory Asset', 'Asset')
+    : null;
   const apId = await getOrCreateAccount(uid, 'Accounts Payable', 'Liability');
+  const purchaseExpense = Math.max(0, bill.amount - Number(bill.inventory_amount || 0));
 
-  const lines: JournalLineInput[] = [
-    { account_id: purchaseId, debit: bill.amount, credit: 0, line_narration: `Purchase – ${bill.bill_number}` },
-    { account_id: apId, debit: 0, credit: bill.total_amount, line_narration: `Payable to ${bill.vendor_name} – ${bill.bill_number}` },
-  ];
+  const lines: JournalLineInput[] = [];
+
+  if (inventoryId && bill.inventory_amount && bill.inventory_amount > 0) {
+    lines.push({
+      account_id: inventoryId,
+      debit: bill.inventory_amount,
+      credit: 0,
+      line_narration: `Inventory inward - ${bill.bill_number}`,
+    });
+  }
+
+  if (purchaseExpense > 0) {
+    lines.push({
+      account_id: purchaseId,
+      debit: purchaseExpense,
+      credit: 0,
+      line_narration: `Purchase expense - ${bill.bill_number}`,
+    });
+  }
+
+  lines.push({
+    account_id: apId,
+    debit: 0,
+    credit: bill.total_amount,
+    line_narration: `Payable to ${bill.vendor_name} - ${bill.bill_number}`,
+  });
 
   if (bill.gst_amount > 0) {
     const inputGstId = await getOrCreateAccount(uid, 'Input Tax Credit', 'Asset');
@@ -204,6 +238,61 @@ export const postPurchaseBillJournal = async (
   }
 
   return createJournal(uid, bill.bill_date, `Purchase Bill ${bill.bill_number} – ${bill.vendor_name}`, lines);
+};
+
+/**
+ * Inventory outward valuation -> Debit COGS, Credit Inventory Asset
+ */
+export const postCogsJournal = async (
+  userId: string,
+  sale: { document_number: string; date: string; party_name: string; cogs_amount: number }
+) => {
+  const uid = normalizeUserId(userId);
+  if (!sale.cogs_amount || sale.cogs_amount <= 0) return null;
+
+  const cogsId = await getOrCreateAccount(uid, 'Cost of Goods Sold', 'Expense');
+  const inventoryId = await getOrCreateAccount(uid, 'Inventory Asset', 'Asset');
+
+  return createJournal(uid, sale.date, `COGS - ${sale.document_number} - ${sale.party_name}`, [
+    { account_id: cogsId, debit: sale.cogs_amount, credit: 0, line_narration: `COGS for ${sale.document_number}` },
+    { account_id: inventoryId, debit: 0, credit: sale.cogs_amount, line_narration: `Inventory issued for ${sale.document_number}` },
+  ]);
+};
+
+/**
+ * Stock opening/adjustment valuation.
+ * Positive adjustments debit Inventory Asset; negative adjustments credit Inventory Asset.
+ */
+export const postInventoryAdjustmentJournal = async (
+  userId: string,
+  adjustment: {
+    adjustment_number: string;
+    date: string;
+    item_name: string;
+    quantity_delta: number;
+    value_delta: number;
+    reason?: string;
+  }
+) => {
+  const uid = normalizeUserId(userId);
+  const value = Math.abs(Number(adjustment.value_delta || 0));
+  if (!value) return null;
+
+  const inventoryId = await getOrCreateAccount(uid, 'Inventory Asset', 'Asset');
+  const adjustmentId = await getOrCreateAccount(uid, 'Inventory Adjustments', 'Expense');
+  const narration = `${adjustment.reason || 'Inventory adjustment'} - ${adjustment.adjustment_number} - ${adjustment.item_name}`;
+
+  if (adjustment.value_delta > 0) {
+    return createJournal(uid, adjustment.date, narration, [
+      { account_id: inventoryId, debit: value, credit: 0, line_narration: `Inventory increased - ${adjustment.item_name}` },
+      { account_id: adjustmentId, debit: 0, credit: value, line_narration: `Adjustment offset - ${adjustment.adjustment_number}` },
+    ]);
+  }
+
+  return createJournal(uid, adjustment.date, narration, [
+    { account_id: adjustmentId, debit: value, credit: 0, line_narration: `Inventory write-off - ${adjustment.item_name}` },
+    { account_id: inventoryId, debit: 0, credit: value, line_narration: `Inventory reduced - ${adjustment.item_name}` },
+  ]);
 };
 
 /**
