@@ -71,7 +71,8 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({ invoice, isOpen, onClose,
         <DialogHeader>
           <div className="flex justify-between items-center">
             <DialogTitle>Invoice {invoice.invoice_number}</DialogTitle>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              {extraAction}
               <InvoiceTemplateSelector 
                 value={selectedTemplate} 
                 onChange={setSelectedTemplate} 
