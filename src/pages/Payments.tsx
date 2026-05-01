@@ -111,6 +111,63 @@ const Payments: React.FC = () => {
     toast({ title: 'Copied', description: 'Payment link copied to clipboard.' });
   };
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const refreshStatuses = async () => {
+    if (!user?.id || generatedLinks.length === 0) return;
+    setIsRefreshing(true);
+    try {
+      const ids = generatedLinks
+        .map((l) => l.id)
+        .filter((id) => id && !id.includes('-')); // Razorpay IDs don't contain dashes; skip uuid fallbacks
+      if (ids.length === 0) return;
+      const { data, error } = await supabase.functions.invoke('check-payment-link-status', {
+        body: { userId: normalizeUserId(user.id), paymentLinkIds: ids },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      const results = data?.results || {};
+      setGeneratedLinks((current) =>
+        current.map((l) => {
+          const r = results[l.id];
+          if (!r) return l;
+          return { ...l, status: r.status as LinkStatus, amountPaid: r.amount_paid ?? l.amountPaid };
+        })
+      );
+    } catch (e: any) {
+      toast({ title: 'Could not refresh status', description: e.message, variant: 'destructive' });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Auto-refresh statuses on mount and every 30s while there are unpaid links
+  useEffect(() => {
+    const hasPending = generatedLinks.some((l) => l.status !== 'paid' && l.status !== 'cancelled' && l.status !== 'expired');
+    if (!hasPending || generatedLinks.length === 0) return;
+    refreshStatuses();
+    const t = setInterval(refreshStatuses, 30000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generatedLinks.length]);
+
+  const statusBadge = (status?: LinkStatus) => {
+    switch (status) {
+      case 'paid':
+        return <Badge className="bg-green-600 hover:bg-green-600">Paid</Badge>;
+      case 'partially_paid':
+        return <Badge className="bg-amber-500 hover:bg-amber-500">Partially Paid</Badge>;
+      case 'expired':
+        return <Badge variant="secondary">Expired</Badge>;
+      case 'cancelled':
+        return <Badge variant="destructive">Cancelled</Badge>;
+      case 'created':
+        return <Badge variant="outline">Not Paid</Badge>;
+      default:
+        return <Badge variant="outline">Pending</Badge>;
+    }
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex items-center gap-4">
