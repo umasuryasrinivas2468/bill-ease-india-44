@@ -147,8 +147,8 @@ serve(async (req) => {
     }
 
     // Create Razorpay Payment Link
-    const linkAmount = invoice ? Number(invoice.total_amount) : directAmount;
-    const amountPaise = Math.round(linkAmount * 100);
+    let linkAmount = invoice ? Number(invoice.total_amount) : directAmount;
+    
     const dueDate = invoice?.due_date ? new Date(invoice.due_date).getTime() / 1000 : undefined;
     const payerName = invoice
       ? customerName || invoice.client_name || "Customer"
@@ -159,9 +159,26 @@ serve(async (req) => {
     const payerPhone = invoice
       ? customerPhone || invoice.client_phone || undefined
       : vendor?.phone || customerPhone || undefined;
-    const linkDescription = invoice
+
+    let linkDescription = invoice
       ? `Payment for Invoice ${invoice.invoice_number}`
       : description || `Payment request for ${payerName}`;
+
+    // Apply fees for invoices
+    if (invoice) {
+      const baseAmount = linkAmount;
+      const razorpayFeePercent = 2;
+      const platformFeePercent = 1;
+      
+      const razorpayFee = baseAmount * (razorpayFeePercent / 100);
+      const platformFee = baseAmount * (platformFeePercent / 100);
+      
+      linkAmount = baseAmount + razorpayFee + platformFee;
+      
+      linkDescription = `Invoice ${invoice.invoice_number} | Base: ₹${baseAmount.toFixed(2)} | Razorpay (2%): ₹${razorpayFee.toFixed(2)} | Aczen (1%): ₹${platformFee.toFixed(2)} | Total: ₹${linkAmount.toFixed(2)} (UPI options available)`;
+    }
+
+    const amountPaise = Math.round(linkAmount * 100);
 
     const paymentLinkPayload: any = {
       amount: amountPaise,
@@ -239,6 +256,19 @@ serve(async (req) => {
         })
         .eq("id", invoiceId);
     }
+
+    // Save to payment_links table
+    await supabase.from("payment_links").insert({
+      razorpay_link_id: rzpData.id,
+      user_id: userId,
+      vendor_id: vendor?.id || null,
+      vendor_name: payerName,
+      amount: linkAmount,
+      amount_paid: 0,
+      description: linkDescription,
+      url: rzpData.short_url || rzpData.url,
+      status: "created",
+    });
 
     console.log(`[PaymentLink] Created payment link ${rzpData.id} for ${invoice ? `invoice ${invoice.invoice_number}` : `vendor ${payerName}`}`);
 

@@ -39,50 +39,40 @@ export const FeeBreakdown: React.FC<FeeBreakdownProps> = ({ totalAmount, userId,
       setLoading(true);
       setError('');
 
-      console.log('[FeeBreakdown] Fetching fees for:', {
-        totalAmount,
-        userId,
-        url: `${SUPABASE_URL}/functions/v1/calculate-transaction-fees`
-      });
-
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/calculate-transaction-fees`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          invoiceId: 'preview', // Preview mode
-          userId: userId,
-          totalAmount: totalAmount,
-        }),
-      });
-
-      const data = await response.json();
-      console.log('[FeeBreakdown] Response:', data);
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to calculate fees');
-      }
-
+      // Hardcoded fees for invoices as requested: 2% Razorpay, 1% Aczen
+      const gateway_fee = totalAmount * 0.02;
+      const platform_fee = totalAmount * 0.01;
+      const total_fees = gateway_fee + platform_fee;
+      
       const feeData = {
-        platform_fee: data.fees.platform,
-        gateway_fee: data.fees.gateway,
-        other_fees: data.fees.other,
-        total_fees: data.fees.total,
-        vendor_amount: data.vendor_amount,
-        breakdown: data.breakdown || [],
+        platform_fee,
+        gateway_fee,
+        other_fees: 0,
+        total_fees,
+        vendor_amount: totalAmount,
+        breakdown: [
+          {
+            type: 'gateway',
+            name: 'Razorpay Fee (2%)',
+            amount: gateway_fee,
+            calculation: '2% of total amount'
+          },
+          {
+            type: 'platform',
+            name: 'Aczen Platform Fee (1%)',
+            amount: platform_fee,
+            calculation: '1% of total amount'
+          }
+        ],
       };
 
-      console.log('[FeeBreakdown] Calculated fees:', feeData);
       setFees(feeData);
       
       // Notify parent component of total fees
       if (onFeesCalculated) {
-        onFeesCalculated(feeData.total_fees);
+        onFeesCalculated(total_fees);
       }
     } catch (err: any) {
-      console.error('[FeeBreakdown] Error:', err);
       setError(err.message || 'Could not calculate fees');
       if (onFeesCalculated) {
         onFeesCalculated(0);
@@ -186,7 +176,7 @@ export const FeeBreakdown: React.FC<FeeBreakdownProps> = ({ totalAmount, userId,
       </div>
 
       <p className="text-[10px] text-gray-400 text-center">
-        Service charges are added to the invoice amount
+        Service charges are added to the invoice amount. UPI payments are also supported.
       </p>
     </div>
   );

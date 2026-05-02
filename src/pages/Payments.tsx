@@ -14,6 +14,9 @@ import { useVendors } from '@/hooks/useVendors';
 import { supabase } from '@/lib/supabase';
 import { normalizeUserId } from '@/lib/userUtils';
 import { postPaymentLinkJournal } from '@/utils/autoJournalEntry';
+import { Switch } from '@/components/ui/switch';
+import { feeProcessingService } from '@/services/feeProcessingService';
+import type { FeeCalculationResult } from '@/types/fees';
 
 type LinkStatus = 'created' | 'partially_paid' | 'paid' | 'expired' | 'cancelled' | 'unknown';
 
@@ -84,6 +87,58 @@ const Payments: React.FC = () => {
   const [expandedHistory, setExpandedHistory] = useState<Record<string, boolean>>({});
   const journalPostedRef = useRef<Set<string>>(new Set());
 
+  const [feeCalc, setFeeCalc] = useState<FeeCalculationResult | null>(null);
+  const [passFeesToCustomer, setPassFeesToCustomer] = useState(false);
+  const [isCalculatingFees, setIsCalculatingFees] = useState(false);
+
+  useEffect(() => {
+    const parsedAmount = Number(amount);
+    if (!user?.id || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setFeeCalc(null);
+      return;
+    }
+    
+    setIsCalculatingFees(true);
+    feeProcessingService.calculateFeesPreview(normalizeUserId(user.id), parsedAmount)
+      .then(setFeeCalc)
+      .catch(console.error)
+      .finally(() => setIsCalculatingFees(false));
+  }, [amount, user?.id]);
+
+  const finalAmount = useMemo(() => {
+    const parsed = Number(amount) || 0;
+    if (passFeesToCustomer && feeCalc) {
+      return parsed + feeCalc.total_fees;
+    }
+    return parsed;
+  }, [amount, passFeesToCustomer, feeCalc]);
+
+  useEffect(() => {
+    const fetchLinks = async () => {
+      if (!user?.id) return;
+      const { data, error } = await supabase
+        .from('payment_links')
+        .select('*')
+        .eq('user_id', normalizeUserId(user.id))
+        .order('created_at', { ascending: false });
+
+      if (data && !error) {
+        const links: GeneratedLink[] = data.map((d: any) => ({
+          id: d.razorpay_link_id,
+          vendorName: d.vendor_name,
+          amount: d.amount,
+          amountPaid: d.amount_paid,
+          description: d.description,
+          url: d.url,
+          status: d.status,
+          createdAt: d.created_at,
+        }));
+        setGeneratedLinks(links);
+      }
+    };
+    fetchLinks();
+  }, [user?.id]);
+
   const selectedVendor = useMemo(
     () => vendors.find((vendor) => vendor.id === vendorId),
     [vendors, vendorId]
@@ -95,11 +150,15 @@ const Payments: React.FC = () => {
       return;
     }
 
-    const parsedAmount = Number(amount);
+    const parsedAmount = finalAmount;
     if (!selectedVendor || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       toast({ title: 'Validation', description: 'Select a vendor and enter a valid amount.', variant: 'destructive' });
       return;
     }
+
+    const finalDescription = passFeesToCustomer && feeCalc
+      ? `${description || `Payment request for ${selectedVendor.name}`} (Includes ${formatINR(feeCalc.total_fees)} fee)`
+      : description || `Payment request for ${selectedVendor.name}`;
 
     setIsCreating(true);
     try {
@@ -107,7 +166,7 @@ const Payments: React.FC = () => {
         body: {
           userId: normalizeUserId(user.id),
           amount: parsedAmount,
-          description: description || `Payment request for ${selectedVendor.name}`,
+          description: finalDescription,
           vendor: {
             id: selectedVendor.id,
             name: selectedVendor.name,
@@ -130,7 +189,7 @@ const Payments: React.FC = () => {
           id: linkId,
           vendorName: selectedVendor.name,
           amount: parsedAmount,
-          description: description || `Payment request for ${selectedVendor.name}`,
+          description: finalDescription,
           url,
           createdAt: createdTime,
           status: 'created',
@@ -289,6 +348,41 @@ const Payments: React.FC = () => {
                 onChange={(event) => setAmount(event.target.value)}
                 placeholder="0.00"
               />
+              
+              {feeCalc && (
+                <div className="mt-2 text-xs text-muted-foreground bg-muted/50 p-2 rounded-md">
+                  <div className="flex justify-between mb-1">
+                    <span>Base Amount:</span>
+                    <span>{formatINR(Number(amount))}</span>
+                  </div>
+                  <div className="flex justify-between mb-1 text-amber-600/90 dark:text-amber-500/90 font-medium">
+                    <span>Transaction Fee:</span>
+                    <span>{formatINR(feeCalc.total_fees)}</span>
+                  </div>
+                  <div className="flex justify-between border-t pt-1 mt-1 font-semibold text-foreground">
+                    <span>Total {passFeesToCustomer ? 'to bill customer' : 'customer pays'}:</span>
+                    <span>{formatINR(finalAmount)}</span>
+                  </div>
+                  {!passFeesToCustomer && (
+                    <div className="flex justify-between mt-1 text-green-600/90 dark:text-green-500/90">
+                      <span>You receive (approx):</span>
+                      <span>{formatINR(feeCalc.vendor_amount)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              <div className="flex items-center space-x-2 pt-2">
+                <Switch 
+                  id="pass-fees" 
+                  checked={passFeesToCustomer}
+                  onCheckedChange={setPassFeesToCustomer}
+                  disabled={!feeCalc || isCalculatingFees}
+                />
+                <Label htmlFor="pass-fees" className="text-sm font-normal cursor-pointer">
+                  Add transaction fees to customer bill
+                </Label>
+              </div>
             </div>
 
             <div className="space-y-2">

@@ -209,7 +209,7 @@ const PayLink: React.FC = () => {
       orderId,
       checkoutKey,
       businessName: 'Aczen',
-      description: `Invoice ${invoice.invoice_number}`,
+      description: `Inv ${invoice.invoice_number} | Base: ₹${balance.toFixed(2)} | Razorpay (2%): ₹${(balance*0.02).toFixed(2)} | Aczen (1%): ₹${(balance*0.01).toFixed(2)} | Total: ₹${totalWithFees.toFixed(2)} (UPI options available)`,
       invoiceId: invoice.id,
       prefill: {
         name: invoice.client_name,

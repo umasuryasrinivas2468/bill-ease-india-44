@@ -114,6 +114,18 @@ serve(async (req) => {
             amount: typeof d.amount === "number" ? d.amount / 100 : 0,
             short_url: d.short_url,
           };
+          
+          // Update the payment_links table
+          if (d.status) {
+            await supabase
+              .from("payment_links")
+              .update({
+                status: d.status,
+                amount_paid: typeof d.amount_paid === "number" ? d.amount_paid / 100 : 0,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("razorpay_link_id", id);
+          }
         } catch (e: any) {
           results[id] = { status: "unknown", error: e.message };
         }
