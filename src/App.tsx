@@ -74,6 +74,7 @@ import Payables from "./pages/Payables";
 import InvoiceIntelligence from "./pages/InvoiceIntelligence";
 import ExpenseIntelligence from "./pages/ExpenseIntelligence";
 import AczenCFO from "./pages/AczenCFO";
+import PaymentHub from "./pages/PaymentHub";
 
 // License pages
 import StarterPage from "./pages/StarterPage";
@@ -140,127 +141,128 @@ function App() {
       <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
         <AuthProvider>
           <SupabaseAuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                {/* Public license pages without sidebar */}
-                <Route path="/starter.202512a" element={<StarterPage />} />
-                <Route path="/growth.202514b" element={<GrowthPage />} />
-                <Route path="/scale.202516c" element={<ScalePage />} />
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  {/* Public license pages without sidebar */}
+                  <Route path="/starter.202512a" element={<StarterPage />} />
+                  <Route path="/growth.202514b" element={<GrowthPage />} />
+                  <Route path="/scale.202516c" element={<ScalePage />} />
 
-                {/* Unauthorized access page */}
-                <Route path="/unauthorized-access" element={<UnauthorizedAccessPage />} />
-                
-                {/* Accept invite - public route */}
-                <Route path="/accept-invite" element={<AcceptInvite />} />
+                  {/* Unauthorized access page */}
+                  <Route path="/unauthorized-access" element={<UnauthorizedAccessPage />} />
 
-                {/* Public payment page — no sidebar, no auth */}
-                <Route path="/pay" element={<PayLink />} />
+                  {/* Accept invite - public route */}
+                  <Route path="/accept-invite" element={<AcceptInvite />} />
 
-                {/* Razorpay OAuth callback — no sidebar */}
-                <Route path="/razorpay-callback" element={<RazorpayCallback />} />
+                  {/* Public payment page — no sidebar, no auth */}
+                  <Route path="/pay" element={<PayLink />} />
 
-                {/* Public auth pages — no sidebar */}
-                <Route path="/signup/*" element={<Signup />} />
+                  {/* Razorpay OAuth callback — no sidebar */}
+                  <Route path="/razorpay-callback" element={<RazorpayCallback />} />
 
-                {/* Routes with AppLayout (sidebar) */}
-                <Route path="/*" element={
-                  <AppLayout>
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/login" element={<Login />} />
-                      <Route
-                        path="/sso-callback"
-                        element={
-                          <AuthenticateWithRedirectCallback
-                            signInFallbackRedirectUrl="/dashboard"
-                            signUpFallbackRedirectUrl="/onboarding"
-                          />
-                        }
-                      />
-                      <Route path="/clerk-login" element={<ClerkLogin />} />
+                  {/* Public auth pages — no sidebar */}
+                  <Route path="/signup/*" element={<Signup />} />
 
-                      {/* Protected Routes */}
-                      <Route element={<ProtectedRoute />}>
-                        <Route path="/dashboard" element={<Dashboard />} />
-                        <Route path="/invoices" element={<Invoices />} />
-                        <Route path="/invoices/intelligence" element={<InvoiceIntelligence />} />
-                        <Route path="/expenses/intelligence" element={<ExpenseIntelligence />} />
-                        <Route path="/aczen-cfo" element={<AczenCFO />} />
-                        <Route path="/payment-received" element={<PaymentReceived />} />
-                        <Route path="/working-capital" element={<WorkingCapital />} />
-                        <Route path="/create-invoice" element={<CreateInvoice />} />
-                        <Route path="/clients" element={<Clients />} />
-                        <Route path="/reports" element={<Reports />} />
-                        <Route path="/compliance" element={<ComplianceCalendar />} />
-                        <Route path="/compliance/mca" element={<ComplianceMCA />} />
-                        <Route path="/loans" element={<PlanRestrictedLoans />} />
-                        <Route path="/reports/cash-flow-forecasting" element={<PlanRestrictedCashFlowForecasting />} />
-                        <Route path="/reports/ai-tax-advisor" element={<PlanRestrictedAITaxAdvisor />} />
-                        <Route path="/reports/gst3-filing" element={<GST3Filing />} />
-                        <Route path="/settings" element={<Settings />} />
-                        <Route path="/onboarding" element={<Onboarding />} />
-                        <Route path="/time-tracking" element={<TimeTracking />} />
-                        <Route path="/space/projects" element={<Projects />} />
-                        <Route path="/space/timesheet" element={<TimeTracking />} />
-                        <Route path="/inventory" element={<Inventory />} />
-                        <Route path="/inventory/insights" element={<InventoryInsights />} />
-                        <Route path="/inventory/delivery-challans" element={<DeliveryChallans />} />
-                        <Route path="/inventory/sales-orders" element={<PlanRestrictedSalesOrders />} />
-                        <Route path="/inventory/purchase-orders" element={<PlanRestrictedPurchaseOrders />} />
-                        <Route path="/purchase-bills" element={<PurchaseBills />} />
-                        <Route path="/banking" element={<Banking />} />
-                        <Route path="/banking/reconciliation" element={<BankReconciliation />} />
-                        <Route path="/banking/success" element={<BankingSuccess />} />
-                        <Route path="/payroll" element={<Payroll />} />
-                        <Route path="/upi-collections" element={<UPICollections />} />
-                        <Route path="/marketplace" element={<Marketplace />} />
-                        <Route path="/apps" element={<Apps />} />
-                        <Route path="/support" element={<Support />} />
-                        <Route path="/notifications" element={<Notifications />} />
-                        <Route path="/cash-memo" element={<CashMemo />} />
-                        <Route path="/coming-soon" element={<ComingSoon />} />
-                        <Route path="/ca" element={<CA />} />
-                        <Route path="/ca/itr6" element={<ITR6Filing />} />
-                        <Route path="/ca/recurring-invoices" element={<RecurringInvoices />} />
-                        <Route path="/payout" element={<Payout />} />
-                        <Route path="/quotations" element={<QuotationsInfo />} />
-                        <Route path="/quotations/create" element={<Quotations />} />
-                        <Route path="/branding" element={<Branding />} />
-                        <Route path="/payments" element={<Payments />} />
-                        <Route path="/vendors" element={<Vendors />} />
-                        <Route path="/vendor-advances" element={<VendorAdvances />} />
-                        <Route path="/vendor-bill-payments" element={<VendorBillPayments />} />
-                        <Route path="/receivables" element={<Receivables />} />
-                        <Route path="/payables" element={<Payables />} />
+                  {/* Routes with AppLayout (sidebar) */}
+                  <Route path="/*" element={
+                    <AppLayout>
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/login" element={<Login />} />
+                        <Route
+                          path="/sso-callback"
+                          element={
+                            <AuthenticateWithRedirectCallback
+                              signInFallbackRedirectUrl="/dashboard"
+                              signUpFallbackRedirectUrl="/onboarding"
+                            />
+                          }
+                        />
+                        <Route path="/clerk-login" element={<ClerkLogin />} />
 
-                        {/* Plan Test Route - For development/testing */}
-                        <Route path="/plan-test" element={<PlanTestPage />} />
+                        {/* Protected Routes */}
+                        <Route element={<ProtectedRoute />}>
+                          <Route path="/dashboard" element={<Dashboard />} />
+                          <Route path="/invoices" element={<Invoices />} />
+                          <Route path="/invoices/intelligence" element={<InvoiceIntelligence />} />
+                          <Route path="/expenses/intelligence" element={<ExpenseIntelligence />} />
+                          <Route path="/aczen-cfo" element={<AczenCFO />} />
+                          <Route path="/payment-received" element={<PaymentReceived />} />
+                          <Route path="/working-capital" element={<WorkingCapital />} />
+                          <Route path="/create-invoice" element={<CreateInvoice />} />
+                          <Route path="/clients" element={<Clients />} />
+                          <Route path="/reports" element={<Reports />} />
+                          <Route path="/compliance" element={<ComplianceCalendar />} />
+                          <Route path="/compliance/mca" element={<ComplianceMCA />} />
+                          <Route path="/loans" element={<PlanRestrictedLoans />} />
+                          <Route path="/reports/cash-flow-forecasting" element={<PlanRestrictedCashFlowForecasting />} />
+                          <Route path="/reports/ai-tax-advisor" element={<PlanRestrictedAITaxAdvisor />} />
+                          <Route path="/reports/gst3-filing" element={<GST3Filing />} />
+                          <Route path="/settings" element={<Settings />} />
+                          <Route path="/onboarding" element={<Onboarding />} />
+                          <Route path="/time-tracking" element={<TimeTracking />} />
+                          <Route path="/space/projects" element={<Projects />} />
+                          <Route path="/space/timesheet" element={<TimeTracking />} />
+                          <Route path="/inventory" element={<Inventory />} />
+                          <Route path="/inventory/insights" element={<InventoryInsights />} />
+                          <Route path="/inventory/delivery-challans" element={<DeliveryChallans />} />
+                          <Route path="/inventory/sales-orders" element={<PlanRestrictedSalesOrders />} />
+                          <Route path="/inventory/purchase-orders" element={<PlanRestrictedPurchaseOrders />} />
+                          <Route path="/purchase-bills" element={<PurchaseBills />} />
+                          <Route path="/banking" element={<Banking />} />
+                          <Route path="/banking/reconciliation" element={<BankReconciliation />} />
+                          <Route path="/banking/success" element={<BankingSuccess />} />
+                          <Route path="/payroll" element={<Payroll />} />
+                          <Route path="/upi-collections" element={<UPICollections />} />
+                          <Route path="/marketplace" element={<Marketplace />} />
+                          <Route path="/apps" element={<Apps />} />
+                          <Route path="/support" element={<Support />} />
+                          <Route path="/notifications" element={<Notifications />} />
+                          <Route path="/cash-memo" element={<CashMemo />} />
+                          <Route path="/coming-soon" element={<ComingSoon />} />
+                          <Route path="/ca" element={<CA />} />
+                          <Route path="/ca/itr6" element={<ITR6Filing />} />
+                          <Route path="/ca/recurring-invoices" element={<RecurringInvoices />} />
+                          <Route path="/payout" element={<Payout />} />
+                          <Route path="/quotations" element={<QuotationsInfo />} />
+                          <Route path="/quotations/create" element={<Quotations />} />
+                          <Route path="/branding" element={<Branding />} />
+                          <Route path="/payments" element={<Payments />} />
+                          <Route path="/payment-hub" element={<PaymentHub />} />
+                          <Route path="/vendors" element={<Vendors />} />
+                          <Route path="/vendor-advances" element={<VendorAdvances />} />
+                          <Route path="/vendor-bill-payments" element={<VendorBillPayments />} />
+                          <Route path="/receivables" element={<Receivables />} />
+                          <Route path="/payables" element={<Payables />} />
 
-                        {/* Accounting Routes */}
-                        <Route path="/accounting/chart-of-accounts" element={<ChartOfAccounts />} />
-                        <Route path="/accounting/ledgers" element={<Ledgers />} />
-                        <Route path="/accounting/trial-balance" element={<TrialBalance />} />
-                        <Route path="/accounting/profit-loss" element={<ProfitLoss />} />
-                        <Route path="/accounting/project-profit-loss" element={<ProjectProfitLoss />} />
-                        <Route path="/accounting/manual-journals" element={<ManualJournals />} />
-                        <Route path="/accounting/financial-statements" element={<FinancialStatements />} />
-                        <Route path="/expenses" element={<Expenses />} />
-                        <Route path="/compliance/gst" element={<GSTCompliance />} />
-                        <Route path="/gst-compliance" element={<GSTCompliance />} />
-                        <Route path="/compliance/gst-legacy" element={<ComplianceGST />} />
-                        <Route path="/reports/tds" element={<TDS />} />
-                      </Route>
+                          {/* Plan Test Route - For development/testing */}
+                          <Route path="/plan-test" element={<PlanTestPage />} />
 
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </AppLayout>
-                } />
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
+                          {/* Accounting Routes */}
+                          <Route path="/accounting/chart-of-accounts" element={<ChartOfAccounts />} />
+                          <Route path="/accounting/ledgers" element={<Ledgers />} />
+                          <Route path="/accounting/trial-balance" element={<TrialBalance />} />
+                          <Route path="/accounting/profit-loss" element={<ProfitLoss />} />
+                          <Route path="/accounting/project-profit-loss" element={<ProjectProfitLoss />} />
+                          <Route path="/accounting/manual-journals" element={<ManualJournals />} />
+                          <Route path="/accounting/financial-statements" element={<FinancialStatements />} />
+                          <Route path="/expenses" element={<Expenses />} />
+                          <Route path="/compliance/gst" element={<GSTCompliance />} />
+                          <Route path="/gst-compliance" element={<GSTCompliance />} />
+                          <Route path="/compliance/gst-legacy" element={<ComplianceGST />} />
+                          <Route path="/reports/tds" element={<TDS />} />
+                        </Route>
+
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </AppLayout>
+                  } />
+                </Routes>
+              </BrowserRouter>
+            </TooltipProvider>
           </SupabaseAuthProvider>
         </AuthProvider>
       </ThemeProvider>

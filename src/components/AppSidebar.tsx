@@ -130,6 +130,7 @@ const caToolsMenuItems = [
 
 const standaloneMenuItems = [
   { title: "Dashboard", url: "/dashboard", icon: BarChart3 },
+  { title: "Payment Hub", url: "/payment-hub", icon: IndianRupee },
 ];
 
 export function AppSidebar() {
@@ -254,7 +255,7 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/quotations','/clients','/invoices','/payments','/payment-received','/notifications','/cash-memo','/coming-soon','/inventory/sales-orders','/inventory/delivery-challans','/ca/recurring-invoices'])}`}
+                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/quotations', '/clients', '/invoices', '/payments', '/payment-received', '/notifications', '/cash-memo', '/coming-soon', '/inventory/sales-orders', '/inventory/delivery-challans', '/ca/recurring-invoices'])}`}
                         title="Sales"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsSalesOpen(!isSalesOpen)}>
@@ -304,7 +305,7 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/vendors','/expenses','/purchase-bills','/vendor-advances','/vendor-bill-payments','/inventory/purchase-orders'])}`}
+                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/vendors', '/expenses', '/purchase-bills', '/vendor-advances', '/vendor-bill-payments', '/inventory/purchase-orders'])}`}
                         title="Purchases"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsPurchasesOpen(!isPurchasesOpen)}>
@@ -432,7 +433,7 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/compliance','/compliance/gst','/compliance/mca','/reports/tds','/ca/itr6'])}`}
+                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/compliance', '/compliance/gst', '/compliance/mca', '/reports/tds', '/ca/itr6'])}`}
                         title="Compliance"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsComplianceOpen(!isComplianceOpen)}>
@@ -471,7 +472,7 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/ca','/accounting'])}`}
+                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/ca', '/accounting'])}`}
                         title="CA"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsCAToolsOpen(!isCAToolsOpen)}>
@@ -510,7 +511,7 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/accounting/financial-statements','/accounting/profit-loss','/accounting/project-profit-loss'])}`}
+                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/accounting/financial-statements', '/accounting/profit-loss', '/accounting/project-profit-loss'])}`}
                         title="Reports"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsReportsOpen(!isReportsOpen)}>

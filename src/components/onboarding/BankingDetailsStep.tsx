@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { BankDetails } from '@/hooks/useOnboardingData';
 import { validateAccountNumber, validateIFSCCode } from '@/utils/onboardingValidation';
 import { useToast } from '@/hooks/use-toast';
+import KYCVerification from '@/components/KYCVerification';
 
 interface BankingDetailsStepProps {
   bankDetails: BankDetails;
@@ -25,7 +26,7 @@ export const BankingDetailsStep: React.FC<BankingDetailsStepProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Basic validation
     if (!bankDetails.accountHolderName?.trim()) {
       toast({
@@ -92,6 +93,9 @@ export const BankingDetailsStep: React.FC<BankingDetailsStepProps> = ({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* KYC Verification */}
+          <KYCVerification compact />
+
           <div>
             <Label htmlFor="accountHolderName">Account Holder Name *</Label>
             <Input

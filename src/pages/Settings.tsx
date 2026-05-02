@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Save, Building, CreditCard, Users, Banknote, Sparkles, Loader2 } from 'lucide-react';
+import { Save, Building, CreditCard, Users, Banknote, Sparkles, Loader2, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import SimpleBrandingManager from '@/components/SimpleBrandingManager';
@@ -16,11 +16,12 @@ import CAClientManager from '@/components/CAClientManager';
 import Support from './Support';
 import PaymentSetupCard from '@/components/PaymentSetupCard';
 import { lookupGstWithGemini } from '@/utils/geminiGstLookup';
+import KYCVerification from '@/components/KYCVerification';
 
 const Settings = () => {
   const { user } = useUser();
   const { toast } = useToast();
-  
+
   const [businessInfo, setBusinessInfo] = useState({
     businessName: '',
     ownerName: '',
@@ -56,11 +57,11 @@ const Settings = () => {
   useEffect(() => {
     if (user?.unsafeMetadata) {
       const metadata = user.unsafeMetadata as any;
-      
+
       if (metadata.businessInfo) {
         setBusinessInfo(metadata.businessInfo);
       }
-      
+
       if (metadata.bankDetails) {
         setBankDetails(metadata.bankDetails);
       }
@@ -131,7 +132,7 @@ const Settings = () => {
           businessInfo,
         }
       });
-      
+
       toast({
         title: "Business Information Updated",
         description: "Your business information has been saved successfully.",
@@ -171,7 +172,7 @@ const Settings = () => {
           bankDetails,
         }
       });
-      
+
       toast({
         title: "Bank Details Updated",
         description: "Your bank details have been saved successfully.",
@@ -201,7 +202,7 @@ const Settings = () => {
       </div>
 
       <Tabs defaultValue="business" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-7">
+        <TabsList className="grid w-full grid-cols-4 md:grid-cols-8">
           <TabsTrigger value="business">Business</TabsTrigger>
           <TabsTrigger value="banking">Banking</TabsTrigger>
           <TabsTrigger value="payments" className="gap-1">
@@ -214,6 +215,10 @@ const Settings = () => {
           </TabsTrigger>
           <TabsTrigger value="ca-clients">CA Clients</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
+          <TabsTrigger value="kyc" className="gap-1">
+            <ShieldCheck className="h-4 w-4" />
+            KYC
+          </TabsTrigger>
           <TabsTrigger value="support">Support</TabsTrigger>
         </TabsList>
 
@@ -235,7 +240,7 @@ const Settings = () => {
                   <Input
                     id="businessName"
                     value={businessInfo.businessName}
-                    onChange={(e) => setBusinessInfo({...businessInfo, businessName: e.target.value})}
+                    onChange={(e) => setBusinessInfo({ ...businessInfo, businessName: e.target.value })}
                     placeholder={aiSuggestions.businessName || "Enter business name"}
                   />
                   {aiSuggestions.businessName && !businessInfo.businessName && (
@@ -253,7 +258,7 @@ const Settings = () => {
                   <Input
                     id="ownerName"
                     value={businessInfo.ownerName}
-                    onChange={(e) => setBusinessInfo({...businessInfo, ownerName: e.target.value})}
+                    onChange={(e) => setBusinessInfo({ ...businessInfo, ownerName: e.target.value })}
                     placeholder="Enter owner name"
                   />
                 </div>
@@ -263,7 +268,7 @@ const Settings = () => {
                     id="email"
                     type="email"
                     value={businessInfo.email}
-                    onChange={(e) => setBusinessInfo({...businessInfo, email: e.target.value})}
+                    onChange={(e) => setBusinessInfo({ ...businessInfo, email: e.target.value })}
                     placeholder="business@example.com"
                   />
                 </div>
@@ -272,7 +277,7 @@ const Settings = () => {
                   <Input
                     id="phone"
                     value={businessInfo.phone}
-                    onChange={(e) => setBusinessInfo({...businessInfo, phone: e.target.value})}
+                    onChange={(e) => setBusinessInfo({ ...businessInfo, phone: e.target.value })}
                     placeholder="+91 98765 43210"
                   />
                 </div>
@@ -282,7 +287,7 @@ const Settings = () => {
                     <Input
                       id="gstNumber"
                       value={businessInfo.gstNumber}
-                      onChange={(e) => setBusinessInfo({...businessInfo, gstNumber: e.target.value.toUpperCase()})}
+                      onChange={(e) => setBusinessInfo({ ...businessInfo, gstNumber: e.target.value.toUpperCase() })}
                       placeholder="22AAAAA0000A1Z5"
                     />
                     <Button
@@ -315,7 +320,7 @@ const Settings = () => {
                   <Input
                     id="pincode"
                     value={businessInfo.pincode}
-                    onChange={(e) => setBusinessInfo({...businessInfo, pincode: e.target.value})}
+                    onChange={(e) => setBusinessInfo({ ...businessInfo, pincode: e.target.value })}
                     placeholder={aiSuggestions.pincode || "400001"}
                   />
                   {aiSuggestions.pincode && !businessInfo.pincode && (
@@ -335,7 +340,7 @@ const Settings = () => {
                 <Textarea
                   id="address"
                   value={businessInfo.address}
-                  onChange={(e) => setBusinessInfo({...businessInfo, address: e.target.value})}
+                  onChange={(e) => setBusinessInfo({ ...businessInfo, address: e.target.value })}
                   placeholder={aiSuggestions.address || "Enter complete business address"}
                   rows={3}
                 />
@@ -356,7 +361,7 @@ const Settings = () => {
                   <Input
                     id="city"
                     value={businessInfo.city}
-                    onChange={(e) => setBusinessInfo({...businessInfo, city: e.target.value})}
+                    onChange={(e) => setBusinessInfo({ ...businessInfo, city: e.target.value })}
                     placeholder={aiSuggestions.city || "Mumbai"}
                   />
                   {aiSuggestions.city && !businessInfo.city && (
@@ -374,7 +379,7 @@ const Settings = () => {
                   <Input
                     id="state"
                     value={businessInfo.state}
-                    onChange={(e) => setBusinessInfo({...businessInfo, state: e.target.value})}
+                    onChange={(e) => setBusinessInfo({ ...businessInfo, state: e.target.value })}
                     placeholder={aiSuggestions.state || "Maharashtra"}
                   />
                   {aiSuggestions.state && !businessInfo.state && (
@@ -388,7 +393,7 @@ const Settings = () => {
                   )}
                 </div>
               </div>
-              
+
               <Button onClick={handleSaveBusinessInfo} className="w-full sm:w-auto">
                 <Save className="h-4 w-4 mr-2" />
                 Save Business Information
@@ -415,7 +420,7 @@ const Settings = () => {
                   <Input
                     id="accountNumber"
                     value={bankDetails.accountNumber}
-                    onChange={(e) => setBankDetails({...bankDetails, accountNumber: e.target.value})}
+                    onChange={(e) => setBankDetails({ ...bankDetails, accountNumber: e.target.value })}
                     placeholder="1234567890123456"
                     maxLength={18}
                     pattern="\d*"
@@ -429,7 +434,7 @@ const Settings = () => {
                   <Input
                     id="ifscCode"
                     value={bankDetails.ifscCode}
-                    onChange={(e) => setBankDetails({...bankDetails, ifscCode: e.target.value.toUpperCase()})}
+                    onChange={(e) => setBankDetails({ ...bankDetails, ifscCode: e.target.value.toUpperCase() })}
                     placeholder="SBIN0001234"
                     maxLength={11}
                     style={{ textTransform: 'uppercase' }}
@@ -443,7 +448,7 @@ const Settings = () => {
                   <Input
                     id="bankName"
                     value={bankDetails.bankName}
-                    onChange={(e) => setBankDetails({...bankDetails, bankName: e.target.value})}
+                    onChange={(e) => setBankDetails({ ...bankDetails, bankName: e.target.value })}
                     placeholder="State Bank of India"
                   />
                 </div>
@@ -452,7 +457,7 @@ const Settings = () => {
                   <Input
                     id="branchName"
                     value={bankDetails.branchName}
-                    onChange={(e) => setBankDetails({...bankDetails, branchName: e.target.value})}
+                    onChange={(e) => setBankDetails({ ...bankDetails, branchName: e.target.value })}
                     placeholder="Mumbai Main Branch"
                   />
                 </div>
@@ -461,12 +466,12 @@ const Settings = () => {
                   <Input
                     id="accountHolderName"
                     value={bankDetails.accountHolderName}
-                    onChange={(e) => setBankDetails({...bankDetails, accountHolderName: e.target.value})}
+                    onChange={(e) => setBankDetails({ ...bankDetails, accountHolderName: e.target.value })}
                     placeholder="As per bank records"
                   />
                 </div>
               </div>
-              
+
               <Button onClick={handleSaveBankDetails} className="w-full sm:w-auto">
                 <Save className="h-4 w-4 mr-2" />
                 Save Bank Details
@@ -489,6 +494,9 @@ const Settings = () => {
 
         <TabsContent value="branding">
           <SimpleBrandingManager />
+        </TabsContent>
+        <TabsContent value="kyc">
+          <KYCVerification />
         </TabsContent>
         <TabsContent value="support">
           <Support />

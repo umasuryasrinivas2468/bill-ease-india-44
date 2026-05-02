@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import KYCVerification from '@/components/KYCVerification';
 
 const BANKING_URL = 'https://onemoney-link.vercel.app/';
 
@@ -16,13 +17,18 @@ const Banking = () => {
         </div>
       </div>
 
-      <div className="absolute right-4 top-4 z-20">
+      <div className="absolute right-4 top-4 z-20 flex gap-2">
         <Button asChild variant="outline" className="bg-background/95 backdrop-blur">
           <a href={BANKING_URL} target="_blank" rel="noreferrer">
             Open in New Tab
             <ExternalLink className="ml-2 h-4 w-4" />
           </a>
         </Button>
+      </div>
+
+      {/* KYC Verification Banner - top of page */}
+      <div className="absolute left-4 right-4 top-16 z-20 md:left-auto md:right-4 md:max-w-md">
+        <KYCVerification compact className="bg-background/95 backdrop-blur-sm shadow-lg" />
       </div>
 
       {!iframeLoaded && (

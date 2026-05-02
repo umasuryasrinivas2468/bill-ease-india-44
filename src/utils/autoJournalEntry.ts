@@ -417,6 +417,33 @@ export const postCustomerAdvanceJournal = async (
 };
 
 /**
+ * Customer Advance Adjustment against Invoice → Debit Customer Advances (Liability), Credit Accounts Receivable
+ */
+export const postCustomerAdvanceAdjustmentJournal = async (
+  userId: string,
+  adjustment: {
+    customer_name: string;
+    invoice_number: string;
+    date: string;
+    amount: number;
+  }
+) => {
+  const uid = normalizeUserId(userId);
+  const advanceLiabilityId = await getOrCreateAccount(uid, 'Customer Advances', 'Liability');
+  const arId = await getOrCreateAccount(uid, 'Accounts Receivable', 'Asset');
+
+  return createJournal(
+    uid,
+    adjustment.date,
+    `Customer advance adjustment → ${adjustment.invoice_number} – ${adjustment.customer_name}`,
+    [
+      { account_id: advanceLiabilityId, debit: adjustment.amount, credit: 0, line_narration: `Adjust advance – ${adjustment.customer_name}` },
+      { account_id: arId, debit: 0, credit: adjustment.amount, line_narration: `Clear receivable – ${adjustment.invoice_number}` },
+    ]
+  );
+};
+
+/**
  * Convert accepted Quotation → Sales Order data shape
  */
 export const quotationToSalesOrderData = (
@@ -480,3 +507,4 @@ export const salesOrderToInvoiceData = (
   status: 'pending',
   notes: `Converted from Sales Order ${order.order_number}`,
 });
+
