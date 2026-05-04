@@ -762,9 +762,71 @@ const AICommandBar: React.FC = () => {
     }
 
     if (!invoiceNumber) {
+      // If no invoice is specified, check if it's a direct payment request (has amount)
+      const amount = tryExtractAmount(prompt);
+      if (amount > 0) {
+        let entityName = tryExtractName(prompt, '', 'client') || tryExtractName(prompt, '', 'vendor');
+        if (!entityName) {
+           const match = prompt.match(/(?:for|to|from)\s+([A-Za-z0-9\s]+?)(?:\s+(?:for|amount|rs|inr|₹|with|at)\b|$)/i);
+           entityName = match ? match[1].trim() : 'Customer/Vendor';
+        }
+
+        let contactEmail = tryExtractEmail(prompt);
+        let contactPhone = tryExtractPhone(prompt);
+
+        // Try to resolve client or vendor to pre-fill email/phone
+        const clientMatches = await findClient(user.id, entityName);
+        if (clientMatches.length > 0) {
+           entityName = clientMatches[0].name;
+           contactEmail = contactEmail || clientMatches[0].email;
+           contactPhone = contactPhone || clientMatches[0].phone;
+        } else {
+           const vendorMatches = await findVendor(user.id, entityName);
+           if (vendorMatches.length > 0) {
+              entityName = vendorMatches[0].name;
+              contactEmail = contactEmail || vendorMatches[0].email;
+              contactPhone = contactPhone || vendorMatches[0].phone;
+           }
+        }
+
+        try {
+          const { data: linkData, error: linkError } = await supabase.functions.invoke('create-payment-link', {
+            body: {
+              userId: user.id,
+              amount: amount,
+              customerName: entityName,
+              customerEmail: contactEmail,
+              customerPhone: contactPhone,
+              description: tryExtractDescription(prompt) || `Payment request for ${entityName}`,
+            },
+          });
+
+          if (linkError) throw linkError;
+
+          if (linkData?.success) {
+            invalidateAll();
+            return {
+              recordType: 'payment_link',
+              message: `**Direct Payment link created**\n- For: ${entityName}\n- Amount: ₹${Number(linkData.amount).toLocaleString('en-IN')}\n- Link: ${linkData.paymentLink}\n\n✅ Share this link to collect payment.`,
+            };
+          } else {
+            throw new Error(linkData?.error || 'Payment link creation failed');
+          }
+        } catch (err: any) {
+          const errorMsg = err.message || 'Failed to create payment link';
+          if (errorMsg.includes('not activated') || errorMsg.includes('reconnect')) {
+            return {
+              recordType: 'answer',
+              message: `**Payment link creation failed**\n${errorMsg}\n\nGo to Settings → Payments to connect Razorpay.`,
+            };
+          }
+          throw err;
+        }
+      }
+
       return {
         recordType: 'answer',
-        message: '**Please specify an invoice.**\nExamples:\n- "Create payment link for INV-2024-0001"\n- "Send payment link for latest invoice"\n- "Generate payment link for last invoice"',
+        message: '**Please specify an invoice or amount.**\nExamples:\n- "Create payment link for INV-2024-0001"\n- "Send payment link for latest invoice"\n- "Generate payment link for ABC Corp for ₹5000"',
       };
     }
 

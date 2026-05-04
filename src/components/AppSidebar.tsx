@@ -33,6 +33,9 @@ import {
   IndianRupee,
   Brain,
   Filter,
+  Headset,
+  Send,
+  UserRound,
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import { useAuthorization } from "@/hooks/useAuthorization";
@@ -62,7 +65,6 @@ const salesMenuItems = [
   { title: "Sales Orders", url: "/inventory/sales-orders", icon: ShoppingCart, feature: "salesOrders" as const },
   { title: "Invoices", url: "/invoices", icon: FileText },
   { title: "Invoice Intelligence", url: "/invoices/intelligence", icon: Filter },
-  { title: "Payment Links", url: "/payments", icon: Wallet },
   { title: "Payment Received", url: "/payment-received", icon: IndianRupee },
   { title: "Working Capital", url: "/working-capital", icon: Banknote },
   { title: "Cash Memo", url: "/cash-memo", icon: Wallet },
@@ -91,6 +93,10 @@ const inventorySubItems = [
 
 const bankingSubItems = [
   { title: "Banking", url: "/banking", icon: Banknote },
+  { title: "Beneficiaries", url: "/banking/beneficiaries", icon: UserRound },
+  { title: "Send Money", url: "/banking/send-money", icon: Send },
+  { title: "Payment Hub", url: "/payment-hub", icon: IndianRupee },
+  { title: "Payment Links", url: "/payments", icon: Wallet },
   { title: "Reconciliation", url: "/banking/reconciliation", icon: GitMerge },
 ];
 
@@ -130,7 +136,7 @@ const caToolsMenuItems = [
 
 const standaloneMenuItems = [
   { title: "Dashboard", url: "/dashboard", icon: BarChart3 },
-  { title: "Payment Hub", url: "/payment-hub", icon: IndianRupee },
+  { title: "Support", url: "/support", icon: Headset },
 ];
 
 export function AppSidebar() {
@@ -165,6 +171,7 @@ export function AppSidebar() {
 
   const isActive = (path: string) => {
     if (path === "/dashboard" && (currentPath === "/" || currentPath === "/dashboard")) return true;
+    if (path === "/banking") return currentPath === "/banking";
     if (path !== "/dashboard" && currentPath.startsWith(path)) return true;
     return false;
   };
@@ -255,7 +262,7 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/quotations', '/clients', '/invoices', '/payments', '/payment-received', '/notifications', '/cash-memo', '/coming-soon', '/inventory/sales-orders', '/inventory/delivery-challans', '/ca/recurring-invoices'])}`}
+                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/quotations', '/clients', '/invoices', '/payment-received', '/notifications', '/cash-memo', '/coming-soon', '/inventory/sales-orders', '/inventory/delivery-challans', '/ca/recurring-invoices'])}`}
                         title="Sales"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsSalesOpen(!isSalesOpen)}>
@@ -394,7 +401,7 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/banking'])}`}
+                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/banking', '/payments', '/payment-hub'])}`}
                         title="Banking"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsBankingOpen(!isBankingOpen)}>

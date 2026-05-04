@@ -30,6 +30,8 @@ import SalesOrders from "./pages/SalesOrders";
 import PurchaseOrders from "./pages/PurchaseOrders";
 import PurchaseBills from "./pages/PurchaseBills";
 import Banking from "./pages/Banking";
+import BankingBeneficiaries from "./pages/BankingBeneficiaries";
+import BankingSendMoney from "./pages/BankingSendMoney";
 import BankReconciliation from "./pages/BankReconciliation";
 import BankingSuccess from "./pages/BankingSuccess";
 import UPICollections from "./pages/UPICollections";
@@ -213,6 +215,8 @@ function App() {
                           <Route path="/inventory/purchase-orders" element={<PlanRestrictedPurchaseOrders />} />
                           <Route path="/purchase-bills" element={<PurchaseBills />} />
                           <Route path="/banking" element={<Banking />} />
+                          <Route path="/banking/beneficiaries" element={<BankingBeneficiaries />} />
+                          <Route path="/banking/send-money" element={<BankingSendMoney />} />
                           <Route path="/banking/reconciliation" element={<BankReconciliation />} />
                           <Route path="/banking/success" element={<BankingSuccess />} />
                           <Route path="/payroll" element={<Payroll />} />
