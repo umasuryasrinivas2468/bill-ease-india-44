@@ -5,7 +5,48 @@ import { supabase } from '@/lib/supabase';
 import { toast } from '@/hooks/use-toast';
 import { normalizeUserId, isValidUserId } from '@/lib/userUtils';
 import { postVendorPaymentJournal, postAdvanceAdjustmentJournal } from '@/utils/autoJournalEntry';
+import { recordApAudit } from '@/hooks/useApAuditLog';
 import type { VendorBillPayment, AdvanceAdjustment } from '@/types/vendorPayments';
+
+/** Persist a bill ↔ payment/advance allocation so reports can drill down. */
+async function recordPaymentAllocation(input: {
+  user_id: string;
+  bill_id: string;
+  source_type: 'payment' | 'advance';
+  source_id: string;
+  vendor_id: string;
+  amount: number;
+  allocation_date: string;
+  notes?: string;
+}) {
+  const { error } = await supabase.from('payment_allocations').insert({
+    user_id: input.user_id,
+    bill_id: input.bill_id,
+    source_type: input.source_type,
+    source_id: input.source_id,
+    vendor_id: input.vendor_id,
+    amount: input.amount,
+    allocation_date: input.allocation_date,
+    notes: input.notes || null,
+  });
+  if (error) console.warn('[payment_allocations] insert failed:', error.message);
+}
+
+/** Throws a friendly error when the supplied date sits in a locked accounting period. */
+async function assertPeriodOpen(userId: string, date: string) {
+  const { data } = await supabase
+    .from('accounting_periods')
+    .select('id, label')
+    .eq('user_id', userId)
+    .eq('status', 'locked')
+    .lte('period_start', date)
+    .gte('period_end', date)
+    .limit(1)
+    .maybeSingle();
+  if (data) {
+    throw new Error(`The accounting period "${data.label || ''}" covering ${date} is locked. Unlock it before posting.`);
+  }
+}
 
 export const useVendorBillPayments = (billId?: string) => {
   const { user } = useUser();
@@ -79,6 +120,8 @@ export const useRecordBillPayment = () => {
       if (!user || !isValidUserId(user.id)) throw new Error('User not authenticated');
       const uid = normalizeUserId(user.id);
 
+      await assertPeriodOpen(uid, input.payment_date);
+
       // Post auto journal: Payables (Dr) → Bank/Cash (Cr)
       const journal = await postVendorPaymentJournal(uid, {
         bill_number: input.bill_number,
@@ -111,6 +154,27 @@ export const useRecordBillPayment = () => {
         .single();
 
       if (error) throw error;
+
+      // Persist allocation for vendor ledger / reports
+      await recordPaymentAllocation({
+        user_id: uid,
+        bill_id: input.bill_id,
+        source_type: 'payment',
+        source_id: payment.id,
+        vendor_id: input.vendor_id,
+        amount: input.amount,
+        allocation_date: input.payment_date,
+        notes: input.notes,
+      });
+
+      await recordApAudit(uid, { id: user.id, email: user.primaryEmailAddress?.emailAddress }, {
+        entity_type: 'payment',
+        entity_id: payment.id,
+        action: 'create',
+        amount: input.amount,
+        reference: input.bill_number,
+        notes: `Payment ${input.payment_mode} for bill ${input.bill_number}`,
+      });
 
       // Update bill paid_amount and status
       await updateBillPaymentStatus(uid, input.bill_id, input.amount);
@@ -148,6 +212,8 @@ export const useAdjustAdvance = () => {
     }) => {
       if (!user || !isValidUserId(user.id)) throw new Error('User not authenticated');
       const uid = normalizeUserId(user.id);
+
+      await assertPeriodOpen(uid, input.adjustment_date);
 
       // Post auto journal: Payables (Dr) → Vendor Advance (Cr)
       const journal = await postAdvanceAdjustmentJournal(uid, {
@@ -218,6 +284,26 @@ export const useAdjustAdvance = () => {
           })
           .eq('id', input.advance_id);
       }
+
+      // Persist allocation (source_type = advance)
+      await recordPaymentAllocation({
+        user_id: uid,
+        bill_id: input.bill_id,
+        source_type: 'advance',
+        source_id: input.advance_id,
+        vendor_id: input.vendor_id,
+        amount: input.amount,
+        allocation_date: input.adjustment_date,
+        notes: `Adv ${input.advance_number} → ${input.bill_number}`,
+      });
+
+      await recordApAudit(uid, { id: user.id, email: user.primaryEmailAddress?.emailAddress }, {
+        entity_type: 'advance_adjustment',
+        entity_id: adj.id,
+        action: 'create',
+        amount: input.amount,
+        reference: `${input.advance_number} → ${input.bill_number}`,
+      });
 
       // Update bill paid_amount and status
       await updateBillPaymentStatus(uid, input.bill_id, input.amount);

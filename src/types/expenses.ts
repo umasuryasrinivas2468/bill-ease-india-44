@@ -196,6 +196,7 @@ export interface CreateExpenseData {
   notes?: string;
   project_id?: string;
   project_name?: string;
+  cost_center_id?: string | null;
 }
 
 export interface ExpenseStats {

@@ -391,12 +391,21 @@ export default function Payables() {
             Pending bills + unpaid vendor expenses {summary.totalAdvances > 0 ? `- ${fmt(summary.totalAdvances)} advances` : ''}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" asChild>
             <Link to="/vendor-advances">Vendor Advances</Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
             <Link to="/vendor-bill-payments">Bill Payments</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/vendor-ledger">Vendor Ledger</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/cost-centers">Cost Centers</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/reports/gst-itc">GST ITC</Link>
           </Button>
         </div>
       </div>
@@ -561,14 +570,27 @@ export default function Payables() {
                         {v.advances.length > 0 && <span className="text-green-600">{v.advances.length} advance{v.advances.length !== 1 ? 's' : ''}</span>}
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="font-bold">{fmt(v.netPayable)}</div>
-                      {v.totalAdvances > 0 && (
-                        <div className="text-xs text-green-600">-{fmt(v.totalAdvances)} advances</div>
-                      )}
-                      {v.overdueAmount > 0 && (
-                        <div className="text-xs text-red-500">{fmt(v.overdueAmount)} overdue</div>
-                      )}
+                    <div className="text-right shrink-0 flex items-center gap-2">
+                      <div>
+                        <div className="font-bold">{fmt(v.netPayable)}</div>
+                        {v.totalAdvances > 0 && (
+                          <div className="text-xs text-green-600">-{fmt(v.totalAdvances)} advances</div>
+                        )}
+                        {v.overdueAmount > 0 && (
+                          <div className="text-xs text-red-500">{fmt(v.overdueAmount)} overdue</div>
+                        )}
+                      </div>
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => e.stopPropagation()}
+                        title="Open Vendor Ledger"
+                      >
+                        <Link to={`/vendor-ledger/${v.vendor_id}`}>
+                          <Eye className="h-4 w-4" />
+                        </Link>
+                      </Button>
                     </div>
                   </button>
 

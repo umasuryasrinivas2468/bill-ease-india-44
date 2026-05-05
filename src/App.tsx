@@ -73,6 +73,10 @@ import VendorAdvances from "./pages/VendorAdvances";
 import VendorBillPayments from "./pages/VendorBillPayments";
 import Receivables from "./pages/Receivables";
 import Payables from "./pages/Payables";
+import VendorLedger from "./pages/VendorLedger";
+import CostCenters from "./pages/CostCenters";
+import GstItcReport from "./pages/GstItcReport";
+import AccountingPeriodsPage from "./pages/AccountingPeriods";
 import InvoiceIntelligence from "./pages/InvoiceIntelligence";
 import ExpenseIntelligence from "./pages/ExpenseIntelligence";
 import AczenCFO from "./pages/AczenCFO";
@@ -241,6 +245,11 @@ function App() {
                           <Route path="/vendor-bill-payments" element={<VendorBillPayments />} />
                           <Route path="/receivables" element={<Receivables />} />
                           <Route path="/payables" element={<Payables />} />
+                          <Route path="/vendor-ledger" element={<VendorLedger />} />
+                          <Route path="/vendor-ledger/:vendorId" element={<VendorLedger />} />
+                          <Route path="/cost-centers" element={<CostCenters />} />
+                          <Route path="/reports/gst-itc" element={<GstItcReport />} />
+                          <Route path="/accounting/periods" element={<AccountingPeriodsPage />} />
 
                           {/* Plan Test Route - For development/testing */}
                           <Route path="/plan-test" element={<PlanTestPage />} />

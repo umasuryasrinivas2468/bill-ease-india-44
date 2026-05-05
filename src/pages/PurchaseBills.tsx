@@ -18,6 +18,8 @@ import { postPurchaseBillJournal, postVendorPaymentJournal } from '@/utils/autoJ
 import { processPurchaseBillInventory } from '@/services/inventoryAutomationService';
 import InventoryItemSelector from '@/components/InventoryItemSelector';
 import { useInventory } from '@/hooks/useInventory';
+import CostCenterSelect from '@/components/CostCenterSelect';
+import { recordApAudit } from '@/hooks/useApAuditLog';
 
 type BillItem = {
   id: string;
@@ -116,6 +118,8 @@ const PurchaseBills = () => {
     notes: '',
     bill_attachment_name: '',
     bill_attachment_url: '',
+    classification: 'goods' as 'goods' | 'expense' | 'mixed',
+    cost_center_id: null as string | null,
   });
   const [items, setItems] = useState<BillItem[]>([emptyItem()]);
 
@@ -193,6 +197,8 @@ const PurchaseBills = () => {
       notes: '',
       bill_attachment_name: '',
       bill_attachment_url: '',
+      classification: 'goods',
+      cost_center_id: null,
     });
     setItems([emptyItem()]);
     setAttachmentFile(null);
@@ -229,6 +235,45 @@ const PurchaseBills = () => {
     }
 
     try {
+      // 1. Period-lock check
+      const { data: lockedPeriod } = await supabase
+        .from('accounting_periods')
+        .select('id, label')
+        .eq('user_id', user.id)
+        .eq('status', 'locked')
+        .lte('period_start', formData.bill_date)
+        .gte('period_end', formData.bill_date)
+        .limit(1)
+        .maybeSingle();
+      if (lockedPeriod) {
+        toast({
+          title: 'Period locked',
+          description: `Cannot post a bill — the period "${lockedPeriod.label || ''}" covering ${formData.bill_date} is locked.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // 2. Duplicate-bill check (same vendor + bill number for this user)
+      if (formData.vendor_id) {
+        const { data: existing } = await supabase
+          .from('purchase_bills' as any)
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('vendor_id', formData.vendor_id)
+          .ilike('bill_number', formData.bill_number)
+          .limit(1)
+          .maybeSingle();
+        if (existing) {
+          toast({
+            title: 'Duplicate bill',
+            description: `Bill # ${formData.bill_number} already exists for this vendor.`,
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
+
       const meta = serializeBillMeta({
         order_number: formData.order_number || '',
         payment_terms: formData.payment_terms || '',
@@ -240,7 +285,7 @@ const PurchaseBills = () => {
         notes: formData.notes || '',
       });
 
-      const payload = {
+      const payload: any = {
         user_id: user.id,
         vendor_id: formData.vendor_id || null,
         vendor_name: formData.vendor_name,
@@ -253,19 +298,25 @@ const PurchaseBills = () => {
         total_amount: billTotals.total,
         notes: meta,
         status: 'pending',
+        cost_center_id: formData.cost_center_id || null,
       };
 
       const { data: bill, error } = await supabase.from('purchase_bills' as any).insert([payload]).select().single();
       if (error) throw error;
 
-      const { inventoryAmount } = await processPurchaseBillInventory(user.id, {
-        id: bill.id,
-        bill_number: formData.bill_number,
-        bill_date: formData.bill_date,
-        vendor_id: formData.vendor_id || null,
-        vendor_name: formData.vendor_name,
-        items,
-      });
+      // For pure-expense bills, skip inventory inward; goods/mixed bills route through inventory.
+      let inventoryAmount = 0;
+      if (formData.classification !== 'expense') {
+        const result = await processPurchaseBillInventory(user.id, {
+          id: bill.id,
+          bill_number: formData.bill_number,
+          bill_date: formData.bill_date,
+          vendor_id: formData.vendor_id || null,
+          vendor_name: formData.vendor_name,
+          items,
+        });
+        inventoryAmount = result.inventoryAmount;
+      }
 
       await postPurchaseBillJournal(user.id, {
         bill_number: formData.bill_number,
@@ -275,6 +326,16 @@ const PurchaseBills = () => {
         gst_amount: billTotals.gstAmount,
         total_amount: billTotals.total,
         inventory_amount: inventoryAmount,
+      });
+
+      await recordApAudit(user.id, { id: user.id, email: user.primaryEmailAddress?.emailAddress }, {
+        entity_type: 'bill',
+        entity_id: bill.id,
+        action: 'create',
+        amount: billTotals.total,
+        reference: formData.bill_number,
+        notes: `${formData.classification} · ${formData.vendor_name}`,
+        after_json: { ...payload, items: undefined },
       });
 
       toast({
@@ -385,6 +446,34 @@ const PurchaseBills = () => {
               <div className="md:col-span-3">
                 <Label>Subject</Label>
                 <Input value={formData.subject} onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Classification</Label>
+                <Select
+                  value={formData.classification}
+                  onValueChange={(v) => setFormData(prev => ({ ...prev, classification: v as 'goods' | 'expense' | 'mixed' }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="goods">Goods / Inventory</SelectItem>
+                    <SelectItem value="expense">Expense</SelectItem>
+                    <SelectItem value="mixed">Mixed</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {formData.classification === 'expense'
+                    ? 'No inventory impact – posts to expense ledger'
+                    : formData.classification === 'goods'
+                    ? 'Increases stock + creates payable'
+                    : 'Stock items go to inventory; rest to expense'}
+                </p>
+              </div>
+              <div className="md:col-span-2">
+                <Label>Cost Center</Label>
+                <CostCenterSelect
+                  value={formData.cost_center_id}
+                  onChange={(id) => setFormData(prev => ({ ...prev, cost_center_id: id }))}
+                />
               </div>
             </div>
 

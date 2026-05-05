@@ -1232,6 +1232,7 @@ export type Database = {
           expense_number: string | null
           gst_amount: number | null
           id: string
+          is_rcm: boolean | null
           itc_eligible: boolean | null
           journal_id: string | null
           org_id: string | null
@@ -1239,6 +1240,8 @@ export type Database = {
           posted_to_ledger: boolean | null
           project_id: string | null
           project_name: string | null
+          rcm_amount: number | null
+          rcm_rate: number | null
           status: string | null
           tax_amount: number | null
           tds_amount: number | null
@@ -1246,6 +1249,7 @@ export type Database = {
           total_amount: number | null
           updated_at: string | null
           user_id: string
+          vendor_gst_status: string | null
           vendor_id: string | null
           vendor_name: string | null
         }
@@ -1265,6 +1269,7 @@ export type Database = {
           expense_number?: string | null
           gst_amount?: number | null
           id?: string
+          is_rcm?: boolean | null
           itc_eligible?: boolean | null
           journal_id?: string | null
           org_id?: string | null
@@ -1272,6 +1277,8 @@ export type Database = {
           posted_to_ledger?: boolean | null
           project_id?: string | null
           project_name?: string | null
+          rcm_amount?: number | null
+          rcm_rate?: number | null
           status?: string | null
           tax_amount?: number | null
           tds_amount?: number | null
@@ -1279,6 +1286,7 @@ export type Database = {
           total_amount?: number | null
           updated_at?: string | null
           user_id: string
+          vendor_gst_status?: string | null
           vendor_id?: string | null
           vendor_name?: string | null
         }
@@ -1298,6 +1306,7 @@ export type Database = {
           expense_number?: string | null
           gst_amount?: number | null
           id?: string
+          is_rcm?: boolean | null
           itc_eligible?: boolean | null
           journal_id?: string | null
           org_id?: string | null
@@ -1305,6 +1314,8 @@ export type Database = {
           posted_to_ledger?: boolean | null
           project_id?: string | null
           project_name?: string | null
+          rcm_amount?: number | null
+          rcm_rate?: number | null
           status?: string | null
           tax_amount?: number | null
           tds_amount?: number | null
@@ -1312,6 +1323,7 @@ export type Database = {
           total_amount?: number | null
           updated_at?: string | null
           user_id?: string
+          vendor_gst_status?: string | null
           vendor_id?: string | null
           vendor_name?: string | null
         }
