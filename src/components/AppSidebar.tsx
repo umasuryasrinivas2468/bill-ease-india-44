@@ -36,6 +36,8 @@ import {
   Headset,
   Send,
   UserRound,
+  ScanLine,
+  LayoutDashboard,
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import { useAuthorization } from "@/hooks/useAuthorization";
@@ -76,10 +78,13 @@ const salesMenuItems = [
 ];
 
 const purchasesMenuItems = [
+  { title: "AP Dashboard", url: "/ap-dashboard", icon: LayoutDashboard },
+  { title: "AP Intake (Scan / Quick Add)", url: "/ap-intake", icon: ScanLine },
   { title: "Vendors", url: "/vendors", icon: Users },
   { title: "Expenses", url: "/expenses", icon: Receipt },
   { title: "Expense Intelligence", url: "/expenses/intelligence", icon: Filter },
-  { title: "Bills", url: "/purchase-bills", icon: FileText },
+  { title: "Purchase Registry", url: "/purchase-bills", icon: FileText },
+  { title: "Payables", url: "/payables", icon: ScrollText },
   { title: "Vendor Advances", url: "/vendor-advances", icon: Banknote },
   { title: "Bill Payments", url: "/vendor-bill-payments", icon: Wallet },
   { title: "Recurring Bills", url: "/expenses?tab=recurring", icon: RefreshCw },
@@ -312,7 +317,7 @@ export function AppSidebar() {
                     <div className="w-full">
                       <SidebarMenuButton
                         asChild
-                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/vendors', '/expenses', '/purchase-bills', '/vendor-advances', '/vendor-bill-payments', '/inventory/purchase-orders'])}`}
+                        className={`w-full px-0 py-1 ${collapsibleActiveCls(['/ap-dashboard', '/ap-intake', '/vendors', '/expenses', '/purchase-bills', '/payables', '/vendor-advances', '/vendor-bill-payments', '/inventory/purchase-orders'])}`}
                         title="Purchases"
                       >
                         <CollapsibleTrigger className={triggerCls} onClick={() => setIsPurchasesOpen(!isPurchasesOpen)}>

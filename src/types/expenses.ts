@@ -160,6 +160,10 @@ export interface Expense {
   journal_id?: string;
   project_id?: string;
   project_name?: string;
+  po_id?: string;
+  po_number?: string;
+  po_match_status?: 'unlinked' | 'matched' | 'partial' | 'conflict';
+  po_match_confidence?: 'high' | 'medium' | 'low';
   created_at: string;
   updated_at: string;
   attachments?: ExpenseAttachment[];
@@ -197,6 +201,10 @@ export interface CreateExpenseData {
   project_id?: string;
   project_name?: string;
   cost_center_id?: string | null;
+  po_id?: string;
+  po_number?: string;
+  po_match_status?: 'unlinked' | 'matched' | 'partial' | 'conflict';
+  po_match_confidence?: 'high' | 'medium' | 'low';
 }
 
 export interface ExpenseStats {

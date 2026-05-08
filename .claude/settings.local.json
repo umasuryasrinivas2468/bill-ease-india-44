@@ -1,7 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:docs.decentro.tech)"
+      "WebFetch(domain:docs.decentro.tech)",
+      "Bash(where pdftoppm *)",
+      "Bash(where python *)",
+      "Bash(where python3 *)",
+      "Bash(where pdftotext *)",
+      "Bash(pdftotext -layout \"c:\\\\Users\\\\54712\\\\Downloads\\\\bill-ease-india-44-12\\\\Requester-MeriPehchaan-APISpecification-V2_3.pdf\" \"c:\\\\Users\\\\54712\\\\Downloads\\\\bill-ease-india-44-12\\\\meripehchaan_spec.txt\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\54712\\\\Downloads\\\\bill-ease-india-44-12\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(grep -E \"\\\\.tsx$\")",
+      "Bash(npx tsc *)",
+      "Bash(curl *)",
+      "WebFetch(domain:www.cashfree.com)"
     ]
   }
 }

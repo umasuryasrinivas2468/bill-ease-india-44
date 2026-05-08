@@ -116,19 +116,42 @@ export const useRecordBillPayment = () => {
       notes?: string;
       attachment_url?: string;
       attachment_name?: string;
+      cost_center_id?: string | null;
+      project_id?: string | null;
+      branch_id?: string | null;
+      department?: string | null;
     }) => {
       if (!user || !isValidUserId(user.id)) throw new Error('User not authenticated');
       const uid = normalizeUserId(user.id);
 
       await assertPeriodOpen(uid, input.payment_date);
 
+      // If caller didn't pass cost-center tags, pull them from the bill so
+      // the payment journal still rolls up correctly per cost center / project.
+      let { cost_center_id, project_id, branch_id, department } = input;
+      if (!cost_center_id || !project_id) {
+        const { data: bill } = await supabase
+          .from('purchase_bills' as any)
+          .select('cost_center_id, project_id, branch_id, department')
+          .eq('id', input.bill_id)
+          .maybeSingle();
+        cost_center_id = cost_center_id ?? (bill as any)?.cost_center_id ?? null;
+        project_id     = project_id     ?? (bill as any)?.project_id     ?? null;
+        branch_id      = branch_id      ?? (bill as any)?.branch_id      ?? null;
+        department     = department     ?? (bill as any)?.department     ?? null;
+      }
+
       // Post auto journal: Payables (Dr) → Bank/Cash (Cr)
       const journal = await postVendorPaymentJournal(uid, {
         bill_number: input.bill_number,
         date: input.payment_date,
         vendor_name: input.vendor_name,
+        vendor_id: input.vendor_id,
         amount: input.amount,
         payment_mode: input.payment_mode,
+        cost_center_id: cost_center_id || undefined,
+        project_id: project_id || undefined,
+        reference: input.reference_number,
       });
 
       // Insert payment record
@@ -149,6 +172,10 @@ export const useRecordBillPayment = () => {
           notes: input.notes || null,
           attachment_url: input.attachment_url || null,
           attachment_name: input.attachment_name || null,
+          cost_center_id: cost_center_id || null,
+          project_id: project_id || null,
+          branch_id: branch_id || null,
+          department: department || null,
         })
         .select()
         .single();
@@ -215,12 +242,27 @@ export const useAdjustAdvance = () => {
 
       await assertPeriodOpen(uid, input.adjustment_date);
 
+      // Pull cost-center / project tags from the bill so the adjustment
+      // journal rolls up consistently with the bill's classification.
+      const { data: billRow } = await supabase
+        .from('purchase_bills' as any)
+        .select('cost_center_id, project_id, branch_id, department')
+        .eq('id', input.bill_id)
+        .maybeSingle();
+      const tags = {
+        cost_center_id: (billRow as any)?.cost_center_id ?? null,
+        project_id:     (billRow as any)?.project_id     ?? null,
+        branch_id:      (billRow as any)?.branch_id      ?? null,
+        department:     (billRow as any)?.department     ?? null,
+      };
+
       // Post auto journal: Payables (Dr) → Vendor Advance (Cr)
       const journal = await postAdvanceAdjustmentJournal(uid, {
         advance_number: input.advance_number,
         bill_number: input.bill_number,
         date: input.adjustment_date,
         vendor_name: input.vendor_name,
+        vendor_id: input.vendor_id,
         amount: input.amount,
       });
 
@@ -239,6 +281,10 @@ export const useAdjustAdvance = () => {
           amount: input.amount,
           journal_id: journal?.id || null,
           notes: input.notes || null,
+          cost_center_id: tags.cost_center_id,
+          project_id:     tags.project_id,
+          branch_id:      tags.branch_id,
+          department:     tags.department,
         })
         .select()
         .single();
@@ -260,6 +306,10 @@ export const useAdjustAdvance = () => {
         advance_number: input.advance_number,
         journal_id: journal?.id || null,
         notes: `Advance adjustment: ${input.advance_number}`,
+        cost_center_id: tags.cost_center_id,
+        project_id:     tags.project_id,
+        branch_id:      tags.branch_id,
+        department:     tags.department,
       });
 
       // Update advance: increase adjusted_amount, decrease unadjusted

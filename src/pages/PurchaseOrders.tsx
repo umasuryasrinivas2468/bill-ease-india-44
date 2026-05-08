@@ -209,6 +209,11 @@ export default function PurchaseOrders() {
     order_date: new Date(),
     due_date: new Date(),
     notes: '',
+    credit_terms_label: 'Net 30',
+    credit_days: 30,
+    early_payment_discount_pct: 0,
+    early_payment_discount_days: 0,
+    late_payment_penalty_pct: 0,
   });
   const [orderItems, setOrderItems] = useState<PurchaseOrderItem[]>([
     { id: '1', product_name: '', quantity: 1, price: 0, tax_rate: 18, total: 0 }
@@ -410,6 +415,11 @@ export default function PurchaseOrders() {
       order_date: new Date(),
       due_date: new Date(),
       notes: '',
+      credit_terms_label: 'Net 30',
+      credit_days: 30,
+      early_payment_discount_pct: 0,
+      early_payment_discount_days: 0,
+      late_payment_penalty_pct: 0,
     });
     setOrderItems([
       { id: '1', product_name: '', quantity: 1, price: 0, tax_rate: 18, total: 0 }
@@ -449,6 +459,11 @@ export default function PurchaseOrders() {
         status: editingOrder?.status || 'pending',
         payment_status: editingOrder?.payment_status || 'unpaid',
         notes: formData.notes,
+        credit_terms_label: formData.credit_terms_label,
+        credit_days: formData.credit_days,
+        early_payment_discount_pct: formData.early_payment_discount_pct,
+        early_payment_discount_days: formData.early_payment_discount_days,
+        late_payment_penalty_pct: formData.late_payment_penalty_pct,
       };
 
       let error;
@@ -650,6 +665,11 @@ export default function PurchaseOrders() {
       order_date: new Date(order.order_date),
       due_date: new Date(order.due_date),
       notes: order.notes || '',
+      credit_terms_label: (order as any).credit_terms_label || 'Net 30',
+      credit_days: (order as any).credit_days ?? 30,
+      early_payment_discount_pct: (order as any).early_payment_discount_pct ?? 0,
+      early_payment_discount_days: (order as any).early_payment_discount_days ?? 0,
+      late_payment_penalty_pct: (order as any).late_payment_penalty_pct ?? 0,
     });
     setOrderItems(order.items || []);
     setIsFormOpen(true);
@@ -944,6 +964,115 @@ export default function PurchaseOrders() {
                     setDate={(date) => setFormData({ ...formData, due_date: date || new Date() })}
                   />
                 </div>
+              </div>
+
+              {/* Credit terms — captured up-front on the PO so the bill that
+                  inherits this PO carries the same payment promise. */}
+              <div className="rounded-md border p-4 bg-muted/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Credit Terms</Label>
+                  <span className="text-xs text-muted-foreground">
+                    Due {new Date(formData.order_date.getTime() + formData.credit_days * 86400000).toLocaleDateString('en-IN')}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <Label className="text-xs">Terms preset</Label>
+                    <Select
+                      value={formData.credit_terms_label}
+                      onValueChange={(v) => {
+                        // Map preset → days + early-pay defaults
+                        const presets: Record<string, { days: number; epPct: number; epDays: number }> = {
+                          'Due on receipt': { days: 0,  epPct: 0, epDays: 0 },
+                          'Net 7':          { days: 7,  epPct: 0, epDays: 0 },
+                          'Net 15':         { days: 15, epPct: 0, epDays: 0 },
+                          'Net 30':         { days: 30, epPct: 0, epDays: 0 },
+                          'Net 45':         { days: 45, epPct: 0, epDays: 0 },
+                          'Net 60':         { days: 60, epPct: 0, epDays: 0 },
+                          'Net 90':         { days: 90, epPct: 0, epDays: 0 },
+                          '2/10 Net 30':    { days: 30, epPct: 2, epDays: 10 },
+                          '1/15 Net 60':    { days: 60, epPct: 1, epDays: 15 },
+                          'Custom':         { days: formData.credit_days, epPct: formData.early_payment_discount_pct, epDays: formData.early_payment_discount_days },
+                        };
+                        const p = presets[v] ?? presets['Net 30'];
+                        const newDue = new Date(formData.order_date.getTime() + p.days * 86400000);
+                        setFormData(prev => ({
+                          ...prev,
+                          credit_terms_label: v,
+                          credit_days: p.days,
+                          early_payment_discount_pct: p.epPct,
+                          early_payment_discount_days: p.epDays,
+                          due_date: newDue,
+                        }));
+                      }}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Due on receipt">Due on receipt</SelectItem>
+                        <SelectItem value="Net 7">Net 7</SelectItem>
+                        <SelectItem value="Net 15">Net 15</SelectItem>
+                        <SelectItem value="Net 30">Net 30</SelectItem>
+                        <SelectItem value="Net 45">Net 45</SelectItem>
+                        <SelectItem value="Net 60">Net 60</SelectItem>
+                        <SelectItem value="Net 90">Net 90</SelectItem>
+                        <SelectItem value="2/10 Net 30">2/10 Net 30 (2% if paid in 10 days)</SelectItem>
+                        <SelectItem value="1/15 Net 60">1/15 Net 60 (1% if paid in 15 days)</SelectItem>
+                        <SelectItem value="Custom">Custom</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Net days</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={365}
+                      value={formData.credit_days}
+                      onChange={(e) => {
+                        const days = Math.max(0, Math.min(365, Number(e.target.value) || 0));
+                        const newDue = new Date(formData.order_date.getTime() + days * 86400000);
+                        setFormData(prev => ({ ...prev, credit_days: days, credit_terms_label: 'Custom', due_date: newDue }));
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Late penalty % p.a.</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={50}
+                      step={0.25}
+                      value={formData.late_payment_penalty_pct}
+                      onChange={(e) => setFormData(prev => ({ ...prev, late_payment_penalty_pct: Number(e.target.value) || 0 }))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Early-pay discount %</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={50}
+                      step={0.25}
+                      value={formData.early_payment_discount_pct}
+                      onChange={(e) => setFormData(prev => ({ ...prev, early_payment_discount_pct: Number(e.target.value) || 0, credit_terms_label: 'Custom' }))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Early-pay window (days)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={90}
+                      value={formData.early_payment_discount_days}
+                      onChange={(e) => setFormData(prev => ({ ...prev, early_payment_discount_days: Number(e.target.value) || 0, credit_terms_label: 'Custom' }))}
+                    />
+                  </div>
+                </div>
+                {formData.early_payment_discount_pct > 0 && formData.early_payment_discount_days > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Pay within {formData.early_payment_discount_days} days for a {formData.early_payment_discount_pct}% discount.
+                  </p>
+                )}
               </div>
 
               <div>

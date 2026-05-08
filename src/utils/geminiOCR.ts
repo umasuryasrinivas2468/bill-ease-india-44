@@ -1,9 +1,20 @@
 import { supabase } from "@/lib/supabaseClient";
-import { ExpenseOCRResult } from "./expenseOCR";
+import { ExpenseOCRResult, OCRItemLine } from "./expenseOCR";
+
+interface ExtractedItem {
+  description?: string | null;
+  hsn_sac?: string | null;
+  quantity?: number | null;
+  unit?: string | null;
+  unit_price?: number | null;
+  tax_rate?: number | null;
+  amount?: number | null;
+}
 
 interface ExtractedData {
   vendor_name: string | null;
   bill_number: string | null;
+  po_number: string | null;
   expense_date: string | null;
   base_amount: number | null;
   tax_amount: number | null;
@@ -11,6 +22,8 @@ interface ExtractedData {
   gst_number: string | null;
   payment_mode: string | null;
   category_hint: string | null;
+  item_type?: 'goods' | 'service' | 'expense' | null;
+  items?: ExtractedItem[] | null;
   raw_text: string;
 }
 
@@ -52,6 +65,9 @@ const toOCRResult = (data: ExtractedData): ExpenseOCRResult => {
   if (data.bill_number)
     result.billNumber = { value: data.bill_number, confidence: "high" };
 
+  if (data.po_number)
+    result.poNumber = { value: String(data.po_number).trim(), confidence: "high" };
+
   if (data.expense_date)
     result.expenseDate = { value: data.expense_date, confidence: "high" };
 
@@ -86,10 +102,29 @@ const toOCRResult = (data: ExtractedData): ExpenseOCRResult => {
   if (data.category_hint)
     result.categoryHint = { value: data.category_hint, confidence: "medium" };
 
+  if (data.item_type) {
+    result.itemTypeHint = { value: data.item_type, confidence: "medium" };
+  }
+
+  if (Array.isArray(data.items) && data.items.length > 0) {
+    result.items = data.items
+      .filter((it): it is ExtractedItem => !!it && !!it.description)
+      .map<OCRItemLine>((it) => ({
+        description: String(it.description).trim(),
+        hsn_sac: it.hsn_sac || null,
+        quantity: typeof it.quantity === "number" && it.quantity > 0 ? it.quantity : null,
+        unit: it.unit || null,
+        unit_price: typeof it.unit_price === "number" && it.unit_price > 0 ? it.unit_price : null,
+        tax_rate: typeof it.tax_rate === "number" ? it.tax_rate : null,
+        amount: typeof it.amount === "number" && it.amount > 0 ? it.amount : null,
+      }));
+  }
+
   const notes: string[] = [];
   if (result.gstNumber) notes.push(`GSTIN: ${result.gstNumber.value}`);
   if (result.categoryHint) notes.push(`AI category hint: ${result.categoryHint.value}`);
   if (result.paymentMode) notes.push(`AI payment hint: ${result.paymentMode.value}`);
+  if (result.itemTypeHint) notes.push(`AI item type: ${result.itemTypeHint.value}`);
   result.notes = notes.join(" | ");
 
   return result;

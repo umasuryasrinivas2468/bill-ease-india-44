@@ -93,8 +93,13 @@ export const useOnboardingState = () => {
     const success = await saveBusinessInfo(businessInfo);
     if (success) {
       setCompletedSteps(prev => [...prev, 'business']);
-      setCurrentStep('banking');
+      setCurrentStep('kyc');
     }
+  };
+
+  const handleKycNext = () => {
+    setCompletedSteps(prev => (prev.includes('kyc') ? prev : [...prev, 'kyc']));
+    setCurrentStep('banking');
   };
 
   const handleBankingNext = async () => {
@@ -164,6 +169,7 @@ export const useOnboardingState = () => {
     setBusinessAssets,
     isCompleting: isCompleting || isLoading,
     handleBusinessNext,
+    handleKycNext,
     handleBankingNext,
     handleComplete,
     sessionId,

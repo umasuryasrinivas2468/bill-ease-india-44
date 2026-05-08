@@ -343,12 +343,18 @@ export const useCreateExpense = () => {
           id: createdExpense.id,
           expense_date: createdExpense.expense_date,
           vendor_name: createdExpense.vendor_name,
+          vendor_id: (createdExpense as any).vendor_id || undefined,
           category_name: createdExpense.category_name,
           amount: Number(createdExpense.amount),
           tax_amount: Number(createdExpense.tax_amount || 0),
           payment_mode: createdExpense.payment_mode,
           description: createdExpense.description,
-          tds_amount: tdsAmount
+          tds_amount: tdsAmount,
+          is_rcm: (createdExpense as any).is_rcm || false,
+          itc_eligible: (createdExpense as any).itc_eligible !== false,
+          cost_center_id: (createdExpense as any).cost_center_id || undefined,
+          project_id: (createdExpense as any).project_id || undefined,
+          branch_id: (createdExpense as any).branch_id || undefined,
         });
       } catch (err) {
         console.error('Error posting expense to ledger with TDS:', err);

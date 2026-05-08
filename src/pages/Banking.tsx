@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import KYCVerification from '@/components/KYCVerification';
+import { supabase } from '@/lib/supabase';
 
 // ── Decentro config (staging) ─────────────────────────────────────────────────
 const D = {
@@ -43,6 +44,56 @@ const BANKING_URL         = 'https://onemoney-link.vercel.app/';
 const ACCOUNTS_KEY        = 'aczen-linked-accounts';
 const TRANSFERS_KEY       = 'aczen-transfers';
 const CONSUMER_URN_KEY    = 'aczen-decentro-consumer-urn';
+const PENDING_VERIF_KEY   = 'aczen-cashfree-pending-verif';
+
+// ── Cashfree reverse penny drop (Supabase edge function) ─────────────────────
+const CASHFREE_FN = 'cashfree-reverse-penny-drop';
+
+type CashfreeRpdData = {
+  // Create response
+  verification_id?: string;
+  ref_id?: number | string;
+  valid_upto?: string;
+  upi_link?: string;
+  paytm?: string;
+  gpay?: string;
+  phonepe?: string;
+  bhim?: string;
+  qr_code?: string; // base64-encoded PNG (no data: prefix)
+  // Status response
+  status?: string; // CREATED | SUCCESS | FAILURE | EXPIRED
+  bank_account?: string;
+  ifsc?: string;
+  upi?: string;
+  name_at_bank?: string;
+  utr?: string;
+  name_match_score?: number;
+  name_match_result?: string;
+  account_type?: string;
+  added_on?: string;
+  processed_on?: string;
+  penny_collected_on?: string;
+  reversal_status?: string;
+  message?: string;
+};
+
+const invokeCashfree = async (
+  body: Record<string, unknown>,
+): Promise<CashfreeRpdData> => {
+  const { data, error } = await supabase.functions.invoke(CASHFREE_FN, { body });
+  if (error) throw error;
+  if (!data?.success) {
+    const e = data?.error;
+    throw new Error(typeof e === 'string' ? e : JSON.stringify(e ?? data));
+  }
+  return data.data as CashfreeRpdData;
+};
+
+const cashfreeCreateRpd = (verification_id: string, name: string) =>
+  invokeCashfree({ action: 'create', verification_id, name, amount: 1 });
+
+const cashfreeGetRpd = (verification_id: string) =>
+  invokeCashfree({ action: 'status', verification_id });
 
 // Decentro consumer_urn must be a urn that's already registered with Decentro.
 // Read from .env first (VITE_DECENTRO_CONSUMER_URN), then localStorage (user-pasted).
@@ -62,6 +113,26 @@ type LinkedAccount = {
   accountType: 'savings' | 'current';
   verified: boolean;
   decentroTxnId?: string;
+  cashfreeRefId?: string;
+  nameMatchScore?: number;
+};
+
+type PendingVerification = {
+  verification_id: string;
+  ref_id?: string;
+  upi_link?: string;
+  qr_code?: string; // base64 PNG
+  intents?: { paytm?: string; gpay?: string; phonepe?: string; bhim?: string };
+  validUpto?: string;
+  status: 'PENDING' | 'FAILED';
+  form: {
+    name: string;
+    bankName: string;
+    accountNumber: string;
+    ifsc: string;
+    accountType: LinkedAccount['accountType'];
+  };
+  startedAt: string;
 };
 
 type Transfer = {
@@ -158,6 +229,7 @@ const Banking = () => {
   const [lastError,       setLastError]       = useState<string>('');
   const [consumerUrn,     setConsumerUrn]     = useState<string>(getConsumerUrn());
   const [consumerUrnInput, setConsumerUrnInput] = useState<string>(getConsumerUrn());
+  const [pendingVerif,    setPendingVerif]    = useState<PendingVerification | null>(null);
   const { toast } = useToast();
 
   const saveConsumerUrn = () => {
@@ -180,11 +252,18 @@ const Banking = () => {
       if (a) setAccounts(JSON.parse(a));
       const t = localStorage.getItem(TRANSFERS_KEY);
       if (t) setTransfers(JSON.parse(t));
+      const p = localStorage.getItem(PENDING_VERIF_KEY);
+      if (p) setPendingVerif(JSON.parse(p));
     } catch { /* ignore */ }
   }, []);
 
   const saveAccounts  = (list: LinkedAccount[]) => { setAccounts(list);  localStorage.setItem(ACCOUNTS_KEY,  JSON.stringify(list)); };
   const saveTransfers = (list: Transfer[])       => { setTransfers(list); localStorage.setItem(TRANSFERS_KEY, JSON.stringify(list)); };
+  const persistPending = (v: PendingVerification | null) => {
+    setPendingVerif(v);
+    if (v) localStorage.setItem(PENDING_VERIF_KEY, JSON.stringify(v));
+    else localStorage.removeItem(PENDING_VERIF_KEY);
+  };
 
   const maskAcc = (n: string) => n.length > 4 ? `•••• ${n.slice(-4)}` : n;
 
@@ -192,74 +271,133 @@ const Banking = () => {
     .filter(t => t.status === 'success')
     .reduce((s, t) => s + t.amount, 0);
 
-  // ── Link a bank account (penny drop validation) ───────────────────────────
+  // ── Link a bank account (Cashfree reverse penny drop) ─────────────────────
+  // Reverse penny drop: the user transfers ₹1 from their bank to Cashfree.
+  // We create the request, hand the user a Cashfree-hosted link, then poll
+  // for status until SUCCESS or FAILED.
   const handleLinkAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     const { name, bankName, accountNumber, ifsc, accountType } = accountForm;
-    if (!name.trim() || !accountNumber.trim() || !ifsc.trim()) {
-      toast({ title: 'Missing details', description: 'Fill in name, account number, and IFSC.', variant: 'destructive' });
+    if (!name.trim() || !bankName.trim() || !accountNumber.trim() || !ifsc.trim()) {
+      toast({ title: 'Missing details', description: 'Fill in name, bank, account number, and IFSC.', variant: 'destructive' });
       return;
     }
 
     setIsLinking(true);
     setLastError('');
-    let verified = false;
-    let decentroTxnId: string | undefined;
 
     try {
-      if (!D.vaNumber) {
-        throw new Error('VITE_DECENTRO_VA_NUMBER is not set in .env — penny drop needs a VA to debit ₹1 from.');
-      }
-      const urn = getConsumerUrn();
-      if (!urn) {
-        throw new Error('No Decentro consumer_urn set. Paste a registered consumer URN from your Decentro dashboard into the "Decentro Consumer" box above.');
-      }
-      const res = await decentroPost('/v3/banking/money_transfer/validate_bank_account', {
-        reference_id:     refId(),
-        consumer_urn:     urn,
-        purpose_message:  'Account Verification',
-        from_account:     D.vaNumber,
-        transfer_amount:  1,
-        validation_type:  'pennydrop',
-        beneficiary_details: {
-          name:           name.trim(),
-          account_number: accountNumber.trim(),
-          ifsc:           ifsc.trim().toUpperCase(),
+      const verification_id = `aczen_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const created = await cashfreeCreateRpd(verification_id, name.trim());
+      const next: PendingVerification = {
+        verification_id: created.verification_id ?? verification_id,
+        ref_id: created.ref_id != null ? String(created.ref_id) : undefined,
+        upi_link: created.upi_link,
+        qr_code: created.qr_code,
+        intents: {
+          paytm:   created.paytm,
+          gpay:    created.gpay,
+          phonepe: created.phonepe,
+          bhim:    created.bhim,
         },
-      });
-
-      decentroTxnId = res.decentroTxnId ?? res.decentro_txn_id;
-      const status  = res.data?.account_status ?? res.accountStatus;
-      verified      = status === 'Valid';
-
-      if (verified) {
-        toast({ title: 'Account verified', description: `${name.trim()} — ${bankName.trim()} confirmed via penny drop.` });
-      } else {
-        toast({ title: 'Verification failed', description: `Account status: ${status}. Saved but marked unverified.`, variant: 'destructive' });
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Could not verify account. Saved locally.';
-      setLastError(`Link account: ${msg}`);
+        validUpto: created.valid_upto,
+        status: 'PENDING',
+        form: {
+          name:          name.trim(),
+          bankName:      bankName.trim(),
+          accountNumber: accountNumber.trim(),
+          ifsc:          ifsc.trim().toUpperCase(),
+          accountType,
+        },
+        startedAt: new Date().toISOString(),
+      };
+      persistPending(next);
+      setAccountForm(initialAccountForm);
       toast({
-        title: 'Penny drop failed',
-        description: msg,
-        variant: 'destructive',
+        title: 'Verification started',
+        description: 'Scan the QR or open in any UPI app and pay ₹1. Link is valid for ~10 min.',
       });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not start verification.';
+      setLastError(`Cashfree verification: ${msg}`);
+      toast({ title: 'Verification failed to start', description: msg, variant: 'destructive' });
+    } finally {
+      setIsLinking(false);
     }
+  };
 
-    const newAccount: LinkedAccount = {
-      id: crypto.randomUUID(),
-      name:          name.trim(),
-      bankName:      bankName.trim(),
-      accountNumber: accountNumber.trim(),
-      ifsc:          ifsc.trim().toUpperCase(),
-      accountType,
-      verified,
-      decentroTxnId,
+  const cancelPendingVerification = () => {
+    persistPending(null);
+    toast({ title: 'Verification cancelled' });
+  };
+
+  // Poll Cashfree status while a verification is pending
+  useEffect(() => {
+    if (!pendingVerif || pendingVerif.status !== 'PENDING') return;
+    let cancelled = false;
+
+    const finalize = (data: CashfreeRpdData) => {
+      const acc: LinkedAccount = {
+        id: crypto.randomUUID(),
+        name:          data.name_at_bank ?? pendingVerif.form.name,
+        bankName:      pendingVerif.form.bankName, // Cashfree doesn't return bank_name; keep user input
+        accountNumber: data.bank_account ?? pendingVerif.form.accountNumber,
+        ifsc:          String(data.ifsc ?? pendingVerif.form.ifsc).toUpperCase(),
+        accountType:   pendingVerif.form.accountType,
+        verified:      true,
+        cashfreeRefId: data.ref_id != null ? String(data.ref_id) : pendingVerif.ref_id,
+        nameMatchScore: typeof data.name_match_score === 'number' ? data.name_match_score : undefined,
+      };
+      setAccounts(prev => {
+        const updated = [acc, ...prev];
+        localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(updated));
+        return updated;
+      });
+      persistPending(null);
+      toast({
+        title: 'Account verified',
+        description: `${acc.name} — ${acc.bankName} confirmed via Cashfree (UTR ${data.utr ?? '—'}).`,
+      });
     };
-    saveAccounts([newAccount, ...accounts]);
-    setAccountForm(initialAccountForm);
-    setIsLinking(false);
+
+    const tick = async () => {
+      if (cancelled) return;
+      try {
+        const data = await cashfreeGetRpd(pendingVerif.verification_id);
+        if (cancelled) return;
+        const status = String(data.status ?? '').toUpperCase();
+        if (status === 'SUCCESS') {
+          finalize(data);
+        } else if (status === 'FAILURE' || status === 'EXPIRED') {
+          persistPending({ ...pendingVerif, status: 'FAILED' });
+          toast({
+            title: 'Verification failed',
+            description: data.message ?? `Cashfree status: ${status}`,
+            variant: 'destructive',
+          });
+        }
+        // CREATED → still pending, keep polling
+      } catch (err) {
+        console.error('[Cashfree poll]', err);
+      }
+    };
+
+    const id = setInterval(tick, 5000);
+    void tick();
+    return () => { cancelled = true; clearInterval(id); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingVerif?.verification_id, pendingVerif?.status]);
+
+  const handleCheckStatusNow = async () => {
+    if (!pendingVerif) return;
+    try {
+      const data = await cashfreeGetRpd(pendingVerif.verification_id);
+      const status = String(data.status ?? '').toUpperCase();
+      toast({ title: 'Cashfree status', description: status || 'Unknown' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Status check failed';
+      toast({ title: 'Status check failed', description: msg, variant: 'destructive' });
+    }
   };
 
   // ── Send money ────────────────────────────────────────────────────────────
@@ -405,7 +543,7 @@ const Banking = () => {
             <div className="flex items-start gap-2">
               <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
               <div className="text-rose-700 dark:text-rose-300">
-                <p className="font-medium">Decentro error</p>
+                <p className="font-medium">Banking error</p>
                 <p className="mt-0.5 break-all font-mono text-xs">{lastError}</p>
               </div>
             </div>
@@ -449,10 +587,85 @@ const Banking = () => {
               <CardHeader>
                 <CardTitle>Link Bank Account</CardTitle>
                 <CardDescription>
-                  We'll do a ₹1 penny drop via Decentro to verify the account instantly.
+                  Cashfree reverse penny drop: you transfer ₹1 from your bank to Cashfree, and we auto-confirm the account in seconds.
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                {pendingVerif && (
+                  <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950/30">
+                    <div className="flex items-start gap-2">
+                      <Loader2 className={`mt-0.5 h-4 w-4 shrink-0 text-amber-600 ${pendingVerif.status === 'PENDING' ? 'animate-spin' : ''}`} />
+                      <div className="flex-1">
+                        <p className="font-medium text-amber-700 dark:text-amber-300">
+                          {pendingVerif.status === 'PENDING' ? 'Waiting for ₹1 UPI transfer…' : 'Verification failed'}
+                        </p>
+                        <p className="mt-0.5 text-xs text-amber-700/80 dark:text-amber-400/80">
+                          {pendingVerif.form.name} · {pendingVerif.form.bankName} · {maskAcc(pendingVerif.form.accountNumber)}
+                        </p>
+                        {pendingVerif.validUpto && (
+                          <p className="mt-0.5 font-mono text-[11px] text-amber-700/70 dark:text-amber-400/70">
+                            valid until {new Date(pendingVerif.validUpto).toLocaleString('en-IN')}
+                          </p>
+                        )}
+
+                        {pendingVerif.status === 'PENDING' && pendingVerif.qr_code && (
+                          <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center">
+                            <img
+                              src={`data:image/png;base64,${pendingVerif.qr_code}`}
+                              alt="Cashfree UPI QR"
+                              className="h-32 w-32 rounded-md border bg-white p-1"
+                            />
+                            <div className="space-y-1 text-xs text-amber-700/90 dark:text-amber-400/90">
+                              <p className="font-medium">Scan with any UPI app and pay ₹1.</p>
+                              <p>The amount is auto-refunded by Cashfree after verification.</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {pendingVerif.status === 'PENDING' && pendingVerif.intents && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {pendingVerif.intents.gpay && (
+                              <Button asChild size="sm" variant="outline">
+                                <a href={pendingVerif.intents.gpay}>GPay</a>
+                              </Button>
+                            )}
+                            {pendingVerif.intents.phonepe && (
+                              <Button asChild size="sm" variant="outline">
+                                <a href={pendingVerif.intents.phonepe}>PhonePe</a>
+                              </Button>
+                            )}
+                            {pendingVerif.intents.paytm && (
+                              <Button asChild size="sm" variant="outline">
+                                <a href={pendingVerif.intents.paytm}>Paytm</a>
+                              </Button>
+                            )}
+                            {pendingVerif.intents.bhim && (
+                              <Button asChild size="sm" variant="outline">
+                                <a href={pendingVerif.intents.bhim}>BHIM</a>
+                              </Button>
+                            )}
+                            {pendingVerif.upi_link && (
+                              <Button asChild size="sm" variant="outline">
+                                <a href={pendingVerif.upi_link}>Any UPI app</a>
+                              </Button>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {pendingVerif.status === 'PENDING' && (
+                            <Button size="sm" variant="outline" onClick={handleCheckStatusNow}>
+                              Check status
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost" onClick={cancelPendingVerification}>
+                            {pendingVerif.status === 'PENDING' ? 'Cancel' : 'Dismiss & retry'}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <form onSubmit={handleLinkAccount} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="acc-name">Account Holder Name</Label>
@@ -505,9 +718,17 @@ const Banking = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button type="submit" className="w-full gap-2" disabled={isLinking}>
+                  <Button
+                    type="submit"
+                    className="w-full gap-2"
+                    disabled={isLinking || pendingVerif?.status === 'PENDING'}
+                  >
                     {isLinking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                    {isLinking ? 'Verifying via Penny Drop...' : 'Link & Verify Account'}
+                    {pendingVerif?.status === 'PENDING'
+                      ? 'Verification in progress…'
+                      : isLinking
+                        ? 'Starting Cashfree verification…'
+                        : 'Verify with Cashfree (₹1 reverse penny drop)'}
                   </Button>
                 </form>
               </CardContent>

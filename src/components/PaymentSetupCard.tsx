@@ -17,6 +17,7 @@ import {
   useStartRazorpayOnboarding,
   useDisconnectRazorpay,
 } from '@/hooks/usePaymentSettings';
+import { useKycStatus } from '@/hooks/useKycStatus';
 import { useToast } from '@/hooks/use-toast';
 import {
   Zap,
@@ -28,6 +29,8 @@ import {
   Shield,
   ExternalLink,
   Unlink,
+  ShieldCheck,
+  Fingerprint,
 } from 'lucide-react';
 
 const statusConfig: Record<
@@ -70,6 +73,7 @@ const PaymentSetupCard: React.FC = () => {
   const { data: settings, isLoading } = usePaymentSettings();
   const startOnboarding = useStartRazorpayOnboarding();
   const disconnect = useDisconnectRazorpay();
+  const { kyc, isVerified: kycVerified } = useKycStatus();
   const { toast } = useToast();
   const [termsOpen, setTermsOpen] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -155,6 +159,14 @@ const PaymentSetupCard: React.FC = () => {
   };
 
   const handleActivate = async () => {
+    if (!kycVerified) {
+      toast({
+        title: 'KYC required',
+        description: 'Complete DigiLocker KYC verification before linking Razorpay.',
+        variant: 'destructive',
+      });
+      return;
+    }
     if (!acceptedTerms || !signatureDrawn) {
       toast({
         title: 'Acceptance required',
@@ -175,6 +187,15 @@ const PaymentSetupCard: React.FC = () => {
         variant: 'destructive',
       });
     }
+  };
+
+  const scrollToKycSection = () => {
+    // Switch to the KYC tab via Settings' hash-controlled tabs, then scroll.
+    window.location.hash = 'kyc';
+    requestAnimationFrame(() => {
+      const el = document.getElementById('kyc-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
   };
 
   const handleDisconnect = async () => {
@@ -271,6 +292,44 @@ const PaymentSetupCard: React.FC = () => {
           {/* Not yet linked — show activate flow */}
           {!isLinked && (
             <div className="space-y-4">
+              {/* KYC gate: Razorpay link is mandatory-after-KYC */}
+              {!kycVerified ? (
+                <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                      <ShieldCheck className="h-5 w-5 text-amber-700" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-semibold text-amber-900 text-sm">
+                        KYC verification required
+                      </p>
+                      <p className="text-xs text-amber-800">
+                        Indian regulations require us to verify your identity before linking a
+                        payment gateway. Complete DigiLocker KYC (Aadhaar + PAN) below first —
+                        it takes under a minute and is verified directly with Govt. of India.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={scrollToKycSection}
+                    className="gap-2 bg-amber-600 hover:bg-amber-700 text-white"
+                  >
+                    <Fingerprint className="h-3.5 w-3.5" />
+                    Go to KYC verification
+                  </Button>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <span>
+                    KYC verified
+                    {kyc.fullName && <strong> · {kyc.fullName}</strong>}
+                    {kyc.pan && <span className="font-mono"> · PAN {kyc.pan}</span>}
+                  </span>
+                </div>
+              )}
+
               <div className="bg-[#528FF0]/10 border border-[#528FF0]/30 rounded-lg p-4 text-sm space-y-2">
                 <p className="font-medium text-[#1e4fa8]">What happens next</p>
                 <ol className="text-[#28579e] space-y-1 list-decimal pl-4 text-xs">
@@ -283,9 +342,10 @@ const PaymentSetupCard: React.FC = () => {
 
               <Button
                 onClick={() => setTermsOpen(true)}
-                disabled={startOnboarding.isPending}
+                disabled={startOnboarding.isPending || !kycVerified}
                 className="w-full sm:w-auto gap-2"
                 variant="brand"
+                title={!kycVerified ? 'Complete KYC verification first' : undefined}
               >
                 {startOnboarding.isPending ? (
                   <>

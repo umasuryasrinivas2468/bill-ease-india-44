@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { BankDetails } from '@/hooks/useOnboardingData';
 import { validateAccountNumber, validateIFSCCode } from '@/utils/onboardingValidation';
 import { useToast } from '@/hooks/use-toast';
-import KYCVerification from '@/components/KYCVerification';
+import { useKycStatus } from '@/hooks/useKycStatus';
 
 interface BankingDetailsStepProps {
   bankDetails: BankDetails;
@@ -23,6 +23,15 @@ export const BankingDetailsStep: React.FC<BankingDetailsStepProps> = ({
   isLoading = false,
 }) => {
   const { toast } = useToast();
+  const { kyc, isVerified } = useKycStatus();
+
+  // Pre-fill account holder name from the DigiLocker-verified Aadhaar name
+  // so the user doesn't retype it (and so it matches what their bank has).
+  useEffect(() => {
+    if (isVerified && kyc.fullName && !bankDetails.accountHolderName?.trim()) {
+      setBankDetails({ ...bankDetails, accountHolderName: kyc.fullName });
+    }
+  }, [isVerified, kyc.fullName]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,9 +102,6 @@ export const BankingDetailsStep: React.FC<BankingDetailsStepProps> = ({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* KYC Verification */}
-          <KYCVerification compact />
-
           <div>
             <Label htmlFor="accountHolderName">Account Holder Name *</Label>
             <Input

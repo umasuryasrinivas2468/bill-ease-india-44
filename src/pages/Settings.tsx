@@ -51,7 +51,25 @@ const Settings = () => {
     accountHolderName: '',
   });
 
-
+  const VALID_TABS = ['business', 'banking', 'payments', 'team', 'ca-clients', 'branding', 'kyc', 'support'];
+  const readHashTab = () => {
+    const h = window.location.hash.replace(/^#/, '');
+    return VALID_TABS.includes(h) ? h : 'business';
+  };
+  const [activeTab, setActiveTabState] = useState<string>(readHashTab);
+  const setActiveTab = (next: string) => {
+    setActiveTabState(next);
+    if (window.location.hash.replace(/^#/, '') !== next) {
+      // Use replaceState so we don't pollute browser history with every tab click
+      window.history.replaceState(null, '', `#${next}`);
+    }
+  };
+  // Sync state when hash changes externally (e.g. PaymentSetupCard sets #kyc)
+  useEffect(() => {
+    const onHashChange = () => setActiveTabState(readHashTab());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
 
   // Load data from user metadata on component mount
   useEffect(() => {
@@ -201,7 +219,7 @@ const Settings = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="business" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-4 md:grid-cols-8">
           <TabsTrigger value="business">Business</TabsTrigger>
           <TabsTrigger value="banking">Banking</TabsTrigger>
@@ -496,7 +514,9 @@ const Settings = () => {
           <SimpleBrandingManager />
         </TabsContent>
         <TabsContent value="kyc">
-          <KYCVerification />
+          <div id="kyc-section">
+            <KYCVerification />
+          </div>
         </TabsContent>
         <TabsContent value="support">
           <Support />

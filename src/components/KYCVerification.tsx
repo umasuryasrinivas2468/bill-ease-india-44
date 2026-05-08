@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,11 +8,15 @@ import { useToast } from '@/hooks/use-toast';
 import {
     ShieldCheck, ExternalLink, Loader2, CheckCircle2, AlertTriangle,
     User, CreditCard, FileText, Clock, RefreshCw, Fingerprint,
-    MapPin, Calendar, Hash, Phone,
+    MapPin, Calendar, Phone,
 } from 'lucide-react';
-
-const DIGILOCKER_URL =
-    'https://digilocker.meripehchaan.gov.in/public/oauth2/1/authorize?response_type=code&client_id=OR395A6BB5&state=oidc_flow&redirect_uri=https%3A%2F%2Fwww.app.aczen.in%2Fdashboard&code_challenge=oUlE5DstbcfSMIFzWNuiAKiHXA5353_CHh0z5nBEyb0&code_challenge_method=S256&dl_flow=signup&acr=pan+aadhaar&amr=aadhaar+pan&ulsignup=Y';
+import {
+    buildAuthorizeUrl,
+    readCallbackFromUrl,
+    clearCallbackFromUrl,
+    consumeStoredVerifier,
+    exchangeCodeForKyc,
+} from '@/lib/digilocker';
 
 export interface KYCData {
     fullName?: string;
@@ -26,19 +30,22 @@ export interface KYCData {
     email?: string;
     photo?: string;
     verifiedAt?: string;
+    digilockerid?: string;
     status: 'not_started' | 'pending' | 'verified' | 'failed';
 }
 
 interface KYCVerificationProps {
     compact?: boolean;
     className?: string;
+    onVerified?: (data: KYCData) => void;
 }
 
-export default function KYCVerification({ compact = false, className = '' }: KYCVerificationProps) {
+export default function KYCVerification({ compact = false, className = '', onVerified }: KYCVerificationProps) {
     const { user } = useUser();
     const { toast } = useToast();
     const [kycData, setKycData] = useState<KYCData>({ status: 'not_started' });
     const [isLoading, setIsLoading] = useState(false);
+    const handledCallbackRef = useRef(false);
 
     // Load KYC data from user metadata on mount
     useEffect(() => {
@@ -50,21 +57,6 @@ export default function KYCVerification({ compact = false, className = '' }: KYC
         }
     }, [user]);
 
-    // Auto-detect DigiLocker redirect code in URL
-    useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        const state = urlParams.get('state');
-        if (code && state === 'oidc_flow' && kycData.status !== 'verified') {
-            handleFetchFromCode(code);
-            // Clean the URL
-            const url = new URL(window.location.href);
-            url.searchParams.delete('code');
-            url.searchParams.delete('state');
-            window.history.replaceState({}, '', url.toString());
-        }
-    }, []);
-
     const saveKYCData = useCallback(async (data: KYCData) => {
         try {
             await user?.update({
@@ -75,79 +67,88 @@ export default function KYCVerification({ compact = false, className = '' }: KYC
         }
     }, [user]);
 
-    const handleStartKYC = () => {
-        const popup = window.open(DIGILOCKER_URL, '_blank', 'width=650,height=750,scrollbars=yes,resizable=yes');
-        if (!popup) {
+    const handleCallback = useCallback(async (code: string, state: string) => {
+        const stored = consumeStoredVerifier();
+        clearCallbackFromUrl();
+        if (!stored) {
             toast({
-                title: 'Pop-up blocked',
-                description: 'Please allow pop-ups for this site and try again.',
+                title: 'Session expired',
+                description: 'Please start KYC verification again.',
                 variant: 'destructive',
             });
             return;
         }
-
-        const pendingData: KYCData = { ...kycData, status: 'pending' };
-        setKycData(pendingData);
-        saveKYCData(pendingData);
-
-        toast({
-            title: 'DigiLocker Opened',
-            description: 'Complete verification in the new window. Then click "Fetch KYC Details".',
-        });
-    };
-
-    const handleFetchFromCode = async (code: string) => {
+        if (stored.state !== state) {
+            toast({
+                title: 'Verification failed',
+                description: 'State mismatch — possible CSRF. Please retry.',
+                variant: 'destructive',
+            });
+            return;
+        }
         setIsLoading(true);
         try {
-            // In production: exchange `code` with DigiLocker token endpoint for user info
-            // For now, simulate the response with user profile data
+            const claims = await exchangeCodeForKyc(code, stored.verifier);
             const verifiedData: KYCData = {
-                fullName: user?.fullName || user?.firstName || 'Verified User',
-                pan: (user?.unsafeMetadata as any)?.businessInfo?.pan || '',
-                aadhaarNumber: '',
-                dob: '',
-                gender: '',
-                fatherName: '',
-                address: (user?.unsafeMetadata as any)?.businessInfo?.address || '',
-                mobile: user?.primaryPhoneNumber?.phoneNumber || '',
-                email: user?.primaryEmailAddress?.emailAddress || '',
-                verifiedAt: new Date().toISOString(),
+                fullName: claims.fullName || user?.fullName || user?.firstName || '',
+                pan: claims.pan,
+                aadhaarNumber: claims.maskedAadhaar,
+                dob: claims.dob,
+                gender: claims.gender,
+                mobile: claims.mobile || user?.primaryPhoneNumber?.phoneNumber || '',
+                email: claims.email || user?.primaryEmailAddress?.emailAddress || '',
+                digilockerid: claims.digilockerid,
+                verifiedAt: claims.verifiedAt,
                 status: 'verified',
             };
             setKycData(verifiedData);
             await saveKYCData(verifiedData);
-            toast({ title: '✅ KYC Verified', description: 'Your identity has been verified via DigiLocker.' });
+            onVerified?.(verifiedData);
+            toast({
+                title: '✅ KYC Verified',
+                description: `Aadhaar name: ${verifiedData.fullName}${verifiedData.pan ? ` · PAN: ${verifiedData.pan}` : ''}`,
+            });
         } catch (err: any) {
-            toast({ title: 'Verification failed', description: err.message, variant: 'destructive' });
+            const failed: KYCData = { ...kycData, status: 'failed' };
+            setKycData(failed);
+            await saveKYCData(failed);
+            toast({
+                title: 'Verification failed',
+                description: err.message || 'Could not exchange DigiLocker code.',
+                variant: 'destructive',
+            });
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [user, kycData, saveKYCData, toast, onVerified]);
 
-    const handleFetchDetails = async () => {
-        setIsLoading(true);
+    // Auto-detect DigiLocker redirect code in URL after sign-in
+    useEffect(() => {
+        if (handledCallbackRef.current) return;
+        const cb = readCallbackFromUrl();
+        if (!cb) return;
+        // Only process if there's a stored verifier (i.e. *we* started this flow).
+        // Shared pages may have unrelated ?code=… params.
+        if (!sessionStorage.getItem('digilocker.code_verifier')) return;
+        handledCallbackRef.current = true;
+        handleCallback(cb.code, cb.state);
+    }, [handleCallback]);
+
+    const handleStartKYC = async () => {
         try {
-            // Fetch details from DigiLocker callback or Clerk profile
-            const verifiedData: KYCData = {
-                fullName: user?.fullName || user?.firstName || '',
-                pan: (user?.unsafeMetadata as any)?.businessInfo?.pan || '',
-                aadhaarNumber: '',
-                dob: '',
-                gender: '',
-                fatherName: '',
-                address: (user?.unsafeMetadata as any)?.businessInfo?.address || '',
-                mobile: user?.primaryPhoneNumber?.phoneNumber || '',
-                email: user?.primaryEmailAddress?.emailAddress || '',
-                verifiedAt: new Date().toISOString(),
-                status: 'verified',
-            };
-            setKycData(verifiedData);
-            await saveKYCData(verifiedData);
-            toast({ title: '✅ KYC Details Fetched', description: 'Your identity details have been saved.' });
+            const url = await buildAuthorizeUrl({ purpose: 'kyc' });
+            const pendingData: KYCData = { ...kycData, status: 'pending' };
+            setKycData(pendingData);
+            await saveKYCData(pendingData);
+            // Full-page redirect (popup PKCE roundtrip is harder to wire and
+            // many DigiLocker partner redirect URIs are top-level only).
+            window.location.href = url;
         } catch (err: any) {
-            toast({ title: 'Failed to fetch', description: err.message || 'Please try again.', variant: 'destructive' });
-        } finally {
-            setIsLoading(false);
+            toast({
+                title: 'Could not start verification',
+                description: err.message || 'Please try again.',
+                variant: 'destructive',
+            });
         }
     };
 
@@ -256,16 +257,11 @@ export default function KYCVerification({ compact = false, className = '' }: KYC
 
                 {kycData.status !== 'verified' && (
                     <div className="flex gap-2">
-                        <Button size="sm" onClick={handleStartKYC} className="gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-xs h-8">
-                            <ShieldCheck className="h-3.5 w-3.5" /> Verify KYC
+                        <Button size="sm" onClick={handleStartKYC} disabled={isLoading} className="gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-xs h-8">
+                            {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+                            {kycData.status === 'pending' ? 'Resume KYC' : 'Verify KYC'}
                             <ExternalLink className="h-3 w-3 ml-0.5" />
                         </Button>
-                        {kycData.status === 'pending' && (
-                            <Button size="sm" variant="outline" onClick={handleFetchDetails} disabled={isLoading} className="gap-1.5 text-xs h-8">
-                                {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                                Fetch Details
-                            </Button>
-                        )}
                     </div>
                 )}
 
@@ -321,17 +317,11 @@ export default function KYCVerification({ compact = false, className = '' }: KYC
                 {kycData.status !== 'verified' && (
                     <>
                         <div className="flex flex-col sm:flex-row gap-3">
-                            <Button onClick={handleStartKYC} className="gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-md flex-1 sm:flex-none">
-                                <ShieldCheck className="h-4 w-4" />
-                                Start KYC Verification
+                            <Button onClick={handleStartKYC} disabled={isLoading} className="gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-md flex-1 sm:flex-none">
+                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                                {isLoading ? 'Verifying…' : kycData.status === 'pending' ? 'Resume KYC Verification' : 'Start KYC Verification'}
                                 <ExternalLink className="h-3.5 w-3.5 ml-1" />
                             </Button>
-                            {kycData.status === 'pending' && (
-                                <Button variant="outline" onClick={handleFetchDetails} disabled={isLoading} className="gap-2">
-                                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                                    {isLoading ? 'Fetching...' : 'Fetch KYC Details'}
-                                </Button>
-                            )}
                         </div>
 
                         {/* Steps guide */}
@@ -339,10 +329,10 @@ export default function KYCVerification({ compact = false, className = '' }: KYC
                             <p className="text-xs font-semibold text-muted-foreground mb-3">How it works:</p>
                             <div className="space-y-2.5">
                                 {[
-                                    { step: 1, text: 'Click "Start KYC Verification" — opens DigiLocker in a new window' },
-                                    { step: 2, text: 'Sign in with your Aadhaar and complete the verification' },
-                                    { step: 3, text: 'Come back here and click "Fetch KYC Details"' },
-                                    { step: 4, text: 'Your verified Aadhaar, PAN, and identity details will appear below' },
+                                    { step: 1, text: 'Click "Start KYC Verification" — you\'ll be sent to DigiLocker (MeriPehchaan)' },
+                                    { step: 2, text: 'Sign in with your Aadhaar and grant consent for PAN + Aadhaar' },
+                                    { step: 3, text: 'You\'ll be redirected back here automatically once consent is granted' },
+                                    { step: 4, text: 'Your verified Aadhaar name, PAN, and identity details will appear below' },
                                 ].map(s => (
                                     <div key={s.step} className="flex items-start gap-2.5">
                                         <div className="w-5 h-5 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">{s.step}</div>

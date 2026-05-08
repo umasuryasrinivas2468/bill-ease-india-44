@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { AlertCircle, Brain, FileImage, KeyRound, Loader2, ScanLine, WandSparkles } from "lucide-react";
+import { useUser } from "@clerk/clerk-react";
+import { AlertCircle, Brain, Boxes, CheckCircle2, FileImage, FileText, KeyRound, Link2, Loader2, Package, ScanLine, WandSparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,9 +8,19 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ExpenseOCRResult } from "@/utils/expenseOCR";
+import { ExpenseOCRResult, OCRItemLine } from "@/utils/expenseOCR";
 import { extractExpenseWithGemini } from "@/utils/geminiOCR";
+import {
+  applyInventoryAutomation,
+  AutomationResult,
+  ensureVendorForOcr,
+  hasGoodsTextSignals,
+  parseItemsFromRawText,
+  shouldAutoCreateInventory,
+} from "@/utils/expenseInventoryAutomation";
 import { CreateExpenseData } from "@/types/expenses";
+import { matchInvoiceToPO, POMatchResult } from "@/lib/poMatcher";
+import { createExpenseWithLiabilities } from "@/lib/vendorLiabilityWriter";
 
 interface ExpenseOCRCaptureProps {
   onCreateDraft: (draft: Partial<CreateExpenseData> & { expense_date?: string }) => void;
@@ -42,12 +53,20 @@ const saveApiKey = (key: string) => {
 };
 
 const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) => {
+  const { user } = useUser();
   const { toast } = useToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [ocrResult, setOcrResult] = useState<ExpenseOCRResult | null>(null);
   const [apiKey, setApiKey] = useState<string>(getSavedApiKey);
   const [showApiKeyInput, setShowApiKeyInput] = useState(!getSavedApiKey());
+  const [parsedItems, setParsedItems] = useState<OCRItemLine[]>([]);
+  const [inventoryResult, setInventoryResult] = useState<AutomationResult | null>(null);
+  const [isPostingInventory, setIsPostingInventory] = useState(false);
+  const [poMatch, setPoMatch] = useState<POMatchResult | null>(null);
+  const [isMatchingPO, setIsMatchingPO] = useState(false);
+  const [isSavingLiability, setIsSavingLiability] = useState(false);
+  const [liabilitySaved, setLiabilitySaved] = useState(false);
 
   const extractedFields = useMemo(() => {
     if (!ocrResult) return [];
@@ -55,6 +74,7 @@ const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) 
     return [
       { label: "Vendor", field: ocrResult.vendorName },
       { label: "Bill Number", field: ocrResult.billNumber },
+      { label: "PO Number", field: ocrResult.poNumber },
       { label: "Expense Date", field: ocrResult.expenseDate },
       { label: "Base Amount", field: ocrResult.amount },
       { label: "Tax Amount", field: ocrResult.taxAmount },
@@ -68,7 +88,18 @@ const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedFile(event.target.files?.[0] || null);
     setOcrResult(null);
+    setParsedItems([]);
+    setInventoryResult(null);
+    setPoMatch(null);
+    setLiabilitySaved(false);
   };
+
+  const inventoryAutoDetected = useMemo(() => shouldAutoCreateInventory(ocrResult), [ocrResult]);
+  const rawTextHasGoodsSignals = useMemo(
+    () => (ocrResult?.rawText ? hasGoodsTextSignals(ocrResult.rawText) : false),
+    [ocrResult?.rawText],
+  );
+  const looksLikeGoodsBill = inventoryAutoDetected || rawTextHasGoodsSignals || parsedItems.length > 0;
 
   const handleSaveApiKey = () => {
     saveApiKey(apiKey.trim());
@@ -91,14 +122,80 @@ const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) 
     }
 
     setIsProcessing(true);
+    setInventoryResult(null);
+    setPoMatch(null);
+    setLiabilitySaved(false);
     try {
       const result = await extractExpenseWithGemini(selectedFile, key);
       setOcrResult(result);
 
-      toast({
-        title: "AI extraction completed",
-        description: "Aczen AI has analyzed your document and extracted the expense fields.",
-      });
+      // Extract items: AI-detected first; fall back to raw-text parsing when
+      // the bill looks tabular but the model returned no items[].
+      let items: OCRItemLine[] = result.items ? result.items.map((it) => ({ ...it })) : [];
+      if (items.length === 0 && hasGoodsTextSignals(result.rawText || "")) {
+        items = parseItemsFromRawText(result.rawText || "");
+      }
+      setParsedItems(items);
+
+      // Try to match this invoice to an open Purchase Order. Runs in parallel
+      // with inventory automation; result is non-blocking and only drives the
+      // "Save with PO link" UI affordance below.
+      if (user?.id) {
+        setIsMatchingPO(true);
+        try {
+          const matched = await matchInvoiceToPO(user.id, { ...result, items });
+          setPoMatch(matched);
+        } catch (matchErr) {
+          console.warn("PO match failed:", matchErr);
+          setPoMatch(null);
+        } finally {
+          setIsMatchingPO(false);
+        }
+      }
+
+      // If the bill looks like a goods purchase, push the items straight into
+      // inventory: resolve/create the vendor, match-or-create each inventory
+      // row, post inward stock movement and the inventory ledger journal.
+      const looksGoods = shouldAutoCreateInventory(result) || items.some(it => Number(it.quantity || 0) > 0);
+      if (user?.id && looksGoods && items.length > 0) {
+        setIsPostingInventory(true);
+        try {
+          const vendor = await ensureVendorForOcr(
+            user.id,
+            result.vendorName?.value || null,
+            result.gstNumber?.value || null,
+          );
+          const automation = await applyInventoryAutomation(items, {
+            userId: user.id,
+            vendorId: vendor?.id || null,
+            vendorName: vendor?.name || result.vendorName?.value || null,
+            billNumber: result.billNumber?.value || null,
+            billDate: result.expenseDate?.value || null,
+            categoryHint: result.categoryHint?.value || null,
+          });
+          setInventoryResult(automation);
+          toast({
+            title: "Added to Inventory",
+            description: `${automation.itemsCreated} new + ${automation.itemsMatched} matched item(s). Stock-on-hand and journal updated.`,
+          });
+        } catch (autoErr) {
+          console.error("Inventory automation failed:", autoErr);
+          toast({
+            title: "Inventory update failed",
+            description: autoErr instanceof Error ? autoErr.message : "Could not add items to inventory.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsPostingInventory(false);
+        }
+      } else {
+        toast({
+          title: "AI extraction completed",
+          description: items.length > 0
+            ? `Extracted ${items.length} line item(s).`
+            : "Document analyzed — review the extracted fields below.",
+        });
+      }
     } catch (error) {
       console.error("Aczen OCR error:", error);
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -135,8 +232,50 @@ const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) 
       payment_mode: (ocrResult.paymentMode?.value as CreateExpenseData["payment_mode"]) || "bank",
       bill_number: ocrResult.billNumber?.value,
       notes: [ocrResult.notes, `Created from ${selectedFile?.name || "OCR capture"}`].filter(Boolean).join(" | "),
+      po_id: poMatch?.po?.id,
+      po_number: poMatch?.po?.order_number ?? ocrResult.poNumber?.value,
+      po_match_status: poMatch?.po
+        ? poMatch.confidence === "low"
+          ? "conflict"
+          : poMatch.remainingOpenLines.some((l) => l.openQty > 0)
+          ? "partial"
+          : "matched"
+        : "unlinked",
+      po_match_confidence: poMatch?.po ? poMatch.confidence : undefined,
     });
   };
+
+  const handleSaveWithLiability = async () => {
+    if (!ocrResult || !poMatch || !user?.id) return;
+    setIsSavingLiability(true);
+    try {
+      const result = await createExpenseWithLiabilities({
+        userId: user.id,
+        ocr: { ...ocrResult, items: parsedItems.length > 0 ? parsedItems : ocrResult.items },
+        match: poMatch,
+      });
+      setLiabilitySaved(true);
+      const stillOpen = poMatch.remainingOpenLines.some((l) => l.openQty > 0);
+      toast({
+        title: poMatch.po ? "Vendor liability recorded" : "Direct invoice recorded",
+        description: poMatch.po
+          ? `Linked to PO ${poMatch.po.order_number}. ${result.liabilityIds.length} liability line(s) created.${
+              stillOpen ? " PO still has open quantities." : " PO fully invoiced."
+            }`
+          : `${result.liabilityIds.length} unlinked liability line(s) created.`,
+      });
+    } catch (err) {
+      console.error("Liability save failed:", err);
+      toast({
+        title: "Could not record vendor liability",
+        description: err instanceof Error ? err.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingLiability(false);
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -293,6 +432,215 @@ const ExpenseOCRCapture: React.FC<ExpenseOCRCaptureProps> = ({ onCreateDraft }) 
           </Card>
         </div>
       )}
+
+      {ocrResult && looksLikeGoodsBill && (
+        <Card className={inventoryResult ? 'border-emerald-200 bg-emerald-50/40' : 'border-dashed'}>
+          <CardHeader className="pb-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                {inventoryResult ? (
+                  <CheckCircle2 className="h-5 w-5 mt-0.5 text-emerald-700" />
+                ) : (
+                  <Boxes className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                )}
+                <div>
+                  <CardTitle className="text-base">
+                    {isPostingInventory
+                      ? 'Adding items to inventory…'
+                      : inventoryResult
+                        ? 'Items added to inventory'
+                        : 'Goods purchase detected'}
+                  </CardTitle>
+                  <CardDescription>
+                    {inventoryResult
+                      ? `${inventoryResult.itemsCreated} new SKU(s) created · ${inventoryResult.itemsMatched} existing matched · stock & journal updated.`
+                      : 'Items will be auto-created in inventory and stock-on-hand will be updated.'}
+                  </CardDescription>
+                </div>
+              </div>
+              {inventoryAutoDetected ? (
+                <Badge className="bg-emerald-600">
+                  <Package className="h-3 w-3 mr-1" />
+                  AI-detected goods
+                </Badge>
+              ) : rawTextHasGoodsSignals ? (
+                <Badge variant="outline" className="border-amber-400 text-amber-700">
+                  Tabular bill
+                </Badge>
+              ) : null}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {isPostingInventory ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Posting stock movements and updating the inventory ledger…
+              </div>
+            ) : inventoryResult && inventoryResult.details.length > 0 ? (
+              <div className="rounded-md border bg-white p-3">
+                <p className="text-xs font-medium text-muted-foreground mb-2">
+                  {inventoryResult.details.length} item(s) processed · total value {formatRupee(String(inventoryResult.totalValue.toFixed(2)))}
+                </p>
+                <ul className="text-sm space-y-0.5 max-h-40 overflow-y-auto">
+                  {inventoryResult.details.slice(0, 8).map((d, idx) => (
+                    <li key={idx} className="flex justify-between gap-3">
+                      <span className="truncate">
+                        {d.description}
+                        <span className={d.was_new ? 'ml-2 text-emerald-700' : 'ml-2 text-muted-foreground'}>
+                          ({d.was_new ? 'new' : 'matched'})
+                        </span>
+                      </span>
+                      <span className="text-muted-foreground whitespace-nowrap">
+                        {d.quantity} × {formatRupee(String(d.unit_cost.toFixed(2)))}
+                      </span>
+                    </li>
+                  ))}
+                  {inventoryResult.details.length > 8 && (
+                    <li className="text-xs text-muted-foreground italic">
+                      +{inventoryResult.details.length - 8} more — view in Inventory
+                    </li>
+                  )}
+                </ul>
+              </div>
+            ) : parsedItems.length > 0 ? (
+              <div className="rounded-md border bg-white p-3">
+                <p className="text-xs font-medium text-muted-foreground mb-2">
+                  {parsedItems.length} line item(s) detected
+                </p>
+                <ul className="text-sm space-y-0.5 max-h-40 overflow-y-auto">
+                  {parsedItems.slice(0, 8).map((it, idx) => (
+                    <li key={idx} className="flex justify-between gap-3">
+                      <span className="truncate">
+                        {it.description}
+                        {it.hsn_sac ? <span className="text-muted-foreground ml-1">({it.hsn_sac})</span> : null}
+                      </span>
+                      <span className="text-muted-foreground whitespace-nowrap">
+                        {it.quantity ?? '?'} {it.unit || ''} {it.amount ? `· ${formatRupee(String(it.amount))}` : ''}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>No line items extracted</AlertTitle>
+                <AlertDescription>
+                  The bill was identified as a goods purchase but no line items could be parsed.
+                  Try a clearer scan, or add items manually via Inventory.
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {ocrResult && (isMatchingPO || poMatch) && (
+        <Card className={liabilitySaved ? "border-emerald-200 bg-emerald-50/40" : poMatch?.po ? "border-blue-200" : "border-dashed"}>
+          <CardHeader className="pb-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                {liabilitySaved ? (
+                  <CheckCircle2 className="h-5 w-5 mt-0.5 text-emerald-700" />
+                ) : poMatch?.po ? (
+                  <Link2 className="h-5 w-5 mt-0.5 text-blue-700" />
+                ) : (
+                  <FileText className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                )}
+                <div>
+                  <CardTitle className="text-base">
+                    {isMatchingPO
+                      ? "Searching for matching Purchase Order…"
+                      : liabilitySaved
+                      ? "Vendor liability recorded"
+                      : poMatch?.po
+                      ? `Matched to PO ${poMatch.po.order_number}`
+                      : "No matching Purchase Order"}
+                  </CardTitle>
+                  <CardDescription>
+                    {liabilitySaved
+                      ? "Expense + line-item liabilities saved. Outstanding balance will reduce as payments are recorded."
+                      : poMatch?.po
+                      ? `Vendor: ${poMatch.po.vendor_name} · PO total ${formatRupee(String(poMatch.po.total_amount))} · ${poMatch.reason.replace(/_/g, " ")}`
+                      : poMatch
+                      ? "Could not auto-match. Saving will create an unlinked vendor liability for direct invoicing."
+                      : "Cross-checking the invoice against your open POs."}
+                  </CardDescription>
+                </div>
+              </div>
+              {poMatch?.po && (
+                <Badge variant={poMatch.confidence === "high" ? "default" : poMatch.confidence === "medium" ? "secondary" : "outline"}>
+                  {poMatch.confidence} confidence
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {poMatch?.po && (
+              <div className="rounded-md border bg-white p-3">
+                <p className="text-xs font-medium text-muted-foreground mb-2">
+                  Line-by-line match
+                </p>
+                <ul className="text-sm space-y-1 max-h-48 overflow-y-auto">
+                  {poMatch.lineMatches.map((lm, idx) => (
+                    <li key={idx} className="flex justify-between gap-3">
+                      <span className="truncate">
+                        {lm.invoiceDescription || "(unnamed line)"}
+                        {lm.poProductName ? (
+                          <span className="ml-2 text-emerald-700">→ {lm.poProductName}</span>
+                        ) : (
+                          <span className="ml-2 text-amber-700">unmatched</span>
+                        )}
+                      </span>
+                      <span className="text-muted-foreground whitespace-nowrap">
+                        invoiced {lm.invoiceQty}
+                        {lm.poRemainingQty != null ? ` / open ${lm.poRemainingQty}` : ""}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {poMatch.remainingOpenLines.some((l) => l.openQty > 0) && (
+                  <Alert className="mt-3">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Partial delivery</AlertTitle>
+                    <AlertDescription>
+                      PO will stay open for{" "}
+                      {poMatch.remainingOpenLines
+                        .filter((l) => l.openQty > 0)
+                        .map((l) => `${l.openQty} × ${l.productName}`)
+                        .join(", ")}
+                      .
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
+            {!liabilitySaved && (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  onClick={handleSaveWithLiability}
+                  disabled={isSavingLiability || !user?.id}
+                  className="bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  {isSavingLiability ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving liability…
+                    </>
+                  ) : (
+                    <>
+                      <Link2 className="mr-2 h-4 w-4" />
+                      {poMatch?.po ? "Save invoice + link to PO" : "Save as direct invoice"}
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
     </div>
   );
 };

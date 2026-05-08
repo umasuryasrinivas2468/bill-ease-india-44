@@ -1,11 +1,13 @@
 
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building, CreditCard, FileImage, CheckCircle } from 'lucide-react';
+import { Building, CreditCard, FileImage, CheckCircle, ShieldCheck } from 'lucide-react';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
+import { useKycStatus } from '@/hooks/useKycStatus';
 import { BusinessInfoStep } from '@/components/onboarding/BusinessInfoStep';
 import { BankingDetailsStep } from '@/components/onboarding/BankingDetailsStep';
 import { BrandingStep } from '@/components/onboarding/BrandingStep';
+import { KYCStep } from '@/components/onboarding/KYCStep';
 
 const Onboarding = () => {
   const {
@@ -20,10 +22,13 @@ const Onboarding = () => {
     setBusinessAssets,
     isCompleting,
     handleBusinessNext,
+    handleKycNext,
     handleBankingNext,
     handleComplete,
     sessionId,
   } = useOnboardingState();
+
+  const { isVerified: kycVerified } = useKycStatus();
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -37,7 +42,7 @@ const Onboarding = () => {
         </div>
 
         <Tabs value={currentStep} onValueChange={setCurrentStep} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="business" className="relative">
               <Building className="h-4 w-4 mr-2" />
               Business
@@ -45,7 +50,14 @@ const Onboarding = () => {
                 <CheckCircle className="h-4 w-4 ml-2 text-green-500" />
               )}
             </TabsTrigger>
-            <TabsTrigger value="banking" disabled={!completedSteps.includes('business')}>
+            <TabsTrigger value="kyc" disabled={!completedSteps.includes('business')}>
+              <ShieldCheck className="h-4 w-4 mr-2" />
+              KYC
+              {kycVerified && (
+                <CheckCircle className="h-4 w-4 ml-2 text-green-500" />
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="banking" disabled={!kycVerified}>
               <CreditCard className="h-4 w-4 mr-2" />
               Banking
               {completedSteps.includes('banking') && (
@@ -65,6 +77,10 @@ const Onboarding = () => {
               onNext={handleBusinessNext}
               isLoading={isCompleting}
             />
+          </TabsContent>
+
+          <TabsContent value="kyc">
+            <KYCStep onNext={handleKycNext} />
           </TabsContent>
 
           <TabsContent value="banking">

@@ -653,8 +653,8 @@ app.post('/tds/transaction', (req, res) => {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
     service: 'Federal Bank UPI Integration with TDS Support'
   });
@@ -671,6 +671,9 @@ app.post('/ai/inventory-insights', async (req, res) => {
       });
     }
 
+
+
+    
     const goods = inventory.filter(item => item.type === 'goods');
     const services = inventory.filter(item => item.type === 'services');
     const lowStock = goods.filter(item => Number(item.stock_quantity || 0) <= Number(item.reorder_level || 0));
@@ -762,7 +765,7 @@ app.get('/reports/annual', async (req, res) => {
     // generateToStream returns a Promise that resolves to a readable stream
     const pdfStream = await generateToStream(String(year), String(ownerName), {});
 
-    // Pipe the stream to response
+    // Pipe the stream to response 
     pdfStream.on('error', (err) => {
       console.error('PDF stream runtime error:', err);
       try { if (!res.headersSent) res.status(500).json({ success: false, error: 'Failed to generate PDF' }); } catch (e) { /* ignore */ }

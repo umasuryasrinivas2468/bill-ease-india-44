@@ -13,6 +13,7 @@ Return ONLY valid JSON:
 {
   "vendor_name": "string or null",
   "bill_number": "string or null",
+  "po_number": "string or null — purchase order number referenced on the invoice (look for 'PO No', 'P.O. No.', 'Order Ref', 'Buyer Order No', 'Your Order No', 'Reference No', 'Order No' followed by an alphanumeric token)",
   "expense_date": "YYYY-MM-DD or null",
   "base_amount": number or null,
   "tax_amount": number or null,
@@ -20,6 +21,18 @@ Return ONLY valid JSON:
   "gst_number": "string or null (15-char GSTIN)",
   "payment_mode": "cash|bank|credit_card|debit_card|upi|cheque or null",
   "category_hint": "one of: Office Rent, Office Supplies, Utilities, Communication, Printing & Stationery, Repairs & Maintenance, Insurance, Software & Subscriptions, Fuel & Transportation, Travel & Accommodation, Advertising & Marketing, Entertainment, Raw Materials, Purchase of Goods, Freight & Cartage, Professional Fees, Miscellaneous — or null",
+  "item_type": "goods|service|expense — 'goods' for inventory / raw material / stock purchases, 'service' for professional services / subscriptions, 'expense' for office overheads. null if uncertain",
+  "items": [
+    {
+      "description": "string — product / material name",
+      "hsn_sac": "HSN/SAC code or null",
+      "quantity": number or null,
+      "unit": "pcs|kg|ltr|mtr|box|nos or null",
+      "unit_price": number or null,
+      "tax_rate": number or null,
+      "amount": number or null
+    }
+  ] or null,
   "raw_text": "full readable text from document (include ALL text you can read)"
 }
 
@@ -29,6 +42,9 @@ Rules:
 - If CGST + SGST found separately, sum them for tax_amount.
 - Dates: convert DD/MM/YYYY or DD-MMM-YYYY to YYYY-MM-DD.
 - If base_amount missing: base_amount = total_amount - tax_amount.
+- po_number: extract verbatim if a PO/Order reference is printed on the invoice. Strip leading labels (e.g. "PO No: PO-2026/0042" → "PO-2026/0042"). Return null if no PO reference is visible — do NOT guess from the bill number.
+- Set item_type = "goods" when the bill is for tangible products (raw materials, stock, components, equipment with discrete quantities); "service" for professional services, subscriptions, AMC; "expense" for office overheads (rent, utilities, fuel, restaurant). When uncertain but quantities/HSN are visible, prefer "goods".
+- Populate items[] whenever you can see distinct line items in the document — extract every line you can read with at least a description, regardless of item_type. Even service or mixed bills can have line items; extract them all. Set quantity to 1 if not explicitly stated. Only return items: null when there are clearly no itemized lines (e.g. a single-line restaurant bill or rent receipt).
 - Return ONLY JSON, no markdown, no explanation.`;
 
 serve(async (req) => {

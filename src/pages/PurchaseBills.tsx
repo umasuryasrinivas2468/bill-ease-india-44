@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, Upload, FileText } from 'lucide-react';
+import { Plus, Trash2, Upload, FileText, ScanLine } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@clerk/clerk-react';
@@ -20,6 +20,17 @@ import InventoryItemSelector from '@/components/InventoryItemSelector';
 import { useInventory } from '@/hooks/useInventory';
 import CostCenterSelect from '@/components/CostCenterSelect';
 import { recordApAudit } from '@/hooks/useApAuditLog';
+import { Switch } from '@/components/ui/switch';
+import {
+  computeBillGst,
+  isIntraState,
+  shouldFlagRcm,
+  stateNameFromGstin,
+  STATE_CODE_MAP,
+} from '@/lib/gstHelpers';
+import { classifyBillLines, sumByClassification } from '@/lib/billClassifier';
+import { extractBillFromFile } from '@/utils/billOcr';
+import { ensureInventoryItem } from '@/utils/expenseInventoryAutomation';
 
 type BillItem = {
   id: string;
@@ -120,6 +131,15 @@ const PurchaseBills = () => {
     bill_attachment_url: '',
     classification: 'goods' as 'goods' | 'expense' | 'mixed',
     cost_center_id: null as string | null,
+    project_id: null as string | null,
+    branch_id: null as string | null,
+    department: '',
+    // GST / RCM / ITC
+    is_rcm: false,
+    itc_eligible: true,
+    vendor_gst_status: 'registered' as 'registered' | 'unregistered' | 'composition' | 'unknown',
+    place_of_supply: '',
+    seller_state: '',
   });
   const [items, setItems] = useState<BillItem[]>([emptyItem()]);
 
@@ -199,18 +219,112 @@ const PurchaseBills = () => {
       bill_attachment_url: '',
       classification: 'goods',
       cost_center_id: null,
+      project_id: null,
+      branch_id: null,
+      department: '',
+      is_rcm: false,
+      itc_eligible: true,
+      vendor_gst_status: 'registered',
+      place_of_supply: '',
+      seller_state: '',
     });
     setItems([emptyItem()]);
     setAttachmentFile(null);
   };
 
+  // OCR upload handler — fills the form from a scanned bill / PDF.
+  const [isOcrLoading, setIsOcrLoading] = useState(false);
+  const ocrInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleOcrUpload = async (file: File) => {
+    setIsOcrLoading(true);
+    try {
+      const ext = await extractBillFromFile(file);
+
+      // Match an existing vendor by GSTIN or name.
+      const matchedVendor: any = vendors.find((v: any) =>
+        (ext.vendor_gstin && v.gst_number && v.gst_number === ext.vendor_gstin) ||
+        (ext.vendor_name && v.name && v.name.toLowerCase() === ext.vendor_name.toLowerCase())
+      );
+
+      // Build line items from extracted data (or single line if none).
+      const newItems: BillItem[] = (ext.items && ext.items.length > 0)
+        ? ext.items.map(it => ({
+            id: makeId(),
+            item_details: it.description || '',
+            account: '',
+            quantity: Number(it.quantity) || 1,
+            rate: Number(it.rate) || 0,
+            tax: Number(it.tax_rate) || 0,
+            customer_details: '',
+            amount: Number(it.amount) || (Number(it.quantity) || 1) * (Number(it.rate) || 0),
+          }))
+        : [{
+            id: makeId(),
+            item_details: ext.vendor_name ? `Bill from ${ext.vendor_name}` : 'OCR-extracted line',
+            account: '',
+            quantity: 1,
+            rate: Number(ext.taxable_amount) || Number(ext.total_amount) || 0,
+            tax: 0,
+            customer_details: '',
+            amount: Number(ext.taxable_amount) || Number(ext.total_amount) || 0,
+          }];
+      setItems(newItems);
+
+      setFormData(prev => ({
+        ...prev,
+        vendor_id:    matchedVendor?.id  || prev.vendor_id,
+        vendor_name:  matchedVendor?.name || ext.vendor_name || prev.vendor_name,
+        bill_number:  ext.bill_number     || prev.bill_number,
+        bill_date:    ext.bill_date       || prev.bill_date,
+        due_date:     ext.due_date        || prev.due_date,
+        is_rcm:       Boolean(ext.is_rcm) || prev.is_rcm,
+        place_of_supply: ext.buyer_state  || prev.place_of_supply,
+        seller_state:    ext.vendor_state || prev.seller_state,
+      }));
+
+      toast({
+        title: matchedVendor ? 'Bill scanned' : 'Bill scanned (vendor not matched)',
+        description: matchedVendor
+          ? `Filled ${ext.items?.length || 1} line(s) from ${ext.vendor_name || 'document'}.`
+          : `Couldn't match "${ext.vendor_name || 'vendor'}". Pick from the dropdown manually.`,
+      });
+    } catch (err: any) {
+      console.error('Bill OCR failed:', err);
+      toast({
+        title: 'OCR failed',
+        description: err?.message || 'Could not read the bill — try a clearer scan.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsOcrLoading(false);
+      if (ocrInputRef.current) ocrInputRef.current.value = '';
+    }
+  };
+
   const handleVendorChange = (vendorId: string) => {
-    const vendor = vendors.find(v => v.id === vendorId);
+    const vendor: any = vendors.find(v => v.id === vendorId);
+    // Derive vendor GST status from gst_treatment / gst_number
+    const gstTreatment = (vendor?.gst_treatment as string | undefined)?.toLowerCase();
+    let vendorGstStatus: 'registered' | 'unregistered' | 'composition' | 'unknown' = 'registered';
+    if (gstTreatment === 'composition') vendorGstStatus = 'composition';
+    else if (gstTreatment === 'unregistered' || !vendor?.gst_number) vendorGstStatus = 'unregistered';
+    else if (vendor?.gst_number) vendorGstStatus = 'registered';
+    else vendorGstStatus = 'unknown';
+
+    const sellerState = stateNameFromGstin(vendor?.gst_number) || vendor?.state || '';
+
     setFormData(prev => ({
       ...prev,
       vendor_id: vendorId,
       vendor_name: vendor?.name || '',
-      payment_terms: String((vendor as any)?.payment_terms || ''),
+      payment_terms: String(vendor?.payment_terms || ''),
+      vendor_gst_status: vendorGstStatus,
+      seller_state: sellerState,
+      // Composition vendors charge no GST; auto-flip ITC off & RCM on for the
+      // S.9(4) self-assessed liability.
+      itc_eligible: vendorGstStatus === 'composition' ? false : prev.itc_eligible,
+      is_rcm: vendorGstStatus === 'unregistered' || vendorGstStatus === 'composition' ? true : prev.is_rcm,
     }));
   };
 
@@ -285,47 +399,153 @@ const PurchaseBills = () => {
         notes: formData.notes || '',
       });
 
+      // Classify each line into inventory / expense / asset / prepaid using
+      // the rules table + vendor history (#1). The header classification
+      // becomes the bill's classification field; the per-class sums drive
+      // the journal posting.
+      const classified = await classifyBillLines(
+        user.id,
+        formData.vendor_id || null,
+        items as any
+      );
+      const classifiedItems = classified.lines;
+      const classTotals = sumByClassification(classifiedItems as any);
+
+      // Compute the GST decomposition (CGST/SGST or IGST) from the vendor +
+      // buyer state. We don't have the buyer GSTIN at hand here so we fall
+      // back to the seller_state vs place_of_supply text comparison; the
+      // SQL trigger will refine `intra_state` if user_settings has the
+      // business GSTIN.
+      const vendorRow: any = vendors.find(v => v.id === formData.vendor_id);
+      const buyerState = formData.place_of_supply || formData.seller_state;
+      const intraGuess = isIntraState(vendorRow?.gst_number, undefined);
+      const intraState =
+        intraGuess !== null ? intraGuess
+        : formData.seller_state && buyerState
+          ? formData.seller_state.toLowerCase() === buyerState.toLowerCase()
+          : true;
+      const taxBreakdown = computeBillGst({
+        taxable_amount: billTotals.amount,
+        gst_rate: billTotals.amount > 0 ? (billTotals.gstAmount / billTotals.amount) * 100 : 0,
+        seller_gstin: vendorRow?.gst_number,
+        is_rcm: formData.is_rcm,
+      });
+
       const payload: any = {
         user_id: user.id,
         vendor_id: formData.vendor_id || null,
         vendor_name: formData.vendor_name,
+        vendor_gst_number: vendorRow?.gst_number || null,
         bill_number: formData.bill_number,
         bill_date: formData.bill_date,
         due_date: formData.due_date,
-        items,
+        items: classifiedItems,    // includes __classification per line
         amount: billTotals.amount,
         gst_amount: billTotals.gstAmount,
         total_amount: billTotals.total,
         notes: meta,
         status: 'pending',
+        classification: classified.header,
+        asset_amount:   classTotals.asset,
+        prepaid_amount: classTotals.prepaid,
         cost_center_id: formData.cost_center_id || null,
+        project_id: formData.project_id || null,
+        branch_id: formData.branch_id || null,
+        department: formData.department || null,
+        // GST / RCM / ITC
+        is_rcm: formData.is_rcm,
+        itc_eligible: formData.itc_eligible,
+        itc_status: formData.is_rcm
+          ? (formData.itc_eligible ? 'pending' : 'blocked')
+          : (billTotals.gstAmount > 0
+              ? (formData.itc_eligible ? 'pending' : 'blocked')
+              : 'not_applicable'),
+        vendor_gst_status: formData.vendor_gst_status,
+        place_of_supply: formData.place_of_supply || null,
+        seller_state: formData.seller_state || null,
+        intra_state: intraState,
+        cgst_amount: taxBreakdown.cgst,
+        sgst_amount: taxBreakdown.sgst,
+        igst_amount: taxBreakdown.igst,
+        cess_amount: taxBreakdown.cess,
+        rcm_rate: formData.is_rcm && billTotals.amount > 0
+          ? Math.round((billTotals.gstAmount / billTotals.amount) * 10000) / 100
+          : 0,
+        rcm_amount: taxBreakdown.rcm_amount,
       };
 
       const { data: bill, error } = await supabase.from('purchase_bills' as any).insert([payload]).select().single();
       if (error) throw error;
 
       // For pure-expense bills, skip inventory inward; goods/mixed bills route through inventory.
+      // For inventory-classified lines that lack a product_id (typical for OCR-extracted
+      // bills), find-or-create the inventory master row so `processPurchaseBillInventory`
+      // doesn't silently drop them. We only auto-create rows for lines the classifier
+      // marked as 'inventory' to avoid polluting the master with service/expense lines.
       let inventoryAmount = 0;
       if (formData.classification !== 'expense') {
+        const itemsWithProductIds = await Promise.all(
+          (classifiedItems as any[]).map(async (line) => {
+            if (line.product_id) return line;
+            if (line.__classification && line.__classification !== 'inventory') return line;
+            const desc = String(line.item_details || line.description || '').trim();
+            if (!desc || !(Number(line.quantity) > 0)) return line;
+            const ensured = await ensureInventoryItem(
+              user.id,
+              {
+                description: desc,
+                hsn_sac: line.hsn_sac || null,
+                quantity: Number(line.quantity) || 1,
+                unit: null,
+                unit_price: Number(line.rate) || 0,
+                tax_rate: Number(line.tax) || 0,
+                amount: Number(line.amount) || 0,
+              },
+              { vendorId: formData.vendor_id || null },
+            );
+            return { ...line, product_id: ensured.id };
+          }),
+        );
         const result = await processPurchaseBillInventory(user.id, {
           id: bill.id,
           bill_number: formData.bill_number,
           bill_date: formData.bill_date,
           vendor_id: formData.vendor_id || null,
           vendor_name: formData.vendor_name,
-          items,
+          items: itemsWithProductIds,
         });
         inventoryAmount = result.inventoryAmount;
       }
 
+      // The journal's inventory_amount is what physically went through
+      // inventoryAutomationService (which only considers items linked to
+      // an `inventory` row). Use that as the inventory leg, fall back to
+      // the classifier's count for non-tracked-item bills.
+      const inventoryLegAmount = inventoryAmount > 0 ? inventoryAmount : classTotals.inventory;
+
       await postPurchaseBillJournal(user.id, {
+        bill_id: bill.id,
         bill_number: formData.bill_number,
         bill_date: formData.bill_date,
         vendor_name: formData.vendor_name,
+        vendor_id: formData.vendor_id || undefined,
         amount: billTotals.amount,
         gst_amount: billTotals.gstAmount,
         total_amount: billTotals.total,
-        inventory_amount: inventoryAmount,
+        inventory_amount: inventoryLegAmount,
+        asset_amount:    classTotals.asset,
+        prepaid_amount:  classTotals.prepaid,
+        is_rcm: formData.is_rcm,
+        itc_eligible: formData.itc_eligible,
+        cost_center_id: formData.cost_center_id || undefined,
+        project_id: formData.project_id || undefined,
+        branch_id: formData.branch_id || undefined,
+        gst_split: {
+          cgst: taxBreakdown.cgst,
+          sgst: taxBreakdown.sgst,
+          igst: taxBreakdown.igst,
+          cess: taxBreakdown.cess,
+        },
       });
 
       await recordApAudit(user.id, { id: user.id, email: user.primaryEmailAddress?.emailAddress }, {
@@ -373,8 +593,11 @@ const PurchaseBills = () => {
         bill_number: bill.bill_number,
         date: new Date().toISOString().split('T')[0],
         vendor_name: bill.vendor_name,
+        vendor_id: bill.vendor_id || undefined,
         amount: bill.total_amount,
         payment_mode: 'bank',
+        cost_center_id: (bill as any).cost_center_id || undefined,
+        project_id: (bill as any).project_id || undefined,
       });
 
       toast({ title: 'Success', description: 'Bill marked as paid.' });
@@ -391,11 +614,33 @@ const PurchaseBills = () => {
         <div className="flex items-center gap-4">
           <SidebarTrigger className="md:hidden" />
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Bills</h1>
+            <h1 className="text-2xl md:text-3xl font-bold">Purchase Registry</h1>
             <p className="text-muted-foreground">Manage vendor bills under purchases</p>
           </div>
         </div>
 
+        <input
+          ref={ocrInputRef}
+          type="file"
+          accept="image/*,application/pdf"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              resetForm();
+              setIsDialogOpen(true);
+              handleOcrUpload(file);
+            }
+          }}
+        />
+        <Button
+          variant="outline"
+          onClick={() => ocrInputRef.current?.click()}
+          disabled={isOcrLoading}
+        >
+          <ScanLine className="mr-2 h-4 w-4" />
+          {isOcrLoading ? 'Scanning…' : 'Scan Bill'}
+        </Button>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={resetForm}>
@@ -474,6 +719,116 @@ const PurchaseBills = () => {
                   value={formData.cost_center_id}
                   onChange={(id) => setFormData(prev => ({ ...prev, cost_center_id: id }))}
                 />
+              </div>
+              <div>
+                <Label>Department</Label>
+                <Input
+                  value={formData.department}
+                  onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
+                  placeholder="Optional, e.g. Sales / Ops"
+                />
+              </div>
+              <div>
+                <Label>Branch ID</Label>
+                <Input
+                  value={formData.branch_id || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, branch_id: e.target.value || null }))}
+                  placeholder="Optional branch reference"
+                />
+              </div>
+              <div>
+                <Label>Project ID</Label>
+                <Input
+                  value={formData.project_id || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, project_id: e.target.value || null }))}
+                  placeholder="Optional project reference"
+                />
+              </div>
+            </div>
+
+            {/* GST / RCM / ITC controls */}
+            <div className="rounded-md border p-4 space-y-3 bg-muted/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-base font-semibold">GST &amp; ITC Treatment</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Auto-set from vendor; override when needed.
+                  </p>
+                </div>
+                <Badge variant="outline">
+                  {formData.is_rcm ? 'RCM' : 'Forward charge'} · {formData.itc_eligible ? 'ITC' : 'No ITC'}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div>
+                  <Label className="text-xs">Vendor GST Status</Label>
+                  <Select
+                    value={formData.vendor_gst_status}
+                    onValueChange={(v) => setFormData(prev => ({
+                      ...prev,
+                      vendor_gst_status: v as any,
+                      // Composition / unregistered → ITC unclaimable + RCM applies (S.9(4))
+                      itc_eligible: v === 'composition' ? false : prev.itc_eligible,
+                      is_rcm: v === 'unregistered' || v === 'composition' ? true : prev.is_rcm,
+                    }))}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="registered">Registered</SelectItem>
+                      <SelectItem value="unregistered">Unregistered</SelectItem>
+                      <SelectItem value="composition">Composition</SelectItem>
+                      <SelectItem value="unknown">Unknown</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Place of Supply (buyer state)</Label>
+                  <Select
+                    value={formData.place_of_supply || undefined}
+                    onValueChange={(v) => setFormData(prev => ({ ...prev, place_of_supply: v }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto">
+                      {Object.values(STATE_CODE_MAP).map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={formData.is_rcm}
+                      onCheckedChange={(v) => setFormData(prev => ({ ...prev, is_rcm: v }))}
+                    />
+                    <div>
+                      <div className="text-sm font-medium">Reverse Charge (RCM)</div>
+                      <div className="text-xs text-muted-foreground">Buyer self-assesses GST</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-end">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={formData.itc_eligible}
+                      onCheckedChange={(v) => setFormData(prev => ({ ...prev, itc_eligible: v }))}
+                    />
+                    <div>
+                      <div className="text-sm font-medium">ITC Eligible</div>
+                      <div className="text-xs text-muted-foreground">Section 17(5) blocked? toggle off</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Seller state: <span className="font-medium">{formData.seller_state || '—'}</span>
+                {' · '}
+                {formData.seller_state && formData.place_of_supply
+                  ? (formData.seller_state.toLowerCase() === formData.place_of_supply.toLowerCase()
+                      ? 'Intra-state (CGST + SGST)'
+                      : 'Inter-state (IGST)')
+                  : 'Tax split will default to intra-state until states are set'}
               </div>
             </div>
 

@@ -11,11 +11,13 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
 import { useTDSRules } from '@/hooks/useTDSRules';
-import { Upload } from 'lucide-react';
+import { Upload, ShieldCheck, ClipboardCheck } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import ImportDialog from '@/components/ImportDialog';
 import { GST_TREATMENTS, INDIAN_STATES } from '@/constants/india';
 import VendorCharts from '@/components/vendors/VendorCharts';
 import VendorHealthBadge, { computeVendorScore, VendorScore } from '@/components/vendors/VendorHealthBadge';
+import VendorOnboardingDialog from '@/components/vendors/VendorOnboardingDialog';
 
 interface VendorRecord {
   id: string;
@@ -37,6 +39,8 @@ interface VendorRecord {
   bank_branch?: string;
   linked_tds_section_id?: string | null;
   tds_enabled?: boolean;
+  vendor_code?: string | null;
+  onboarding_status?: 'draft' | 'submitted' | 'verified' | 'rejected' | null;
 }
 
 export default function Vendors() {
@@ -50,6 +54,8 @@ export default function Vendors() {
   const [editing, setEditing] = useState<VendorRecord | null>(null);
   const [selectedVendor, setSelectedVendor] = useState<VendorRecord | null>(null);
   const [isVendorDialogOpen, setIsVendorDialogOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [onboardingVendorId, setOnboardingVendorId] = useState<string | null>(null);
   const { data: tdsRules = [] } = useTDSRules();
 
   const emptyForm: Partial<VendorRecord> = {
@@ -86,7 +92,7 @@ export default function Vendors() {
       const [vendorsRes, billsRes] = await Promise.all([
         supabase
           .from('vendors')
-          .select('id, name, company_name, email, phone, address, pan, gst_number, gst_treatment, state, msme_registered, udyam_aadhaar, bank_account_holder, bank_account_number, bank_ifsc, bank_name, bank_branch, linked_tds_section_id, tds_enabled')
+          .select('id, name, company_name, email, phone, address, pan, gst_number, gst_treatment, state, msme_registered, udyam_aadhaar, bank_account_holder, bank_account_number, bank_ifsc, bank_name, bank_branch, linked_tds_section_id, tds_enabled, vendor_code, onboarding_status')
           .eq('user_id', user?.id)
           .order('created_at', { ascending: false }),
         supabase
@@ -230,6 +236,10 @@ export default function Vendors() {
             <Upload className="h-4 w-4 mr-2" />
             Import
           </Button>
+          <Button variant="outline" onClick={() => { setOnboardingVendorId(null); setOnboardingOpen(true); }}>
+            <ShieldCheck className="h-4 w-4 mr-2" />
+            Onboard Vendor
+          </Button>
           <Button onClick={openCreate}>New Vendor</Button>
         </div>
       </div>
@@ -242,40 +252,55 @@ export default function Vendors() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Code</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Company</TableHead>
                 <TableHead>GST</TableHead>
                 <TableHead>State</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
                 <TableHead>TDS</TableHead>
+                <TableHead>Onboarding</TableHead>
                 <TableHead>Health</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {vendors.map((v) => (
+              {vendors.map((v) => {
+                const status = v.onboarding_status || 'draft';
+                const statusColor =
+                  status === 'verified'  ? 'bg-emerald-600'      :
+                  status === 'submitted' ? 'bg-blue-600'         :
+                  status === 'rejected'  ? 'bg-red-600'          :
+                                           'bg-slate-400';
+                return (
                   <TableRow key={v.id}>
-                  <TableCell className="font-medium">{v.name}</TableCell>
-                  <TableCell>{v.company_name || '-'}</TableCell>
-                  <TableCell>{v.gst_number || '-'}</TableCell>
-                  <TableCell>{v.state || '-'}</TableCell>
-                  <TableCell>{v.email || '-'}</TableCell>
-                  <TableCell>{v.phone || '-'}</TableCell>
-                  <TableCell>{v.tds_enabled ? 'Enabled' : 'Disabled'}</TableCell>
-                  <TableCell>
-                    {vendorScores[v.id] && (
-                      <VendorHealthBadge score={vendorScores[v.id]} />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => openEdit(v)}>Edit</Button>
-                      <Button size="sm" onClick={() => { setSelectedVendor(v); setIsVendorDialogOpen(true); }}>View</Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    <TableCell className="font-mono text-xs">{v.vendor_code || '-'}</TableCell>
+                    <TableCell className="font-medium">{v.name}</TableCell>
+                    <TableCell>{v.company_name || '-'}</TableCell>
+                    <TableCell>{v.gst_number || '-'}</TableCell>
+                    <TableCell>{v.state || '-'}</TableCell>
+                    <TableCell>{v.tds_enabled ? 'Enabled' : 'Disabled'}</TableCell>
+                    <TableCell>
+                      <Badge className={statusColor}>{status}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {vendorScores[v.id] && (
+                        <VendorHealthBadge score={vendorScores[v.id]} />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => openEdit(v)}>Edit</Button>
+                        <Button size="sm" variant="outline"
+                          onClick={() => { setOnboardingVendorId(v.id); setOnboardingOpen(true); }}>
+                          <ClipboardCheck className="h-3 w-3 mr-1" />
+                          Onboarding
+                        </Button>
+                        <Button size="sm" onClick={() => { setSelectedVendor(v); setIsVendorDialogOpen(true); }}>View</Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
               {vendors.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No vendors found</TableCell>
@@ -421,6 +446,19 @@ export default function Vendors() {
         onOpenChange={setIsImportDialogOpen}
         moduleKey="vendors"
         onConfirmImport={handleImportVendors}
+      />
+
+      <VendorOnboardingDialog
+        open={onboardingOpen}
+        onOpenChange={(o) => {
+          setOnboardingOpen(o);
+          if (!o) {
+            setOnboardingVendorId(null);
+            fetchVendors();
+          }
+        }}
+        vendorId={onboardingVendorId}
+        onComplete={() => fetchVendors()}
       />
 
       <Dialog open={isVendorDialogOpen} onOpenChange={setIsVendorDialogOpen}>

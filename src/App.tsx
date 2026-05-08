@@ -73,6 +73,8 @@ import VendorAdvances from "./pages/VendorAdvances";
 import VendorBillPayments from "./pages/VendorBillPayments";
 import Receivables from "./pages/Receivables";
 import Payables from "./pages/Payables";
+import APDashboard from "./pages/APDashboard";
+import APIntake from "./pages/APIntake";
 import VendorLedger from "./pages/VendorLedger";
 import CostCenters from "./pages/CostCenters";
 import GstItcReport from "./pages/GstItcReport";
@@ -245,6 +247,8 @@ function App() {
                           <Route path="/vendor-bill-payments" element={<VendorBillPayments />} />
                           <Route path="/receivables" element={<Receivables />} />
                           <Route path="/payables" element={<Payables />} />
+                          <Route path="/ap-dashboard" element={<APDashboard />} />
+                          <Route path="/ap-intake" element={<APIntake />} />
                           <Route path="/vendor-ledger" element={<VendorLedger />} />
                           <Route path="/vendor-ledger/:vendorId" element={<VendorLedger />} />
                           <Route path="/cost-centers" element={<CostCenters />} />

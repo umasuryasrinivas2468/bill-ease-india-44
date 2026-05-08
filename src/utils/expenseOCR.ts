@@ -3,9 +3,20 @@ export interface OCRCandidateField {
   confidence: "high" | "medium" | "low";
 }
 
+export interface OCRItemLine {
+  description: string;
+  hsn_sac?: string | null;
+  quantity?: number | null;
+  unit?: string | null;
+  unit_price?: number | null;
+  tax_rate?: number | null;
+  amount?: number | null;
+}
+
 export interface ExpenseOCRResult {
   vendorName?: OCRCandidateField;
   billNumber?: OCRCandidateField;
+  poNumber?: OCRCandidateField;
   expenseDate?: OCRCandidateField;
   amount?: OCRCandidateField;
   taxAmount?: OCRCandidateField;
@@ -13,6 +24,10 @@ export interface ExpenseOCRResult {
   gstNumber?: OCRCandidateField;
   paymentMode?: OCRCandidateField;
   categoryHint?: OCRCandidateField;
+  /** "goods" if the bill is for inventory/raw materials, "service" / "expense" otherwise. */
+  itemTypeHint?: OCRCandidateField;
+  /** Line items extracted from the bill (only populated for goods/inventory purchases). */
+  items?: OCRItemLine[];
   notes?: string;
   rawText: string;
 }

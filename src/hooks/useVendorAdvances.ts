@@ -65,6 +65,10 @@ export const useCreateVendorAdvance = () => {
       notes?: string;
       attachment_url?: string;
       attachment_name?: string;
+      cost_center_id?: string | null;
+      project_id?: string | null;
+      branch_id?: string | null;
+      department?: string | null;
     }) => {
       if (!user || !isValidUserId(user.id)) throw new Error('User not authenticated');
       const uid = normalizeUserId(user.id);
@@ -75,8 +79,11 @@ export const useCreateVendorAdvance = () => {
         advance_number: advanceNumber,
         advance_date: input.advance_date,
         vendor_name: input.vendor_name,
+        vendor_id: input.vendor_id,
         amount: input.amount,
         payment_mode: input.payment_mode,
+        cost_center_id: input.cost_center_id || undefined,
+        project_id: input.project_id || undefined,
       });
 
       const { data, error } = await supabase
@@ -97,6 +104,10 @@ export const useCreateVendorAdvance = () => {
           journal_id: journal?.id || null,
           attachment_url: input.attachment_url || null,
           attachment_name: input.attachment_name || null,
+          cost_center_id: input.cost_center_id || null,
+          project_id: input.project_id || null,
+          branch_id: input.branch_id || null,
+          department: input.department || null,
         })
         .select()
         .single();
