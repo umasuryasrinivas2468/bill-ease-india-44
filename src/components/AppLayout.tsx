@@ -7,6 +7,7 @@ import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { UniversalSearchDropdown } from '@/components/UniversalSearchDropdown';
 import { NotificationCenter } from '@/components/NotificationCenter';
 import AICommandBar from '@/components/AICommandBar';
+import SupportAssistant, { SupportAssistantTrigger } from '@/components/SupportAssistant';
 import { useAuth } from '@/components/ClerkAuthProvider';
 import { useBusinessData } from '@/hooks/useBusinessData';
 import useSimpleBranding from '@/hooks/useSimpleBranding';
@@ -77,6 +78,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 </div>
                 <div className="flex items-center gap-2">
                   <NotificationCenter compact />
+                  <SupportAssistantTrigger className="h-10 w-10 rounded-[14px]" />
                   <Button
                     variant="ghost"
                     size="icon"
@@ -105,6 +107,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 </div>
                 <UniversalSearchDropdown />
                 <NotificationCenter compact />
+                <SupportAssistantTrigger />
                 <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full border border-primary/15 bg-background/70" onClick={() => setSettingsOpen(true)} aria-label="Settings">
                   <Settings className="h-4 w-4" />
                 </Button>
@@ -119,6 +122,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
         {!isBankingPage && <MobileBottomNav />}
         {!isBankingPage && <AICommandBar />}
+        <SupportAssistant />
       </div>
 
       {/* Settings right panel */}
