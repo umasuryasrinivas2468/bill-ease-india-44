@@ -38,6 +38,7 @@ import {
   UserRound,
   ScanLine,
   LayoutDashboard,
+  BookOpen,
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import { useAuthorization } from "@/hooks/useAuthorization";
@@ -62,6 +63,9 @@ import { CAClientSwitcher } from "@/components/auth/CAClientSwitcher";
 import { PlanAwareMenuItem } from "@/components/PlanAwareMenuItem";
 
 const salesMenuItems = [
+  { title: "AR Dashboard", url: "/ar-dashboard", icon: LayoutDashboard },
+  { title: "AR Reports", url: "/ar-reports", icon: BarChart3 },
+  { title: "Customer Ledger", url: "/customer-ledger", icon: BookOpen },
   { title: "Quotations", url: "/quotations", icon: Quote },
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Sales Orders", url: "/inventory/sales-orders", icon: ShoppingCart, feature: "salesOrders" as const },

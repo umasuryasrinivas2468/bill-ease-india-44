@@ -12,7 +12,13 @@
       "Bash(grep -E \"\\\\.tsx$\")",
       "Bash(npx tsc *)",
       "Bash(curl *)",
-      "WebFetch(domain:www.cashfree.com)"
+      "WebFetch(domain:www.cashfree.com)",
+      "Bash(20260411)",
+      "Bash(20260415)",
+      "Bash(20260430)",
+      "Bash(20260507\" | head -10)",
+      "Bash(findstr /n \"customer_id\" \"supabase\\\\migrations\\\\20260509000001_ar_complete_system.sql\")",
+      "Bash(findstr /v \"customer_advances customer_advance_adjustments ar_payment_allocations\")"
     ]
   }
 }

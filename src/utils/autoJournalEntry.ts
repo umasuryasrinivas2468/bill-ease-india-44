@@ -13,6 +13,7 @@ import { normalizeUserId } from '@/lib/userUtils';
 import {
   postPurchaseBill, postVendorPayment, postVendorAdvance, postAdvanceAdjustment,
   postInvoice, postPaymentReceived, postCogs, postInventoryAdjustment,
+  postCreditNote,
   postJournal, getOrCreateAccount, STANDARD_ACCOUNTS,
   type JournalLineInput,
 } from './journalEngine';
@@ -28,8 +29,13 @@ const wrap = async (p: Promise<string | null>): Promise<{ id: string } | null> =
 
 export const postInvoiceJournal = (
   userId: string,
-  invoice: { invoice_id?: string; invoice_number: string; invoice_date: string; client_name: string; customer_id?: string; amount: number; gst_amount: number; total_amount: number; cost_center_id?: string; project_id?: string; branch_id?: string }
+  invoice: { invoice_id?: string; invoice_number: string; invoice_date: string; client_name: string; customer_id?: string; amount: number; gst_amount: number; total_amount: number; cost_center_id?: string; project_id?: string; branch_id?: string; gst_split?: { cgst?: number; sgst?: number; igst?: number; cess?: number } }
 ) => wrap(postInvoice(userId, invoice));
+
+export const postCreditNoteJournal = (
+  userId: string,
+  cn: { credit_note_id?: string; credit_note_number: string; credit_note_date: string; client_name: string; customer_id?: string; original_invoice_number?: string; amount: number; gst_amount: number; total_amount: number; cost_center_id?: string; project_id?: string; branch_id?: string; gst_split?: { cgst?: number; sgst?: number; igst?: number; cess?: number } }
+) => wrap(postCreditNote(userId, cn));
 
 export const postPaymentReceivedJournal = (
   userId: string,

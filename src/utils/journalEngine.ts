@@ -30,6 +30,7 @@ export type SourceType =
   | 'inventory_adjustment'
   | 'customer_advance' | 'customer_advance_reversal'
   | 'customer_advance_adjustment' | 'customer_advance_adjustment_reversal'
+  | 'credit_note' | 'credit_note_reversal'
   | 'payment_link'
   | 'gst_payment'
   | 'tds_payment'
@@ -80,6 +81,7 @@ export const STANDARD_ACCOUNTS = {
   PURCHASE_EXPENSE:        { name: 'Purchase Account',        type: 'Expense'   as AccountType },
   COGS:                    { name: 'Cost of Goods Sold',      type: 'Expense'   as AccountType },
   SALES:                   { name: 'Sales Revenue',           type: 'Income'    as AccountType },
+  SALES_RETURNS:           { name: 'Sales Returns',            type: 'Income'    as AccountType },
   ITC:                     { name: 'Input Tax Credit',        type: 'Asset'     as AccountType },
   OUTPUT_GST:              { name: 'Output GST',              type: 'Liability' as AccountType },
   OUTPUT_GST_ON_ADVANCES:  { name: 'Output GST on Advances',  type: 'Liability' as AccountType },
@@ -611,14 +613,20 @@ export interface PostInvoiceArgs {
   invoice_date: string;
   client_name: string;
   customer_id?: string;
-  amount: number;
-  gst_amount: number;
+  amount: number;             // taxable value
+  gst_amount: number;         // total GST
   total_amount: number;
   cost_center_id?: string;
   project_id?: string;
   branch_id?: string;
+  // Optional GST split. If absent, falls back to a single "Output GST" line.
+  gst_split?: { cgst?: number; sgst?: number; igst?: number; cess?: number };
 }
 
+/**
+ * Sales invoice → Dr AR, Cr Sales + Cr Output GST (split per CGST/SGST/IGST/Cess
+ * when `gst_split` is provided).
+ */
 export const postInvoice = async (userId: string, invoice: PostInvoiceArgs): Promise<string> => {
   const uid = normalizeUserId(userId);
   const arId    = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.ACCOUNTS_RECEIVABLE.name, 'Asset');
@@ -626,16 +634,109 @@ export const postInvoice = async (userId: string, invoice: PostInvoiceArgs): Pro
   const tags = { customer_id: invoice.customer_id, cost_center_id: invoice.cost_center_id, project_id: invoice.project_id, branch_id: invoice.branch_id };
   const lines: JournalLineInput[] = [
     { account_id: arId,    debit:  invoice.total_amount, line_narration: `Receivable from ${invoice.client_name} — ${invoice.invoice_number}`, ...tags },
-    { account_id: salesId, credit: invoice.amount,        line_narration: `Sales — ${invoice.invoice_number}`, ...tags },
+    { account_id: salesId, credit: invoice.amount,       line_narration: `Sales — ${invoice.invoice_number}`, ...tags },
   ];
   if (invoice.gst_amount > 0) {
-    const gstId = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.OUTPUT_GST.name, 'Liability');
-    lines.push({ account_id: gstId, credit: invoice.gst_amount, line_narration: `GST on ${invoice.invoice_number}`, tax_type: 'output_gst', ...tags });
+    const split = invoice.gst_split;
+    if (split && (split.cgst || split.sgst || split.igst || split.cess)) {
+      if (split.cgst) {
+        const id = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.CGST_OUTPUT.name, 'Liability');
+        lines.push({ account_id: id, credit: split.cgst, line_narration: `CGST output — ${invoice.invoice_number}`, tax_type: 'cgst', ...tags });
+      }
+      if (split.sgst) {
+        const id = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.SGST_OUTPUT.name, 'Liability');
+        lines.push({ account_id: id, credit: split.sgst, line_narration: `SGST output — ${invoice.invoice_number}`, tax_type: 'sgst', ...tags });
+      }
+      if (split.igst) {
+        const id = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.IGST_OUTPUT.name, 'Liability');
+        lines.push({ account_id: id, credit: split.igst, line_narration: `IGST output — ${invoice.invoice_number}`, tax_type: 'igst', ...tags });
+      }
+      if (split.cess) {
+        const id = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.CESS_OUTPUT.name, 'Liability');
+        lines.push({ account_id: id, credit: split.cess, line_narration: `Cess output — ${invoice.invoice_number}`, tax_type: 'cess', ...tags });
+      }
+    } else {
+      const gstId = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.OUTPUT_GST.name, 'Liability');
+      lines.push({ account_id: gstId, credit: invoice.gst_amount, line_narration: `GST on ${invoice.invoice_number}`, tax_type: 'output_gst', ...tags });
+    }
   }
   return postJournal({
     user_id: uid, date: invoice.invoice_date,
     narration: `Sales Invoice ${invoice.invoice_number} — ${invoice.client_name}`,
     source_type: 'invoice', source_id: invoice.invoice_id ?? null,
+    lines,
+  });
+};
+
+export interface PostCreditNoteArgs {
+  credit_note_id?: string;
+  credit_note_number: string;
+  credit_note_date: string;
+  client_name: string;
+  customer_id?: string;
+  original_invoice_number?: string;
+  amount: number;             // taxable value being reversed
+  gst_amount: number;
+  total_amount: number;
+  cost_center_id?: string;
+  project_id?: string;
+  branch_id?: string;
+  gst_split?: { cgst?: number; sgst?: number; igst?: number; cess?: number };
+}
+
+/**
+ * Credit note → Dr Sales Returns + Dr Output GST, Cr Accounts Receivable.
+ *
+ * This is the contra of postInvoice. Reduces revenue (sales returns line)
+ * and reverses the output-GST liability that was originally booked, then
+ * clears the corresponding AR.
+ */
+export const postCreditNote = async (userId: string, cn: PostCreditNoteArgs): Promise<string> => {
+  const uid = normalizeUserId(userId);
+  const arId         = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.ACCOUNTS_RECEIVABLE.name, 'Asset');
+  const returnsId    = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.SALES_RETURNS.name, 'Income');
+  const tags = { customer_id: cn.customer_id, cost_center_id: cn.cost_center_id, project_id: cn.project_id, branch_id: cn.branch_id };
+
+  const lines: JournalLineInput[] = [
+    { account_id: returnsId, debit: cn.amount, line_narration: `Sales return — ${cn.credit_note_number}${cn.original_invoice_number ? ' vs ' + cn.original_invoice_number : ''}`, ...tags },
+  ];
+
+  if (cn.gst_amount > 0) {
+    const split = cn.gst_split;
+    if (split && (split.cgst || split.sgst || split.igst || split.cess)) {
+      if (split.cgst) {
+        const id = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.CGST_OUTPUT.name, 'Liability');
+        lines.push({ account_id: id, debit: split.cgst, line_narration: `CGST reversal — ${cn.credit_note_number}`, tax_type: 'cgst', ...tags });
+      }
+      if (split.sgst) {
+        const id = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.SGST_OUTPUT.name, 'Liability');
+        lines.push({ account_id: id, debit: split.sgst, line_narration: `SGST reversal — ${cn.credit_note_number}`, tax_type: 'sgst', ...tags });
+      }
+      if (split.igst) {
+        const id = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.IGST_OUTPUT.name, 'Liability');
+        lines.push({ account_id: id, debit: split.igst, line_narration: `IGST reversal — ${cn.credit_note_number}`, tax_type: 'igst', ...tags });
+      }
+      if (split.cess) {
+        const id = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.CESS_OUTPUT.name, 'Liability');
+        lines.push({ account_id: id, debit: split.cess, line_narration: `Cess reversal — ${cn.credit_note_number}`, tax_type: 'cess', ...tags });
+      }
+    } else {
+      const gstId = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.OUTPUT_GST.name, 'Liability');
+      lines.push({ account_id: gstId, debit: cn.gst_amount, line_narration: `GST reversal — ${cn.credit_note_number}`, tax_type: 'output_gst', ...tags });
+    }
+  }
+
+  lines.push({
+    account_id: arId,
+    credit: cn.total_amount,
+    line_narration: `Credit to ${cn.client_name} — ${cn.credit_note_number}`,
+    ...tags,
+  });
+
+  return postJournal({
+    user_id: uid, date: cn.credit_note_date,
+    narration: `Credit Note ${cn.credit_note_number}${cn.original_invoice_number ? ' — vs ' + cn.original_invoice_number : ''} — ${cn.client_name}`,
+    source_type: 'credit_note', source_id: cn.credit_note_id ?? null,
     lines,
   });
 };

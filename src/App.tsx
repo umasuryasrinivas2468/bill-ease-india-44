@@ -76,6 +76,9 @@ import Payables from "./pages/Payables";
 import APDashboard from "./pages/APDashboard";
 import APIntake from "./pages/APIntake";
 import VendorLedger from "./pages/VendorLedger";
+import ARDashboard from "./pages/ARDashboard";
+import CustomerLedger from "./pages/CustomerLedger";
+import ARReports from "./pages/ARReports";
 import CostCenters from "./pages/CostCenters";
 import GstItcReport from "./pages/GstItcReport";
 import AccountingPeriodsPage from "./pages/AccountingPeriods";
@@ -251,6 +254,10 @@ function App() {
                           <Route path="/ap-intake" element={<APIntake />} />
                           <Route path="/vendor-ledger" element={<VendorLedger />} />
                           <Route path="/vendor-ledger/:vendorId" element={<VendorLedger />} />
+                          <Route path="/ar-dashboard" element={<ARDashboard />} />
+                          <Route path="/customer-ledger" element={<CustomerLedger />} />
+                          <Route path="/customer-ledger/:customerId" element={<CustomerLedger />} />
+                          <Route path="/ar-reports" element={<ARReports />} />
                           <Route path="/cost-centers" element={<CostCenters />} />
                           <Route path="/reports/gst-itc" element={<GstItcReport />} />
                           <Route path="/accounting/periods" element={<AccountingPeriodsPage />} />

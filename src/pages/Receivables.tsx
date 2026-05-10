@@ -1,8 +1,9 @@
 
 import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Search, IndianRupee, ArrowUpRight, Clock, CheckCircle2, AlertCircle,
-  Edit, Eye, Download, MapPin, FileText, X, Plus, Minus, Save,
+  Edit, Eye, Download, MapPin, FileText, X, Plus, Minus, Save, BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useUser } from '@clerk/clerk-react';
 import { WaterPod } from '@/components/ui/WaterPod';
 import { useInvoices, useRecordInvoicePayment, Invoice } from '@/hooks/useInvoices';
+import { useARAgingSummary, type AgingBucket } from '@/hooks/useARAging';
 import InvoiceViewer from '@/components/InvoiceViewer';
 import { supabase } from '@/lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
@@ -49,6 +51,7 @@ interface EditableItem {
 
 export default function Receivables() {
   const { data: invoices = [], isLoading } = useInvoices();
+  const { data: agingByCustomer = [] } = useARAgingSummary();
   const recordPayment = useRecordInvoicePayment();
   const queryClient = useQueryClient();
   const { user } = useUser();
@@ -56,6 +59,7 @@ export default function Receivables() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('receivable');
+  const [bucketFilter, setBucketFilter] = useState<AgingBucket | 'all'>('all');
 
   // View invoice
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
@@ -78,14 +82,30 @@ export default function Receivables() {
   const [editGstRate, setEditGstRate] = useState(18);
   const [isSaving, setIsSaving] = useState(false);
 
+  const bucketOf = (inv: Invoice): AgingBucket => {
+    if (!inv.due_date) return 'not_due';
+    const days = Math.ceil((Date.now() - new Date(inv.due_date).getTime()) / 86400000);
+    if (days <= 0)  return 'not_due';
+    if (days <= 30) return 'overdue_0_30';
+    if (days <= 60) return 'overdue_31_60';
+    if (days <= 90) return 'overdue_61_90';
+    return 'overdue_90_plus';
+  };
+
   // Filtered invoices — "receivable" = pending + overdue + partial
   const filteredInvoices = useMemo(() => {
     let filtered = invoices;
 
     if (statusFilter === 'receivable') {
-      filtered = filtered.filter(inv => ['pending', 'overdue', 'partial'].includes(inv.status));
+      filtered = filtered.filter(inv => ['pending', 'overdue', 'partial', 'sent'].includes(inv.status));
     } else if (statusFilter !== 'all') {
       filtered = filtered.filter(inv => inv.status === statusFilter);
+    }
+
+    if (bucketFilter !== 'all') {
+      filtered = filtered.filter(inv =>
+        ['pending', 'overdue', 'partial', 'sent'].includes(inv.status) && bucketOf(inv) === bucketFilter
+      );
     }
 
     if (searchTerm) {
@@ -98,7 +118,7 @@ export default function Receivables() {
     }
 
     return filtered;
-  }, [invoices, searchTerm, statusFilter]);
+  }, [invoices, searchTerm, statusFilter, bucketFilter]);
 
   // Summary from all invoices (not filtered)
   const summary = useMemo(() => {
@@ -283,6 +303,50 @@ export default function Receivables() {
         </CardContent>
       </Card>
 
+      {/* Aging Buckets — drill into receivables by overdue age */}
+      {(() => {
+        const totals = agingByCustomer.reduce((acc, r) => ({
+          not_due:         acc.not_due         + Number(r.not_due         || 0),
+          overdue_0_30:    acc.overdue_0_30    + Number(r.overdue_0_30    || 0),
+          overdue_31_60:   acc.overdue_31_60   + Number(r.overdue_31_60   || 0),
+          overdue_61_90:   acc.overdue_61_90   + Number(r.overdue_61_90   || 0),
+          overdue_90_plus: acc.overdue_90_plus + Number(r.overdue_90_plus || 0),
+        }), { not_due: 0, overdue_0_30: 0, overdue_31_60: 0, overdue_61_90: 0, overdue_90_plus: 0 });
+
+        const buckets: { key: AgingBucket; label: string; v: number; tone: string }[] = [
+          { key: 'not_due',         label: 'Not yet due', v: totals.not_due,         tone: 'text-muted-foreground' },
+          { key: 'overdue_0_30',    label: '0–30 days',   v: totals.overdue_0_30,    tone: 'text-amber-600' },
+          { key: 'overdue_31_60',   label: '31–60 days',  v: totals.overdue_31_60,   tone: 'text-orange-600' },
+          { key: 'overdue_61_90',   label: '61–90 days',  v: totals.overdue_61_90,   tone: 'text-red-500' },
+          { key: 'overdue_90_plus', label: '90+ days',    v: totals.overdue_90_plus, tone: 'text-red-700' },
+        ];
+
+        return (
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm">Aging Buckets</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {buckets.map(b => (
+                  <button
+                    key={b.key}
+                    onClick={() => setBucketFilter(bucketFilter === b.key ? 'all' : b.key)}
+                    className={`text-left rounded-md border p-3 transition hover:bg-muted/50 ${bucketFilter === b.key ? 'ring-2 ring-primary bg-muted/40' : 'bg-muted/20'}`}
+                  >
+                    <div className="text-xs text-muted-foreground">{b.label}</div>
+                    <div className={`mt-1 text-lg font-semibold ${b.tone}`}>{fmt(b.v)}</div>
+                  </button>
+                ))}
+              </div>
+              {bucketFilter !== 'all' && (
+                <div className="mt-3 text-xs text-muted-foreground">
+                  Filtering by {bucketFilter.replace(/_/g, ' ')} — <button className="underline" onClick={() => setBucketFilter('all')}>clear</button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="relative flex-1">
@@ -396,6 +460,11 @@ export default function Receivables() {
                             </Button>
                             <Button size="sm" variant="ghost" title="Edit Invoice" onClick={() => openEditDialog(inv)}>
                               <Edit className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button asChild size="sm" variant="ghost" title="Customer Ledger">
+                              <Link to={`/customer-ledger?customer=${(inv as any).customer_id || ''}`}>
+                                <BookOpen className="h-3.5 w-3.5" />
+                              </Link>
                             </Button>
                             {inv.status !== 'paid' && (
                               <Button size="sm" variant="outline" onClick={() => openPaymentDialog(inv)} className="gap-1 border-green-400 text-green-700 hover:bg-green-50">
