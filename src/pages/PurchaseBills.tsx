@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, Upload, FileText, ScanLine } from 'lucide-react';
+import { Plus, Trash2, Upload, FileText, ScanLine, RotateCcw } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@clerk/clerk-react';
@@ -31,6 +31,8 @@ import {
 import { classifyBillLines, sumByClassification } from '@/lib/billClassifier';
 import { extractBillFromFile } from '@/utils/billOcr';
 import { ensureInventoryItem } from '@/utils/expenseInventoryAutomation';
+import CreatePurchaseReturnDialog from '@/components/purchase-returns/CreatePurchaseReturnDialog';
+import type { PurchaseBill } from '@/hooks/usePurchaseBills';
 
 type BillItem = {
   id: string;
@@ -112,6 +114,7 @@ const PurchaseBills = () => {
   const { data: inventoryItems = [], refetch: refetchInventory } = useInventory();
   const [bills, setBills] = useState<PurchaseBillRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [returnBill, setReturnBill] = useState<PurchaseBill | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
@@ -995,13 +998,23 @@ const PurchaseBills = () => {
                       </TableCell>
                       <TableCell>₹{Number(bill.total_amount || 0).toFixed(2)}</TableCell>
                       <TableCell>
-                        {bill.status !== 'paid' ? (
-                          <Button size="sm" variant="outline" onClick={() => markAsPaid(bill)}>
-                            Mark Paid
+                        <div className="flex gap-1.5 flex-wrap">
+                          {bill.status !== 'paid' && (
+                            <Button size="sm" variant="outline" onClick={() => markAsPaid(bill)}>
+                              Mark Paid
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-purple-400 text-purple-700 hover:bg-purple-50"
+                            onClick={() => setReturnBill(bill as unknown as PurchaseBill)}
+                            title="Purchase Return"
+                          >
+                            <RotateCcw className="h-3 w-3 mr-1" />
+                            Return
                           </Button>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">Completed</span>
-                        )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1011,6 +1024,12 @@ const PurchaseBills = () => {
           )}
         </CardContent>
       </Card>
+
+      <CreatePurchaseReturnDialog
+        bill={returnBill}
+        open={!!returnBill}
+        onOpenChange={(o) => { if (!o) setReturnBill(null); }}
+      />
     </div>
   );
 };

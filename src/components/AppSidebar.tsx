@@ -39,6 +39,7 @@ import {
   ScanLine,
   LayoutDashboard,
   BookOpen,
+  RotateCcw,
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import { useAuthorization } from "@/hooks/useAuthorization";
@@ -75,6 +76,7 @@ const salesMenuItems = [
   { title: "Working Capital", url: "/working-capital", icon: Banknote },
   { title: "Cash Memo", url: "/cash-memo", icon: Wallet },
   { title: "E Way Bills", url: "/coming-soon?feature=E%20Way%20Bills", icon: Truck },
+  { title: "Sales Returns", url: "/sales-returns", icon: RotateCcw },
   { title: "Credit Notes", url: "/coming-soon?feature=Credit%20Notes", icon: ScrollText },
   { title: "Recurring Invoices", url: "/ca/recurring-invoices", icon: RefreshCw },
   { title: "Delivery Challan", url: "/inventory/delivery-challans", icon: Truck },
@@ -92,12 +94,16 @@ const purchasesMenuItems = [
   { title: "Vendor Advances", url: "/vendor-advances", icon: Banknote },
   { title: "Bill Payments", url: "/vendor-bill-payments", icon: Wallet },
   { title: "Recurring Bills", url: "/expenses?tab=recurring", icon: RefreshCw },
+  { title: "Purchase Returns", url: "/purchase-returns", icon: RotateCcw },
   { title: "Purchase Orders", url: "/inventory/purchase-orders", icon: Truck, feature: "purchaseOrders" as const },
 ];
 
 const inventorySubItems = [
   { title: "Inventory", url: "/inventory", icon: Package },
+  { title: "Inventory MIS", url: "/inventory/dashboard", icon: BarChart3 },
   { title: "Inventory Insights", url: "/inventory/insights", icon: Sparkles },
+  { title: "Warehouse Transfers", url: "/inventory/transfers", icon: Truck },
+  { title: "Stock Adjustments", url: "/inventory/adjustments", icon: Calculator },
 ];
 
 const bankingSubItems = [

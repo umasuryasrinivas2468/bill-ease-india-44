@@ -31,6 +31,9 @@ export type SourceType =
   | 'customer_advance' | 'customer_advance_reversal'
   | 'customer_advance_adjustment' | 'customer_advance_adjustment_reversal'
   | 'credit_note' | 'credit_note_reversal'
+  | 'sales_return' | 'sales_return_reversal'
+  | 'debit_note' | 'debit_note_reversal'
+  | 'purchase_return' | 'purchase_return_reversal'
   | 'payment_link'
   | 'gst_payment'
   | 'tds_payment'
@@ -82,6 +85,7 @@ export const STANDARD_ACCOUNTS = {
   COGS:                    { name: 'Cost of Goods Sold',      type: 'Expense'   as AccountType },
   SALES:                   { name: 'Sales Revenue',           type: 'Income'    as AccountType },
   SALES_RETURNS:           { name: 'Sales Returns',            type: 'Income'    as AccountType },
+  PURCHASE_RETURNS:        { name: 'Purchase Returns',         type: 'Expense'   as AccountType },
   ITC:                     { name: 'Input Tax Credit',        type: 'Asset'     as AccountType },
   OUTPUT_GST:              { name: 'Output GST',              type: 'Liability' as AccountType },
   OUTPUT_GST_ON_ADVANCES:  { name: 'Output GST on Advances',  type: 'Liability' as AccountType },
@@ -790,6 +794,161 @@ export const postCogs = async (userId: string, sale: PostCogsArgs): Promise<stri
     lines: [
       { account_id: cogsId,      debit:  sale.cogs_amount, line_narration: `COGS for ${sale.document_number}`,           ...tags },
       { account_id: inventoryId, credit: sale.cogs_amount, line_narration: `Inventory issued for ${sale.document_number}`, ...tags },
+    ],
+  });
+};
+
+export interface PostCogsReversalArgs {
+  return_id?: string;          // sales_return.id
+  document_number: string;     // sales return number
+  date: string;
+  party_name: string;
+  cogs_amount: number;         // positive amount to reverse
+  customer_id?: string;
+}
+
+/**
+ * COGS reversal on sales return (restockable goods).
+ * Mirror of postCogs: Dr Inventory, Cr COGS. Restores both the asset and
+ * the expense back-out.
+ */
+export const postCogsReversal = async (userId: string, sale: PostCogsReversalArgs): Promise<string | null> => {
+  if (!sale.cogs_amount || sale.cogs_amount <= 0) return null;
+  const uid = normalizeUserId(userId);
+  const cogsId      = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.COGS.name, 'Expense');
+  const inventoryId = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.INVENTORY.name, 'Asset');
+  const tags = { customer_id: sale.customer_id };
+  return postJournal({
+    user_id: uid, date: sale.date,
+    narration: `COGS reversal — ${sale.document_number} — ${sale.party_name}`,
+    source_type: 'cogs_reversal', source_id: sale.return_id ?? null,
+    lines: [
+      { account_id: inventoryId, debit:  sale.cogs_amount, line_narration: `Inventory restored from return ${sale.document_number}`, ...tags },
+      { account_id: cogsId,      credit: sale.cogs_amount, line_narration: `Reverse COGS — ${sale.document_number}`,               ...tags },
+    ],
+  });
+};
+
+export interface PostDebitNoteArgs {
+  debit_note_id?: string;
+  debit_note_number: string;
+  debit_note_date: string;
+  vendor_name: string;
+  vendor_id?: string;
+  original_bill_number?: string;
+  amount: number;          // taxable
+  gst_amount: number;
+  total_amount: number;
+  cost_center_id?: string;
+  project_id?: string;
+  branch_id?: string;
+  gst_split?: { cgst?: number; sgst?: number; igst?: number; cess?: number };
+  itc_eligible?: boolean;  // default true — vendor bill was ITC-eligible
+}
+
+/**
+ * Debit note → Dr Accounts Payable, Cr Purchase Returns + Cr ITC reversal.
+ *
+ * Contra of postPurchaseBill on the AP side. Reduces the AP liability and
+ * reverses the input GST originally claimed. When ITC was not claimed at bill
+ * time (itc_eligible=false), the GST credit posts to the relevant input GST
+ * account directly.
+ */
+export const postDebitNote = async (userId: string, dn: PostDebitNoteArgs): Promise<string> => {
+  const uid = normalizeUserId(userId);
+  const apId         = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.ACCOUNTS_PAYABLE.name, 'Liability');
+  const returnsId    = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.PURCHASE_RETURNS.name, 'Expense');
+  const tags = { vendor_id: dn.vendor_id, cost_center_id: dn.cost_center_id, project_id: dn.project_id, branch_id: dn.branch_id };
+  const itcEligible = dn.itc_eligible !== false;
+
+  const lines: JournalLineInput[] = [
+    {
+      account_id: apId,
+      debit: dn.total_amount,
+      line_narration: `Reduce payable to ${dn.vendor_name} — ${dn.debit_note_number}`,
+      ...tags,
+    },
+    {
+      account_id: returnsId,
+      credit: dn.amount,
+      line_narration: `Purchase return — ${dn.debit_note_number}${dn.original_bill_number ? ' vs ' + dn.original_bill_number : ''}`,
+      ...tags,
+    },
+  ];
+
+  if (dn.gst_amount > 0) {
+    const split = dn.gst_split;
+    if (split && (split.cgst || split.sgst || split.igst || split.cess)) {
+      if (split.cgst) {
+        const id = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.CGST_INPUT.name, 'Asset');
+        lines.push({ account_id: id, credit: split.cgst, line_narration: `CGST reversal — ${dn.debit_note_number}`, tax_type: 'cgst', ...tags });
+      }
+      if (split.sgst) {
+        const id = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.SGST_INPUT.name, 'Asset');
+        lines.push({ account_id: id, credit: split.sgst, line_narration: `SGST reversal — ${dn.debit_note_number}`, tax_type: 'sgst', ...tags });
+      }
+      if (split.igst) {
+        const id = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.IGST_INPUT.name, 'Asset');
+        lines.push({ account_id: id, credit: split.igst, line_narration: `IGST reversal — ${dn.debit_note_number}`, tax_type: 'igst', ...tags });
+      }
+      if (split.cess) {
+        const id = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.CESS_INPUT.name, 'Asset');
+        lines.push({ account_id: id, credit: split.cess, line_narration: `Cess reversal — ${dn.debit_note_number}`, tax_type: 'cess', ...tags });
+      }
+    } else {
+      const itcId = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.ITC.name, 'Asset');
+      lines.push({
+        account_id: itcId,
+        credit: dn.gst_amount,
+        line_narration: `${itcEligible ? 'ITC reversal' : 'GST reversal'} — ${dn.debit_note_number}`,
+        tax_type: 'itc',
+        ...tags,
+      });
+    }
+  }
+
+  return postJournal({
+    user_id: uid, date: dn.debit_note_date,
+    narration: `Debit Note ${dn.debit_note_number}${dn.original_bill_number ? ' — vs ' + dn.original_bill_number : ''} — ${dn.vendor_name}`,
+    source_type: 'debit_note', source_id: dn.debit_note_id ?? null,
+    lines,
+  });
+};
+
+export interface PostPurchaseInventoryReversalArgs {
+  return_id?: string;
+  document_number: string;     // purchase return number
+  date: string;
+  vendor_name: string;
+  vendor_id?: string;
+  inventory_value: number;     // value of inventory being shipped back
+}
+
+/**
+ * Inventory reversal on purchase return.
+ *
+ * Original bill posted: Dr Inventory, Cr AP (taxable portion).
+ * Debit-note (postDebitNote) already cleared the AP side of that.
+ * This helper restores the offsetting Inventory ↓ leg: Dr Purchase Returns,
+ * Cr Inventory — so the inventory asset account matches the subledger after
+ * the goods leave the warehouse.
+ */
+export const postPurchaseInventoryReversal = async (
+  userId: string,
+  args: PostPurchaseInventoryReversalArgs,
+): Promise<string | null> => {
+  if (!args.inventory_value || args.inventory_value <= 0) return null;
+  const uid = normalizeUserId(userId);
+  const inventoryId = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.INVENTORY.name, 'Asset');
+  const returnsId   = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.PURCHASE_RETURNS.name, 'Expense');
+  const tags = { vendor_id: args.vendor_id };
+  return postJournal({
+    user_id: uid, date: args.date,
+    narration: `Inventory shipped back — ${args.document_number} — ${args.vendor_name}`,
+    source_type: 'purchase_return', source_id: args.return_id ?? null,
+    lines: [
+      { account_id: returnsId,   debit:  args.inventory_value, line_narration: `Purchase return inventory adjustment — ${args.document_number}`, ...tags },
+      { account_id: inventoryId, credit: args.inventory_value, line_narration: `Inventory reduced from return ${args.document_number}`,         ...tags },
     ],
   });
 };

@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Plus, Download, Eye, FileText, Trash2, Send, Upload, IndianRupee, Edit, MapPin, X, Save, Link2 } from 'lucide-react';
+import { Search, Plus, Download, Eye, FileText, Trash2, Send, Upload, IndianRupee, Edit, MapPin, X, Save, Link2, RotateCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useInvoices, useDeleteInvoice, useRecordInvoicePayment, Invoice } from '@/hooks/useInvoices';
 import InvoiceViewer from '@/components/InvoiceViewer';
@@ -21,6 +21,7 @@ import { useUser } from '@clerk/clerk-react';
 import ImportDialog from '@/components/ImportDialog';
 import SharePaymentLinkDialog from '@/components/SharePaymentLinkDialog';
 import { normalizeUserId } from '@/lib/userUtils';
+import CreateSalesReturnDialog from '@/components/sales-returns/CreateSalesReturnDialog';
 
 const Invoices = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,6 +41,7 @@ const Invoices = () => {
   const queryClient = useQueryClient();
   const { user } = useUser();
   const [payLinkInvoice, setPayLinkInvoice] = useState<Invoice | null>(null);
+  const [returnInvoice, setReturnInvoice] = useState<Invoice | null>(null);
   const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
   const [editForm, setEditForm] = useState({
     client_name: '',
@@ -450,6 +452,15 @@ const Invoices = () => {
                             <Button
                               size="sm"
                               variant="outline"
+                              onClick={() => setReturnInvoice(invoice)}
+                              className="transition-all hover:scale-105 border-purple-400 text-purple-700 hover:bg-purple-50"
+                              title="Sales Return"
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() => handleDownloadInvoice(invoice)}
                               className="transition-all hover:scale-105"
                             >
@@ -563,6 +574,15 @@ const Invoices = () => {
                     <Button
                       size="sm"
                       variant="outline"
+                      className="flex-1 transition-all hover:scale-[1.02] border-purple-400 text-purple-700 hover:bg-purple-50"
+                      onClick={() => setReturnInvoice(invoice)}
+                    >
+                      <RotateCcw className="h-3 w-3 mr-1" />
+                      Return
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
                       className="flex-1 transition-all hover:scale-[1.02]"
                       onClick={() => handleDownloadInvoice(invoice)}
                     >
@@ -602,6 +622,12 @@ const Invoices = () => {
           setIsViewerOpen(false);
           setSelectedInvoice(null);
         }}
+      />
+
+      <CreateSalesReturnDialog
+        invoice={returnInvoice}
+        open={!!returnInvoice}
+        onOpenChange={(o) => { if (!o) setReturnInvoice(null); }}
       />
 
       <Dialog open={!!editInvoice} onOpenChange={(open) => { if (!open) setEditInvoice(null); }}>

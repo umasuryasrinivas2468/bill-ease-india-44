@@ -12,6 +12,7 @@ import { useInvoiceRegister } from '@/hooks/useInvoiceRegister';
 import { useARAging, useARAgingSummary } from '@/hooks/useARAging';
 import { useCustomerProfitability } from '@/hooks/useARDashboard';
 import { useCustomerBalances } from '@/hooks/useCustomerLedger';
+import { useSalesReturns } from '@/hooks/useSalesReturns';
 
 const inr = (n: number | null | undefined) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
@@ -52,6 +53,21 @@ const ARReports: React.FC = () => {
   const { data: agingSummary = [] } = useARAgingSummary();
   const { data: profitability = [] } = useCustomerProfitability();
   const { data: balances = [] } = useCustomerBalances();
+  const { data: salesReturns = [] } = useSalesReturns();
+
+  const returnsInRange = useMemo(
+    () => salesReturns.filter(r => r.return_date >= from && r.return_date <= to),
+    [salesReturns, from, to]
+  );
+  const returnsTotals = useMemo(() =>
+    returnsInRange.reduce((acc, r) => ({
+      subtotal: acc.subtotal + Number(r.subtotal || 0),
+      gst:      acc.gst      + Number(r.gst_amount || 0),
+      total:    acc.total    + Number(r.total_amount || 0),
+      count:    acc.count    + 1,
+    }), { subtotal: 0, gst: 0, total: 0, count: 0 }),
+    [returnsInRange]
+  );
 
   // GSTR-1 totals
   const gstrTotals = useMemo(() => {
@@ -102,6 +118,7 @@ const ARReports: React.FC = () => {
           <TabsTrigger value="outstanding">Outstanding</TabsTrigger>
           <TabsTrigger value="profitability">Customer Profitability</TabsTrigger>
           <TabsTrigger value="balances">Customer Balances</TabsTrigger>
+          <TabsTrigger value="returns">Sales Returns</TabsTrigger>
         </TabsList>
 
         {/* ── Invoice Register / GSTR-1 ── */}
@@ -380,6 +397,75 @@ const ARReports: React.FC = () => {
                   ))}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Sales Returns Register ── */}
+        <TabsContent value="returns">
+          <Card>
+            <CardHeader className="flex-row items-center justify-between">
+              <CardTitle>Sales Returns Register — {from} to {to}</CardTitle>
+              <Button variant="outline" size="sm" onClick={() => downloadCSV(returnsInRange, `sales-returns-${from}_${to}.csv`)}>
+                <Download className="mr-2 h-4 w-4" />Export CSV
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <div className="rounded-md border p-3 bg-muted/30">
+                  <div className="text-xs text-muted-foreground">Returns</div>
+                  <div className="mt-1 font-semibold">{returnsTotals.count}</div>
+                </div>
+                <div className="rounded-md border p-3 bg-muted/30">
+                  <div className="text-xs text-muted-foreground">Taxable</div>
+                  <div className="mt-1 font-semibold">{inr(returnsTotals.subtotal)}</div>
+                </div>
+                <div className="rounded-md border p-3 bg-muted/30">
+                  <div className="text-xs text-muted-foreground">GST Reversed</div>
+                  <div className="mt-1 font-semibold">{inr(returnsTotals.gst)}</div>
+                </div>
+                <div className="rounded-md border p-3 bg-primary/5">
+                  <div className="text-xs text-muted-foreground">Total Credit</div>
+                  <div className="mt-1 font-bold">{inr(returnsTotals.total)}</div>
+                </div>
+              </div>
+              <div className="overflow-x-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Return #</TableHead>
+                      <TableHead>Invoice</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Outcome</TableHead>
+                      <TableHead className="text-right">Taxable</TableHead>
+                      <TableHead className="text-right">GST</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead className="text-right">COGS Reversed</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {returnsInRange.length === 0 && (
+                      <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">No sales returns in this range.</TableCell></TableRow>
+                    )}
+                    {returnsInRange.map(r => (
+                      <TableRow key={r.id}>
+                        <TableCell className="whitespace-nowrap">{r.return_date}</TableCell>
+                        <TableCell className="font-mono text-sm">{r.return_number}</TableCell>
+                        <TableCell>{r.invoice_number}</TableCell>
+                        <TableCell>{r.customer_name}</TableCell>
+                        <TableCell className="capitalize">{r.outcome}</TableCell>
+                        <TableCell className="text-right">{inr(r.subtotal)}</TableCell>
+                        <TableCell className="text-right">{inr(r.gst_amount)}</TableCell>
+                        <TableCell className="text-right font-semibold">{inr(r.total_amount)}</TableCell>
+                        <TableCell className="text-right">{inr(r.cogs_reversed)}</TableCell>
+                        <TableCell className="capitalize">{r.status}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

@@ -67,6 +67,12 @@ import TDS from "./pages/TDS";
 import DeliveryChallans from "./pages/DeliveryChallans";
 import ITR6Filing from "./pages/ITR6Filing";
 import RecurringInvoices from "./pages/RecurringInvoices";
+import SalesReturns from "./pages/SalesReturns";
+import PurchaseReturns from "./pages/PurchaseReturns";
+import WarehouseTransfers from "./pages/WarehouseTransfers";
+import StockAdjustments from "./pages/StockAdjustments";
+import InventoryDashboard from "./pages/InventoryDashboard";
+import ItemLedger from "./pages/ItemLedger";
 import PaymentReceived from "./pages/PaymentReceived";
 import WorkingCapital from "./pages/WorkingCapital";
 import VendorAdvances from "./pages/VendorAdvances";
@@ -258,6 +264,12 @@ function App() {
                           <Route path="/customer-ledger" element={<CustomerLedger />} />
                           <Route path="/customer-ledger/:customerId" element={<CustomerLedger />} />
                           <Route path="/ar-reports" element={<ARReports />} />
+                          <Route path="/sales-returns" element={<SalesReturns />} />
+                          <Route path="/purchase-returns" element={<PurchaseReturns />} />
+                          <Route path="/inventory/transfers" element={<WarehouseTransfers />} />
+                          <Route path="/inventory/adjustments" element={<StockAdjustments />} />
+                          <Route path="/inventory/dashboard" element={<InventoryDashboard />} />
+                          <Route path="/inventory/items/:itemId/ledger" element={<ItemLedger />} />
                           <Route path="/cost-centers" element={<CostCenters />} />
                           <Route path="/reports/gst-itc" element={<GstItcReport />} />
                           <Route path="/accounting/periods" element={<AccountingPeriodsPage />} />
