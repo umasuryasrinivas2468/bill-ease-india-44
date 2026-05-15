@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -90,12 +91,27 @@ const StatBox = ({ label, value, sub, icon: Icon, color = 'blue' }: { label: str
 );
 
 // ── Main Component ──────────────────────────────────────────────────────────
+const FS_TAB_VALUES = new Set([
+  'mis', 'detailed-pnl', 'ratios', 'cashflow', 'inv-ageing', 'stock', 'setup',
+  'pnl', 'sch3-pnl', 'balance', 'trial-balance', 'income-expenditure',
+  'receipts-payments', 'journal-audit', 'itc-report', 'rcm-report', 'gst-summary',
+]);
+
 const FinancialStatements = () => {
   const { user } = useUser();
   const userId = user?.id;
   const { getBusinessInfo } = useEnhancedBusinessData();
   const businessInfo = getBusinessInfo();
   const { data: journalsData, isLoading: journalsLoading } = useJournalsWithLines();
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const activeTab = tabFromUrl && FS_TAB_VALUES.has(tabFromUrl) ? tabFromUrl : 'mis';
+  const handleTabChange = (value: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', value);
+    setSearchParams(next, { replace: true });
+  };
 
   const [financialYear, setFinancialYear] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -469,7 +485,7 @@ Provide actionable insights in bullet points. Keep it concise.`;
         </div>
       </div>
 
-      <Tabs defaultValue="mis" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <div className="overflow-x-auto">
           <TabsList className="inline-flex h-10 p-1 gap-1 w-auto min-w-full">
             <TabsTrigger value="mis" className="gap-1.5 text-xs"><Activity className="h-3.5 w-3.5" /> MIS Report</TabsTrigger>

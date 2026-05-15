@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,8 @@ const downloadCSV = (rows: any[], filename: string) => {
   a.click();
 };
 
+const AR_TAB_VALUES = new Set(['register', 'aging', 'outstanding', 'profitability', 'balances', 'returns']);
+
 const ARReports: React.FC = () => {
   const today = new Date().toISOString().split('T')[0];
   const monthStart = new Date();
@@ -47,6 +49,15 @@ const ARReports: React.FC = () => {
 
   const [from, setFrom] = useState<string>(monthStart.toISOString().split('T')[0]);
   const [to, setTo] = useState<string>(today);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const activeTab = tabFromUrl && AR_TAB_VALUES.has(tabFromUrl) ? tabFromUrl : 'register';
+  const handleTabChange = (value: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', value);
+    setSearchParams(next, { replace: true });
+  };
 
   const { data: register = [] } = useInvoiceRegister({ from, to, withJournal: true });
   const { data: aging = [] } = useARAging();
@@ -111,7 +122,7 @@ const ARReports: React.FC = () => {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="register">
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="flex flex-wrap">
           <TabsTrigger value="register">Invoice Register (GSTR-1)</TabsTrigger>
           <TabsTrigger value="aging">Aging</TabsTrigger>
