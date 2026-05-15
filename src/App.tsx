@@ -92,6 +92,8 @@ import InvoiceIntelligence from "./pages/InvoiceIntelligence";
 import ExpenseIntelligence from "./pages/ExpenseIntelligence";
 import AczenCFO from "./pages/AczenCFO";
 import PaymentHub from "./pages/PaymentHub";
+import Credit from "./pages/Credit";
+import Insurance from "./pages/Insurance";
 
 // License pages
 import StarterPage from "./pages/StarterPage";
@@ -230,6 +232,8 @@ function App() {
                           <Route path="/inventory/purchase-orders" element={<PlanRestrictedPurchaseOrders />} />
                           <Route path="/purchase-bills" element={<PurchaseBills />} />
                           <Route path="/banking" element={<Banking />} />
+                          <Route path="/credit" element={<Credit />} />
+                          <Route path="/insurance" element={<Insurance />} />
                           <Route path="/banking/beneficiaries" element={<BankingBeneficiaries />} />
                           <Route path="/banking/send-money" element={<BankingSendMoney />} />
                           <Route path="/banking/reconciliation" element={<BankReconciliation />} />
