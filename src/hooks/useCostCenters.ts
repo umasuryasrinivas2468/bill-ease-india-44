@@ -19,6 +19,7 @@ export interface CostCenter {
 }
 
 export interface CostCenterSpend extends CostCenter {
+  cost_center_id: string;
   bill_spend: number;
   expense_spend: number;
   total_spend: number;
