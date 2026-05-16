@@ -52,10 +52,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     const isSm = size === 'sm';
     return (
       <nav
-        className={cn(
-          'inline-flex items-center rounded-full border border-border/70 bg-card/80 p-1 shadow-sm backdrop-blur',
-          isSm ? 'gap-0.5' : 'gap-1'
-        )}
+        className={cn('inline-flex items-center', isSm ? 'gap-1' : 'gap-2')}
         aria-label="Primary"
       >
         {TOP_NAV_ITEMS.map((item) => {
@@ -66,15 +63,29 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               key={item.label}
               to={item.to}
               className={cn(
-                'inline-flex items-center rounded-full text-sm transition-colors whitespace-nowrap',
-                isSm ? 'gap-1 px-3 py-1.5 text-xs' : 'gap-2 px-5 py-2',
+                'relative inline-flex items-center whitespace-nowrap transition-colors',
+                isSm ? 'gap-1.5 px-3 py-3 text-xs' : 'gap-2 px-5 py-4 text-sm',
                 isActive
-                  ? 'bg-primary font-medium text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'font-semibold text-white'
+                  : 'text-white/60 hover:text-white/90'
               )}
             >
               <Icon className={isSm ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
               <span>{item.label}</span>
+              {isActive && (
+                <>
+                  {/* Glowing underline beam */}
+                  <span
+                    className="pointer-events-none absolute inset-x-2 bottom-0 h-[2px] rounded-full bg-[#4f8cff]"
+                    style={{ boxShadow: '0 0 12px 2px rgba(79,140,255,0.9), 0 0 24px 6px rgba(79,140,255,0.45)' }}
+                  />
+                  {/* Soft halo glow above the beam */}
+                  <span
+                    className="pointer-events-none absolute inset-x-0 -bottom-1 h-8 rounded-full opacity-70 blur-xl"
+                    style={{ background: 'radial-gradient(ellipse at bottom, rgba(79,140,255,0.55), transparent 70%)' }}
+                  />
+                </>
+              )}
             </Link>
           );
         })}
@@ -88,43 +99,48 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <AppSidebar />
 
         <SidebarInset className="flex-1 w-full overflow-x-hidden bg-transparent">
-          <header className="z-10 px-4 pt-4 md:px-6 md:pt-5">
-              <div className="md:hidden flex items-center justify-between gap-2 px-1 py-2">
-                <div className="min-w-0 flex-1 overflow-x-auto">
-                  {renderTopNav('sm')}
-                </div>
-                <div className="flex flex-shrink-0 items-center gap-2">
-                  <NotificationCenter compact />
-                  <SupportAssistantTrigger className="h-10 w-10 rounded-[14px]" />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-10 w-10 flex-shrink-0 rounded-[14px] border border-primary/15 bg-background/70"
-                    onClick={() => setSettingsOpen(true)}
-                    aria-label="Settings"
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+          <header className="z-10">
+              <div className="relative bg-[#0b0b0f] text-white rounded-b-[28px] shadow-[0_10px_30px_-12px_rgba(0,0,0,0.5)] overflow-hidden">
+                {/* subtle top sheen */}
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
 
-              <div className="hidden md:grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 py-4">
-                <div />
-                <div className="flex justify-center">
-                  {renderTopNav('md')}
+                <div className="md:hidden flex items-center justify-between gap-2 px-3 py-2">
+                  <div className="min-w-0 flex-1 overflow-x-auto">
+                    {renderTopNav('sm')}
+                  </div>
+                  <div className="flex flex-shrink-0 items-center gap-2">
+                    <NotificationCenter compact />
+                    <SupportAssistantTrigger className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10 text-white" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 flex-shrink-0 rounded-full bg-white/5 hover:bg-white/10 text-white border border-white/10"
+                      onClick={() => setSettingsOpen(true)}
+                      aria-label="Settings"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center justify-end gap-3">
-                  <UniversalSearchDropdown />
-                  <NotificationCenter compact />
-                  <SupportAssistantTrigger />
-                  <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full border border-primary/15 bg-background/70" onClick={() => setSettingsOpen(true)} aria-label="Settings">
-                    <Settings className="h-4 w-4" />
-                  </Button>
+
+                <div className="hidden md:grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-6 py-2">
+                  <div />
+                  <div className="flex justify-center">
+                    {renderTopNav('md')}
+                  </div>
+                  <div className="flex items-center justify-end gap-3">
+                    <UniversalSearchDropdown />
+                    <NotificationCenter compact />
+                    <SupportAssistantTrigger className="text-white hover:bg-white/10" />
+                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full bg-white/5 hover:bg-white/10 text-white border border-white/10" onClick={() => setSettingsOpen(true)} aria-label="Settings">
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
           </header>
 
-          <main key={location.pathname} className="flex-1 w-full pb-36 md:pb-28 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <main key={location.pathname} className="flex-1 w-full pb-36 md:pb-28 px-4 md:px-6 pt-4 md:pt-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {children}
           </main>
         </SidebarInset>
