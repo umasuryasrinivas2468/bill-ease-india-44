@@ -14,40 +14,97 @@ export type Database = {
   }
   public: {
     Tables: {
+      accounting_periods: {
+        Row: {
+          created_at: string | null
+          id: string
+          label: string | null
+          locked_at: string | null
+          locked_by: string | null
+          notes: string | null
+          period_end: string
+          period_start: string
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          label?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          notes?: string | null
+          period_end: string
+          period_start: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          label?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          notes?: string | null
+          period_end?: string
+          period_start?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       accounts: {
         Row: {
           account_code: string
+          account_group: string | null
           account_name: string
+          account_subgroup: string | null
           account_type: string
           created_at: string | null
+          display_order: number | null
           id: string
           is_active: boolean | null
+          is_group: boolean
           opening_balance: number | null
           org_id: string | null
+          parent_account_id: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           account_code: string
+          account_group?: string | null
           account_name: string
+          account_subgroup?: string | null
           account_type: string
           created_at?: string | null
+          display_order?: number | null
           id?: string
           is_active?: boolean | null
+          is_group?: boolean
           opening_balance?: number | null
           org_id?: string | null
+          parent_account_id?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           account_code?: string
+          account_group?: string | null
           account_name?: string
+          account_subgroup?: string | null
           account_type?: string
           created_at?: string | null
+          display_order?: number | null
           id?: string
           is_active?: boolean | null
+          is_group?: boolean
           opening_balance?: number | null
           org_id?: string | null
+          parent_account_id?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -59,6 +116,172 @@ export type Database = {
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "accounts_parent_account_id_fkey"
+            columns: ["parent_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accounts_parent_account_id_fkey"
+            columns: ["parent_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_balance_sheet"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "accounts_parent_account_id_fkey"
+            columns: ["parent_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_gl_movements"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "accounts_parent_account_id_fkey"
+            columns: ["parent_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_pnl_summary"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "accounts_parent_account_id_fkey"
+            columns: ["parent_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_trial_balance"
+            referencedColumns: ["account_id"]
+          },
+        ]
+      }
+      accrual_schedules: {
+        Row: {
+          cost_center_id: string | null
+          created_at: string | null
+          description: string | null
+          end_date: string
+          id: string
+          is_active: boolean
+          last_amortized_date: string | null
+          prepaid_account_id: string | null
+          project_id: string | null
+          recognition_account_id: string | null
+          recognized_amount: number
+          source_id: string | null
+          source_type: string
+          start_date: string
+          total_amount: number
+          user_id: string
+          vendor_id: string | null
+        }
+        Insert: {
+          cost_center_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          end_date: string
+          id?: string
+          is_active?: boolean
+          last_amortized_date?: string | null
+          prepaid_account_id?: string | null
+          project_id?: string | null
+          recognition_account_id?: string | null
+          recognized_amount?: number
+          source_id?: string | null
+          source_type: string
+          start_date: string
+          total_amount: number
+          user_id: string
+          vendor_id?: string | null
+        }
+        Update: {
+          cost_center_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          last_amortized_date?: string | null
+          prepaid_account_id?: string | null
+          project_id?: string | null
+          recognition_account_id?: string | null
+          recognized_amount?: number
+          source_id?: string | null
+          source_type?: string
+          start_date?: string
+          total_amount?: number
+          user_id?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accrual_schedules_prepaid_account_id_fkey"
+            columns: ["prepaid_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accrual_schedules_prepaid_account_id_fkey"
+            columns: ["prepaid_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_balance_sheet"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "accrual_schedules_prepaid_account_id_fkey"
+            columns: ["prepaid_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_gl_movements"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "accrual_schedules_prepaid_account_id_fkey"
+            columns: ["prepaid_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_pnl_summary"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "accrual_schedules_prepaid_account_id_fkey"
+            columns: ["prepaid_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_trial_balance"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "accrual_schedules_recognition_account_id_fkey"
+            columns: ["recognition_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accrual_schedules_recognition_account_id_fkey"
+            columns: ["recognition_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_balance_sheet"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "accrual_schedules_recognition_account_id_fkey"
+            columns: ["recognition_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_gl_movements"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "accrual_schedules_recognition_account_id_fkey"
+            columns: ["recognition_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_pnl_summary"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "accrual_schedules_recognition_account_id_fkey"
+            columns: ["recognition_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_trial_balance"
+            referencedColumns: ["account_id"]
+          },
         ]
       }
       advance_adjustments: {
@@ -69,11 +292,15 @@ export type Database = {
           amount: number
           bill_id: string
           bill_number: string
+          branch_id: string | null
+          cost_center_id: string | null
           created_at: string
+          department: string | null
           id: string
           journal_id: string | null
           notes: string | null
           org_id: string | null
+          project_id: string | null
           user_id: string
           vendor_id: string
           vendor_name: string
@@ -85,11 +312,15 @@ export type Database = {
           amount: number
           bill_id: string
           bill_number: string
+          branch_id?: string | null
+          cost_center_id?: string | null
           created_at?: string
+          department?: string | null
           id?: string
           journal_id?: string | null
           notes?: string | null
           org_id?: string | null
+          project_id?: string | null
           user_id: string
           vendor_id: string
           vendor_name: string
@@ -101,16 +332,27 @@ export type Database = {
           amount?: number
           bill_id?: string
           bill_number?: string
+          branch_id?: string | null
+          cost_center_id?: string | null
           created_at?: string
+          department?: string | null
           id?: string
           journal_id?: string | null
           notes?: string | null
           org_id?: string | null
+          project_id?: string | null
           user_id?: string
           vendor_id?: string
           vendor_name?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "advance_adjustments_advance_id_fkey"
+            columns: ["advance_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_advance_available"
+            referencedColumns: ["advance_id"]
+          },
           {
             foreignKeyName: "advance_adjustments_advance_id_fkey"
             columns: ["advance_id"]
@@ -126,11 +368,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "advance_adjustments_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "v_bill_open_balance"
+            referencedColumns: ["bill_id"]
+          },
+          {
+            foreignKeyName: "advance_adjustments_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "v_gstr3b_inputs"
+            referencedColumns: ["bill_id"]
+          },
+          {
+            foreignKeyName: "advance_adjustments_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "advance_adjustments_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+          {
             foreignKeyName: "advance_adjustments_journal_id_fkey"
             columns: ["journal_id"]
             isOneToOne: false
             referencedRelation: "journals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "advance_adjustments_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "v_gl_movements"
+            referencedColumns: ["journal_id"]
+          },
+          {
+            foreignKeyName: "advance_adjustments_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["journal_id"]
+          },
+          {
+            foreignKeyName: "advance_adjustments_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_gstin_compliance"
+            referencedColumns: ["vendor_id"]
           },
           {
             foreignKeyName: "advance_adjustments_vendor_id_fkey"
@@ -140,6 +431,204 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ap_audit_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after_json: Json | null
+          amount: number | null
+          before_json: Json | null
+          created_at: string | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+          notes: string | null
+          reference: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after_json?: Json | null
+          amount?: number | null
+          before_json?: Json | null
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          notes?: string | null
+          reference?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after_json?: Json | null
+          amount?: number | null
+          before_json?: Json | null
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          notes?: string | null
+          reference?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      approval_actions: {
+        Row: {
+          acted_at: string | null
+          action: string
+          actor_id: string
+          actor_role: string | null
+          id: string
+          level: number
+          notes: string | null
+          request_id: string
+        }
+        Insert: {
+          acted_at?: string | null
+          action: string
+          actor_id: string
+          actor_role?: string | null
+          id?: string
+          level: number
+          notes?: string | null
+          request_id: string
+        }
+        Update: {
+          acted_at?: string | null
+          action?: string
+          actor_id?: string
+          actor_role?: string | null
+          id?: string
+          level?: number
+          notes?: string | null
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_actions_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "approval_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approval_actions_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "v_pending_approvals"
+            referencedColumns: ["request_id"]
+          },
+          {
+            foreignKeyName: "approval_actions_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "v_pending_ar_approvals"
+            referencedColumns: ["request_id"]
+          },
+        ]
+      }
+      approval_requests: {
+        Row: {
+          amount: number | null
+          completed_at: string | null
+          current_level: number
+          entity_id: string
+          entity_type: string
+          id: string
+          notes: string | null
+          reference: string | null
+          requested_at: string | null
+          requested_by: string | null
+          required_levels: number
+          rule_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          completed_at?: string | null
+          current_level?: number
+          entity_id: string
+          entity_type: string
+          id?: string
+          notes?: string | null
+          reference?: string | null
+          requested_at?: string | null
+          requested_by?: string | null
+          required_levels?: number
+          rule_id?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          completed_at?: string | null
+          current_level?: number
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          notes?: string | null
+          reference?: string | null
+          requested_at?: string | null
+          requested_by?: string | null
+          required_levels?: number
+          rule_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_requests_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "approval_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      approval_rules: {
+        Row: {
+          created_at: string | null
+          entity_type: string
+          id: string
+          is_active: boolean
+          level_perms: string[]
+          max_amount: number | null
+          min_amount: number
+          required_levels: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          entity_type: string
+          id?: string
+          is_active?: boolean
+          level_perms: string[]
+          max_amount?: number | null
+          min_amount?: number
+          required_levels?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          entity_type?: string
+          id?: string
+          is_active?: boolean
+          level_perms?: string[]
+          max_amount?: number | null
+          min_amount?: number
+          required_levels?: number
+          user_id?: string
+        }
+        Relationships: []
       }
       apps: {
         Row: {
@@ -179,6 +668,240 @@ export type Database = {
           version?: string
         }
         Relationships: []
+      }
+      ar_audit_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          after_json: Json | null
+          amount: number | null
+          before_json: Json | null
+          created_at: string | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+          notes: string | null
+          reference: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after_json?: Json | null
+          amount?: number | null
+          before_json?: Json | null
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          notes?: string | null
+          reference?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          after_json?: Json | null
+          amount?: number | null
+          before_json?: Json | null
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          notes?: string | null
+          reference?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ar_payment_allocations: {
+        Row: {
+          allocation_date: string
+          amount: number
+          created_at: string | null
+          customer_id: string | null
+          id: string
+          invoice_id: string
+          source_id: string
+          source_type: string
+          user_id: string
+        }
+        Insert: {
+          allocation_date?: string
+          amount: number
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string
+          invoice_id: string
+          source_id: string
+          source_type: string
+          user_id: string
+        }
+        Update: {
+          allocation_date?: string
+          amount?: number
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string
+          invoice_id?: string
+          source_id?: string
+          source_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ar_payment_allocations_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ar_payment_allocations_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_ar_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "ar_payment_allocations_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "ar_payment_allocations_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "ar_payment_allocations_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_outstanding_report"
+            referencedColumns: ["invoice_id"]
+          },
+        ]
+      }
+      ar_recurring_invoices: {
+        Row: {
+          amount: number
+          auto_post: boolean
+          branch_id: string | null
+          cost_center_id: string | null
+          created_at: string | null
+          customer_address: string | null
+          customer_email: string | null
+          customer_gst: string | null
+          customer_id: string | null
+          customer_name: string
+          department: string | null
+          due_offset_days: number | null
+          end_date: string | null
+          frequency: string
+          gst_rate: number
+          id: string
+          interval_count: number
+          intra_state: boolean | null
+          is_active: boolean
+          items: Json | null
+          last_generated_date: string | null
+          next_due_date: string
+          notes: string | null
+          payment_terms_days: number | null
+          place_of_supply: string | null
+          project_id: string | null
+          start_date: string
+          template_name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          auto_post?: boolean
+          branch_id?: string | null
+          cost_center_id?: string | null
+          created_at?: string | null
+          customer_address?: string | null
+          customer_email?: string | null
+          customer_gst?: string | null
+          customer_id?: string | null
+          customer_name: string
+          department?: string | null
+          due_offset_days?: number | null
+          end_date?: string | null
+          frequency: string
+          gst_rate?: number
+          id?: string
+          interval_count?: number
+          intra_state?: boolean | null
+          is_active?: boolean
+          items?: Json | null
+          last_generated_date?: string | null
+          next_due_date: string
+          notes?: string | null
+          payment_terms_days?: number | null
+          place_of_supply?: string | null
+          project_id?: string | null
+          start_date: string
+          template_name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          auto_post?: boolean
+          branch_id?: string | null
+          cost_center_id?: string | null
+          created_at?: string | null
+          customer_address?: string | null
+          customer_email?: string | null
+          customer_gst?: string | null
+          customer_id?: string | null
+          customer_name?: string
+          department?: string | null
+          due_offset_days?: number | null
+          end_date?: string | null
+          frequency?: string
+          gst_rate?: number
+          id?: string
+          interval_count?: number
+          intra_state?: boolean | null
+          is_active?: boolean
+          items?: Json | null
+          last_generated_date?: string | null
+          next_due_date?: string
+          notes?: string | null
+          payment_terms_days?: number | null
+          place_of_supply?: string | null
+          project_id?: string | null
+          start_date?: string
+          template_name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ar_recurring_invoices_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ar_recurring_invoices_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+        ]
       }
       audit_logs: {
         Row: {
@@ -413,6 +1136,20 @@ export type Database = {
             referencedRelation: "journals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "bank_statement_reconciliation_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "v_gl_movements"
+            referencedColumns: ["journal_id"]
+          },
+          {
+            foreignKeyName: "bank_statement_reconciliation_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["journal_id"]
+          },
         ]
       }
       bank_statements: {
@@ -472,7 +1209,54 @@ export type Database = {
             referencedRelation: "journals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "bank_statements_matched_journal_id_fkey"
+            columns: ["matched_journal_id"]
+            isOneToOne: false
+            referencedRelation: "v_gl_movements"
+            referencedColumns: ["journal_id"]
+          },
+          {
+            foreignKeyName: "bank_statements_matched_journal_id_fkey"
+            columns: ["matched_journal_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["journal_id"]
+          },
         ]
+      }
+      bill_classification_rules: {
+        Row: {
+          classification: string
+          created_at: string | null
+          id: string
+          is_active: boolean
+          match_type: string
+          match_value: string
+          priority: number
+          user_id: string
+        }
+        Insert: {
+          classification: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          match_type: string
+          match_value: string
+          priority?: number
+          user_id: string
+        }
+        Update: {
+          classification?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          match_type?: string
+          match_value?: string
+          priority?: number
+          user_id?: string
+        }
+        Relationships: []
       }
       budget_alerts: {
         Row: {
@@ -866,18 +1650,79 @@ export type Database = {
           },
         ]
       }
+      cost_centers: {
+        Row: {
+          budget_amount: number | null
+          code: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          parent_id: string | null
+          type: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          budget_amount?: number | null
+          code: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          parent_id?: string | null
+          type?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          budget_amount?: number | null
+          code?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          parent_id?: string | null
+          type?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_centers_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cost_centers_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+        ]
+      }
       credit_notes: {
         Row: {
           amount: number
+          branch_id: string | null
           cess_amount: number | null
           cgst_amount: number | null
           client_address: string | null
           client_email: string | null
           client_gst_number: string | null
           client_name: string
+          cost_center_id: string | null
           created_at: string | null
           credit_note_date: string
           credit_note_number: string
+          customer_id: string | null
+          department: string | null
           gst_amount: number
           id: string
           igst_amount: number | null
@@ -885,8 +1730,11 @@ export type Database = {
           items: Json
           org_id: string | null
           original_invoice_id: string | null
+          outcome: string | null
           place_of_supply: string | null
+          project_id: string | null
           reason: string | null
+          return_id: string | null
           seller_state: string | null
           sgst_amount: number | null
           status: string | null
@@ -894,18 +1742,23 @@ export type Database = {
           total_amount: number
           updated_at: string | null
           user_id: string
+          utilized_amount: number
         }
         Insert: {
           amount: number
+          branch_id?: string | null
           cess_amount?: number | null
           cgst_amount?: number | null
           client_address?: string | null
           client_email?: string | null
           client_gst_number?: string | null
           client_name: string
+          cost_center_id?: string | null
           created_at?: string | null
           credit_note_date: string
           credit_note_number: string
+          customer_id?: string | null
+          department?: string | null
           gst_amount: number
           id?: string
           igst_amount?: number | null
@@ -913,8 +1766,11 @@ export type Database = {
           items?: Json
           org_id?: string | null
           original_invoice_id?: string | null
+          outcome?: string | null
           place_of_supply?: string | null
+          project_id?: string | null
           reason?: string | null
+          return_id?: string | null
           seller_state?: string | null
           sgst_amount?: number | null
           status?: string | null
@@ -922,18 +1778,23 @@ export type Database = {
           total_amount: number
           updated_at?: string | null
           user_id: string
+          utilized_amount?: number
         }
         Update: {
           amount?: number
+          branch_id?: string | null
           cess_amount?: number | null
           cgst_amount?: number | null
           client_address?: string | null
           client_email?: string | null
           client_gst_number?: string | null
           client_name?: string
+          cost_center_id?: string | null
           created_at?: string | null
           credit_note_date?: string
           credit_note_number?: string
+          customer_id?: string | null
+          department?: string | null
           gst_amount?: number
           id?: string
           igst_amount?: number | null
@@ -941,8 +1802,11 @@ export type Database = {
           items?: Json
           org_id?: string | null
           original_invoice_id?: string | null
+          outcome?: string | null
           place_of_supply?: string | null
+          project_id?: string | null
           reason?: string | null
+          return_id?: string | null
           seller_state?: string | null
           sgst_amount?: number | null
           status?: string | null
@@ -950,8 +1814,44 @@ export type Database = {
           total_amount?: number
           updated_at?: string | null
           user_id?: string
+          utilized_amount?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "credit_notes_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_notes_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+          {
+            foreignKeyName: "credit_notes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_notes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_balance"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "credit_notes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_profitability"
+            referencedColumns: ["customer_id"]
+          },
           {
             foreignKeyName: "credit_notes_org_id_fkey"
             columns: ["org_id"]
@@ -959,87 +1859,392 @@ export type Database = {
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "credit_notes_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "sales_returns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_notes_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_return_register"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_advance_adjustments: {
+        Row: {
+          adjustment_date: string
+          advance_id: string
+          amount: number
+          branch_id: string | null
+          cost_center_id: string | null
+          created_at: string | null
+          customer_id: string | null
+          customer_name: string | null
+          department: string | null
+          id: string
+          invoice_id: string | null
+          invoice_number: string | null
+          notes: string | null
+          project_id: string | null
+          user_id: string
+        }
+        Insert: {
+          adjustment_date?: string
+          advance_id: string
+          amount: number
+          branch_id?: string | null
+          cost_center_id?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          department?: string | null
+          id?: string
+          invoice_id?: string | null
+          invoice_number?: string | null
+          notes?: string | null
+          project_id?: string | null
+          user_id: string
+        }
+        Update: {
+          adjustment_date?: string
+          advance_id?: string
+          amount?: number
+          branch_id?: string | null
+          cost_center_id?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          department?: string | null
+          id?: string
+          invoice_id?: string | null
+          invoice_number?: string | null
+          notes?: string | null
+          project_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_advance_adjustments_advance_id_fkey"
+            columns: ["advance_id"]
+            isOneToOne: false
+            referencedRelation: "customer_advances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_advance_adjustments_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_advance_adjustments_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+          {
+            foreignKeyName: "customer_advance_adjustments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_advance_adjustments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_ar_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "customer_advance_adjustments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "customer_advance_adjustments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "customer_advance_adjustments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_outstanding_report"
+            referencedColumns: ["invoice_id"]
+          },
+        ]
+      }
+      customer_advances: {
+        Row: {
+          advance_date: string
+          advance_number: string
+          amount: number
+          applied_amount: number
+          branch_id: string | null
+          cost_center_id: string | null
+          created_at: string | null
+          customer_id: string | null
+          customer_name: string
+          department: string | null
+          deposit_account: string | null
+          description: string | null
+          id: string
+          notes: string | null
+          outstanding_amount: number | null
+          payment_mode: string | null
+          place_of_supply: string | null
+          project_id: string | null
+          reference_number: string | null
+          source_payment_id: string | null
+          status: string
+          tax_amount: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          advance_date: string
+          advance_number: string
+          amount: number
+          applied_amount?: number
+          branch_id?: string | null
+          cost_center_id?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          customer_name: string
+          department?: string | null
+          deposit_account?: string | null
+          description?: string | null
+          id?: string
+          notes?: string | null
+          outstanding_amount?: number | null
+          payment_mode?: string | null
+          place_of_supply?: string | null
+          project_id?: string | null
+          reference_number?: string | null
+          source_payment_id?: string | null
+          status?: string
+          tax_amount?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          advance_date?: string
+          advance_number?: string
+          amount?: number
+          applied_amount?: number
+          branch_id?: string | null
+          cost_center_id?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          customer_name?: string
+          department?: string | null
+          deposit_account?: string | null
+          description?: string | null
+          id?: string
+          notes?: string | null
+          outstanding_amount?: number | null
+          payment_mode?: string | null
+          place_of_supply?: string | null
+          project_id?: string | null
+          reference_number?: string | null
+          source_payment_id?: string | null
+          status?: string
+          tax_amount?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_advances_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_advances_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
         ]
       }
       debit_notes: {
         Row: {
           amount: number
           cgst_amount: number | null
+          cost_center_id: string | null
           created_at: string | null
           debit_note_date: string
           debit_note_number: string
           gst_amount: number
           id: string
           igst_amount: number | null
+          intra_state: boolean | null
           items: Json
           org_id: string | null
+          original_bill_id: string | null
           original_invoice_id: string | null
+          outcome: string | null
           place_of_supply: string | null
           reason: string | null
+          return_id: string | null
           sgst_amount: number | null
           status: string | null
           total_amount: number
           updated_at: string | null
           user_id: string
+          utilized_amount: number
           vendor_address: string | null
           vendor_email: string | null
           vendor_gst_number: string | null
+          vendor_id: string | null
           vendor_name: string
         }
         Insert: {
           amount: number
           cgst_amount?: number | null
+          cost_center_id?: string | null
           created_at?: string | null
           debit_note_date: string
           debit_note_number: string
           gst_amount: number
           id?: string
           igst_amount?: number | null
+          intra_state?: boolean | null
           items?: Json
           org_id?: string | null
+          original_bill_id?: string | null
           original_invoice_id?: string | null
+          outcome?: string | null
           place_of_supply?: string | null
           reason?: string | null
+          return_id?: string | null
           sgst_amount?: number | null
           status?: string | null
           total_amount: number
           updated_at?: string | null
           user_id: string
+          utilized_amount?: number
           vendor_address?: string | null
           vendor_email?: string | null
           vendor_gst_number?: string | null
+          vendor_id?: string | null
           vendor_name: string
         }
         Update: {
           amount?: number
           cgst_amount?: number | null
+          cost_center_id?: string | null
           created_at?: string | null
           debit_note_date?: string
           debit_note_number?: string
           gst_amount?: number
           id?: string
           igst_amount?: number | null
+          intra_state?: boolean | null
           items?: Json
           org_id?: string | null
+          original_bill_id?: string | null
           original_invoice_id?: string | null
+          outcome?: string | null
           place_of_supply?: string | null
           reason?: string | null
+          return_id?: string | null
           sgst_amount?: number | null
           status?: string | null
           total_amount?: number
           updated_at?: string | null
           user_id?: string
+          utilized_amount?: number
           vendor_address?: string | null
           vendor_email?: string | null
           vendor_gst_number?: string | null
+          vendor_id?: string | null
           vendor_name?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "debit_notes_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debit_notes_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
           {
             foreignKeyName: "debit_notes_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debit_notes_original_bill_id_fkey"
+            columns: ["original_bill_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debit_notes_original_bill_id_fkey"
+            columns: ["original_bill_id"]
+            isOneToOne: false
+            referencedRelation: "v_bill_open_balance"
+            referencedColumns: ["bill_id"]
+          },
+          {
+            foreignKeyName: "debit_notes_original_bill_id_fkey"
+            columns: ["original_bill_id"]
+            isOneToOne: false
+            referencedRelation: "v_gstr3b_inputs"
+            referencedColumns: ["bill_id"]
+          },
+          {
+            foreignKeyName: "debit_notes_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_returns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debit_notes_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_return_register"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debit_notes_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_gstin_compliance"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "debit_notes_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -1106,6 +2311,127 @@ export type Database = {
           },
         ]
       }
+      dunning_log: {
+        Row: {
+          channel: string | null
+          error_message: string | null
+          id: string
+          invoice_id: string
+          payload: Json | null
+          rule_id: string | null
+          sent_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string | null
+          error_message?: string | null
+          id?: string
+          invoice_id: string
+          payload?: Json | null
+          rule_id?: string | null
+          sent_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string | null
+          error_message?: string | null
+          id?: string
+          invoice_id?: string
+          payload?: Json | null
+          rule_id?: string | null
+          sent_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dunning_log_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dunning_log_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_ar_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "dunning_log_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "dunning_log_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "dunning_log_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_outstanding_report"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "dunning_log_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "dunning_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dunning_rules: {
+        Row: {
+          channel: string
+          created_at: string | null
+          id: string
+          is_active: boolean
+          min_amount: number | null
+          name: string
+          template_body: string | null
+          template_subject: string | null
+          trigger_offset_days: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          min_amount?: number | null
+          name: string
+          template_body?: string | null
+          template_subject?: string | null
+          trigger_offset_days: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          min_amount?: number | null
+          name?: string
+          template_body?: string | null
+          template_subject?: string | null
+          trigger_offset_days?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       expense_attachments: {
         Row: {
           content_type: string | null
@@ -1151,6 +2477,7 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean | null
+          is_default: boolean | null
           updated_at: string | null
           user_id: string
         }
@@ -1160,6 +2487,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_default?: boolean | null
           updated_at?: string | null
           user_id: string
         }
@@ -1169,6 +2497,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_default?: boolean | null
           updated_at?: string | null
           user_id?: string
         }
@@ -1215,14 +2544,101 @@ export type Database = {
           },
         ]
       }
+      expense_inventory_links: {
+        Row: {
+          bill_id: string | null
+          created_at: string | null
+          expense_id: string | null
+          hsn_sac: string | null
+          id: string
+          inventory_item_id: string
+          movement_id: string | null
+          quantity: number
+          raw_description: string | null
+          source: string
+          total_value: number
+          unit_cost: number
+          user_id: string
+          vendor_id: string | null
+          was_new_item: boolean | null
+        }
+        Insert: {
+          bill_id?: string | null
+          created_at?: string | null
+          expense_id?: string | null
+          hsn_sac?: string | null
+          id?: string
+          inventory_item_id: string
+          movement_id?: string | null
+          quantity?: number
+          raw_description?: string | null
+          source?: string
+          total_value?: number
+          unit_cost?: number
+          user_id: string
+          vendor_id?: string | null
+          was_new_item?: boolean | null
+        }
+        Update: {
+          bill_id?: string | null
+          created_at?: string | null
+          expense_id?: string | null
+          hsn_sac?: string | null
+          id?: string
+          inventory_item_id?: string
+          movement_id?: string | null
+          quantity?: number
+          raw_description?: string | null
+          source?: string
+          total_value?: number
+          unit_cost?: number
+          user_id?: string
+          vendor_id?: string | null
+          was_new_item?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_inventory_links_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_inventory_links_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_kpi"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "expense_inventory_links_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "expense_inventory_links_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "vw_stock_summary"
+            referencedColumns: ["item_id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           amount: number
+          bill_attachment_url: string | null
+          bill_number: string | null
           branch: string | null
+          branch_id: string | null
           category_id: string | null
           category_name: string | null
           client_id: string | null
           cost_center: string | null
+          cost_center_id: string | null
           created_at: string | null
           department: string | null
           description: string | null
@@ -1232,16 +2648,25 @@ export type Database = {
           expense_number: string | null
           gst_amount: number | null
           id: string
-          is_rcm: boolean | null
+          is_rcm: boolean
           itc_eligible: boolean | null
           journal_id: string | null
+          lifecycle_changed_at: string | null
+          lifecycle_changed_by: string | null
+          lifecycle_status: string
+          notes: string | null
           org_id: string | null
           payment_mode: string | null
+          po_id: string | null
+          po_match_confidence: string | null
+          po_match_status: string | null
+          po_number: string | null
           posted_to_ledger: boolean | null
           project_id: string | null
           project_name: string | null
-          rcm_amount: number | null
-          rcm_rate: number | null
+          rcm_amount: number
+          rcm_rate: number
+          reference_number: string | null
           status: string | null
           tax_amount: number | null
           tds_amount: number | null
@@ -1255,11 +2680,15 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          bill_attachment_url?: string | null
+          bill_number?: string | null
           branch?: string | null
+          branch_id?: string | null
           category_id?: string | null
           category_name?: string | null
           client_id?: string | null
           cost_center?: string | null
+          cost_center_id?: string | null
           created_at?: string | null
           department?: string | null
           description?: string | null
@@ -1269,16 +2698,25 @@ export type Database = {
           expense_number?: string | null
           gst_amount?: number | null
           id?: string
-          is_rcm?: boolean | null
+          is_rcm?: boolean
           itc_eligible?: boolean | null
           journal_id?: string | null
+          lifecycle_changed_at?: string | null
+          lifecycle_changed_by?: string | null
+          lifecycle_status?: string
+          notes?: string | null
           org_id?: string | null
           payment_mode?: string | null
+          po_id?: string | null
+          po_match_confidence?: string | null
+          po_match_status?: string | null
+          po_number?: string | null
           posted_to_ledger?: boolean | null
           project_id?: string | null
           project_name?: string | null
-          rcm_amount?: number | null
-          rcm_rate?: number | null
+          rcm_amount?: number
+          rcm_rate?: number
+          reference_number?: string | null
           status?: string | null
           tax_amount?: number | null
           tds_amount?: number | null
@@ -1292,11 +2730,15 @@ export type Database = {
         }
         Update: {
           amount?: number
+          bill_attachment_url?: string | null
+          bill_number?: string | null
           branch?: string | null
+          branch_id?: string | null
           category_id?: string | null
           category_name?: string | null
           client_id?: string | null
           cost_center?: string | null
+          cost_center_id?: string | null
           created_at?: string | null
           department?: string | null
           description?: string | null
@@ -1306,16 +2748,25 @@ export type Database = {
           expense_number?: string | null
           gst_amount?: number | null
           id?: string
-          is_rcm?: boolean | null
+          is_rcm?: boolean
           itc_eligible?: boolean | null
           journal_id?: string | null
+          lifecycle_changed_at?: string | null
+          lifecycle_changed_by?: string | null
+          lifecycle_status?: string
+          notes?: string | null
           org_id?: string | null
           payment_mode?: string | null
+          po_id?: string | null
+          po_match_confidence?: string | null
+          po_match_status?: string | null
+          po_number?: string | null
           posted_to_ledger?: boolean | null
           project_id?: string | null
           project_name?: string | null
-          rcm_amount?: number | null
-          rcm_rate?: number | null
+          rcm_amount?: number
+          rcm_rate?: number
+          reference_number?: string | null
           status?: string | null
           tax_amount?: number | null
           tds_amount?: number | null
@@ -1343,10 +2794,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "expenses_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_balance"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "expenses_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_profitability"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "expenses_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+          {
             foreignKeyName: "expenses_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
             referencedColumns: ["id"]
           },
           {
@@ -1362,6 +2848,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tds_rules"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_gstin_compliance"
+            referencedColumns: ["vendor_id"]
           },
           {
             foreignKeyName: "expenses_vendor_id_fkey"
@@ -1500,6 +2993,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      fraud_alerts: {
+        Row: {
+          alert_type: string
+          amount: number | null
+          created_at: string | null
+          details: Json | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          reference: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          alert_type: string
+          amount?: number | null
+          created_at?: string | null
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          reference?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          alert_type?: string
+          amount?: number | null
+          created_at?: string | null
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          reference?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       gst_payments: {
         Row: {
@@ -1840,6 +3384,91 @@ export type Database = {
             foreignKeyName: "inventory_alerts_item_id_fkey"
             columns: ["item_id"]
             isOneToOne: false
+            referencedRelation: "v_inventory_kpi"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "inventory_alerts_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "inventory_alerts_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "vw_stock_summary"
+            referencedColumns: ["item_id"]
+          },
+        ]
+      }
+      inventory_anomalies: {
+        Row: {
+          anomaly_type: string
+          details: Json | null
+          detected_at: string | null
+          id: string
+          is_resolved: boolean | null
+          item_id: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          anomaly_type: string
+          details?: Json | null
+          detected_at?: string | null
+          id?: string
+          is_resolved?: boolean | null
+          item_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          anomaly_type?: string
+          details?: Json | null
+          detected_at?: string | null
+          id?: string
+          is_resolved?: boolean | null
+          item_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_anomalies_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_anomalies_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_kpi"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "inventory_anomalies_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "inventory_anomalies_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
             referencedRelation: "vw_stock_summary"
             referencedColumns: ["item_id"]
           },
@@ -1909,6 +3538,20 @@ export type Database = {
             foreignKeyName: "inventory_batches_item_id_fkey"
             columns: ["item_id"]
             isOneToOne: false
+            referencedRelation: "v_inventory_kpi"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "inventory_batches_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "inventory_batches_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
             referencedRelation: "vw_stock_summary"
             referencedColumns: ["item_id"]
           },
@@ -1918,6 +3561,86 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "warehouses"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_forecasts: {
+        Row: {
+          avg_daily_demand: number
+          confidence: number | null
+          created_at: string | null
+          forecast_date: string
+          id: string
+          item_id: string
+          lead_time_days: number
+          method: string
+          notes: string | null
+          reorder_point: number
+          safety_stock: number
+          suggested_reorder_qty: number
+          user_id: string
+          window_days: number
+        }
+        Insert: {
+          avg_daily_demand?: number
+          confidence?: number | null
+          created_at?: string | null
+          forecast_date?: string
+          id?: string
+          item_id: string
+          lead_time_days?: number
+          method?: string
+          notes?: string | null
+          reorder_point?: number
+          safety_stock?: number
+          suggested_reorder_qty?: number
+          user_id: string
+          window_days?: number
+        }
+        Update: {
+          avg_daily_demand?: number
+          confidence?: number | null
+          created_at?: string | null
+          forecast_date?: string
+          id?: string
+          item_id?: string
+          lead_time_days?: number
+          method?: string
+          notes?: string | null
+          reorder_point?: number
+          safety_stock?: number
+          suggested_reorder_qty?: number
+          user_id?: string
+          window_days?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_forecasts_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_forecasts_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_kpi"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "inventory_forecasts_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "inventory_forecasts_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "vw_stock_summary"
+            referencedColumns: ["item_id"]
           },
         ]
       }
@@ -2008,6 +3731,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "inventory"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_kpi"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["item_id"]
           },
           {
             foreignKeyName: "inventory_movements_item_id_fkey"
@@ -2144,6 +3881,34 @@ export type Database = {
             referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "invoice_lifecycle_events_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_ar_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_lifecycle_events_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_lifecycle_events_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_lifecycle_events_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_outstanding_report"
+            referencedColumns: ["invoice_id"]
+          },
         ]
       }
       invoice_payments: {
@@ -2194,6 +3959,34 @@ export type Database = {
             referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "invoice_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_ar_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_outstanding_report"
+            referencedColumns: ["invoice_id"]
+          },
         ]
       }
       invoice_reminder_log: {
@@ -2234,6 +4027,34 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "invoices"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_reminder_log_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_ar_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_reminder_log_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_reminder_log_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_reminder_log_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_outstanding_report"
+            referencedColumns: ["invoice_id"]
           },
           {
             foreignKeyName: "invoice_reminder_log_rule_id_fkey"
@@ -2322,6 +4143,34 @@ export type Database = {
             referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "invoice_risk_flags_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_ar_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_risk_flags_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_risk_flags_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_risk_flags_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_outstanding_report"
+            referencedColumns: ["invoice_id"]
+          },
         ]
       }
       invoices: {
@@ -2331,6 +4180,7 @@ export type Database = {
           amount: number
           approved_at: string | null
           branch: string | null
+          branch_id: string | null
           cess_amount: number | null
           cgst_amount: number | null
           client_address: string | null
@@ -2338,9 +4188,12 @@ export type Database = {
           client_gst_number: string | null
           client_name: string
           closed_at: string | null
+          cost_center_id: string | null
           created_at: string | null
           created_by_name: string | null
           currency: string
+          customer_id: string | null
+          department: string | null
           discount: number | null
           due_date: string
           edit_count: number | null
@@ -2365,6 +4218,7 @@ export type Database = {
           payouts_completed: boolean | null
           place_of_supply: string | null
           pricing_mode: string | null
+          project_id: string | null
           rate_buckets: Json | null
           razorpay_payment_id: string | null
           razorpay_route_account_id: string | null
@@ -2387,6 +4241,7 @@ export type Database = {
           amount?: number
           approved_at?: string | null
           branch?: string | null
+          branch_id?: string | null
           cess_amount?: number | null
           cgst_amount?: number | null
           client_address?: string | null
@@ -2394,9 +4249,12 @@ export type Database = {
           client_gst_number?: string | null
           client_name: string
           closed_at?: string | null
+          cost_center_id?: string | null
           created_at?: string | null
           created_by_name?: string | null
           currency?: string
+          customer_id?: string | null
+          department?: string | null
           discount?: number | null
           due_date: string
           edit_count?: number | null
@@ -2421,6 +4279,7 @@ export type Database = {
           payouts_completed?: boolean | null
           place_of_supply?: string | null
           pricing_mode?: string | null
+          project_id?: string | null
           rate_buckets?: Json | null
           razorpay_payment_id?: string | null
           razorpay_route_account_id?: string | null
@@ -2443,6 +4302,7 @@ export type Database = {
           amount?: number
           approved_at?: string | null
           branch?: string | null
+          branch_id?: string | null
           cess_amount?: number | null
           cgst_amount?: number | null
           client_address?: string | null
@@ -2450,9 +4310,12 @@ export type Database = {
           client_gst_number?: string | null
           client_name?: string
           closed_at?: string | null
+          cost_center_id?: string | null
           created_at?: string | null
           created_by_name?: string | null
           currency?: string
+          customer_id?: string | null
+          department?: string | null
           discount?: number | null
           due_date?: string
           edit_count?: number | null
@@ -2477,6 +4340,7 @@ export type Database = {
           payouts_completed?: boolean | null
           place_of_supply?: string | null
           pricing_mode?: string | null
+          project_id?: string | null
           rate_buckets?: Json | null
           razorpay_payment_id?: string | null
           razorpay_route_account_id?: string | null
@@ -2494,6 +4358,41 @@ export type Database = {
           viewed_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_balance"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_profitability"
+            referencedColumns: ["customer_id"]
+          },
           {
             foreignKeyName: "invoices_org_id_fkey"
             columns: ["org_id"]
@@ -2636,35 +4535,82 @@ export type Database = {
             referencedRelation: "journals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "journal_approval_workflow_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "v_gl_movements"
+            referencedColumns: ["journal_id"]
+          },
+          {
+            foreignKeyName: "journal_approval_workflow_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["journal_id"]
+          },
         ]
       }
       journal_lines: {
         Row: {
           account_id: string | null
+          branch_id: string | null
+          cost_center_id: string | null
           created_at: string | null
           credit: number | null
+          customer_id: string | null
           debit: number | null
+          department: string | null
+          entry_date: string | null
           id: string
           journal_id: string | null
           line_narration: string | null
+          project_id: string | null
+          source_id: string | null
+          source_type: string | null
+          tax_type: string | null
+          user_id: string | null
+          vendor_id: string | null
         }
         Insert: {
           account_id?: string | null
+          branch_id?: string | null
+          cost_center_id?: string | null
           created_at?: string | null
           credit?: number | null
+          customer_id?: string | null
           debit?: number | null
+          department?: string | null
+          entry_date?: string | null
           id?: string
           journal_id?: string | null
           line_narration?: string | null
+          project_id?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          tax_type?: string | null
+          user_id?: string | null
+          vendor_id?: string | null
         }
         Update: {
           account_id?: string | null
+          branch_id?: string | null
+          cost_center_id?: string | null
           created_at?: string | null
           credit?: number | null
+          customer_id?: string | null
           debit?: number | null
+          department?: string | null
+          entry_date?: string | null
           id?: string
           journal_id?: string | null
           line_narration?: string | null
+          project_id?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          tax_type?: string | null
+          user_id?: string | null
+          vendor_id?: string | null
         }
         Relationships: [
           {
@@ -2675,11 +4621,67 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "journal_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "v_balance_sheet"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "journal_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "v_gl_movements"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "journal_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "v_pnl_summary"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "journal_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "v_trial_balance"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "journal_lines_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_lines_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+          {
             foreignKeyName: "journal_lines_journal_id_fkey"
             columns: ["journal_id"]
             isOneToOne: false
             referencedRelation: "journals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_lines_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "v_gl_movements"
+            referencedColumns: ["journal_id"]
+          },
+          {
+            foreignKeyName: "journal_lines_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["journal_id"]
           },
         ]
       }
@@ -2687,10 +4689,18 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          idempotency_key: string | null
+          is_reversed: boolean
           journal_date: string
           journal_number: string
           narration: string
+          notes: string | null
           org_id: string | null
+          posted_at: string | null
+          posted_by: string | null
+          reverses_journal_id: string | null
+          source_id: string | null
+          source_type: string | null
           status: string | null
           total_credit: number | null
           total_debit: number | null
@@ -2700,10 +4710,18 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          idempotency_key?: string | null
+          is_reversed?: boolean
           journal_date: string
           journal_number: string
           narration: string
+          notes?: string | null
           org_id?: string | null
+          posted_at?: string | null
+          posted_by?: string | null
+          reverses_journal_id?: string | null
+          source_id?: string | null
+          source_type?: string | null
           status?: string | null
           total_credit?: number | null
           total_debit?: number | null
@@ -2713,10 +4731,18 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          idempotency_key?: string | null
+          is_reversed?: boolean
           journal_date?: string
           journal_number?: string
           narration?: string
+          notes?: string | null
           org_id?: string | null
+          posted_at?: string | null
+          posted_by?: string | null
+          reverses_journal_id?: string | null
+          source_id?: string | null
+          source_type?: string | null
           status?: string | null
           total_credit?: number | null
           total_debit?: number | null
@@ -2730,6 +4756,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journals_reverses_journal_id_fkey"
+            columns: ["reverses_journal_id"]
+            isOneToOne: false
+            referencedRelation: "journals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journals_reverses_journal_id_fkey"
+            columns: ["reverses_journal_id"]
+            isOneToOne: false
+            referencedRelation: "v_gl_movements"
+            referencedColumns: ["journal_id"]
+          },
+          {
+            foreignKeyName: "journals_reverses_journal_id_fkey"
+            columns: ["reverses_journal_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["journal_id"]
           },
         ]
       }
@@ -2904,14 +4951,138 @@ export type Database = {
           },
         ]
       }
+      payment_allocations: {
+        Row: {
+          allocation_date: string
+          amount: number
+          bill_id: string
+          created_at: string | null
+          id: string
+          notes: string | null
+          source_id: string
+          source_type: string
+          user_id: string
+          vendor_id: string | null
+        }
+        Insert: {
+          allocation_date?: string
+          amount: number
+          bill_id: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          source_id: string
+          source_type: string
+          user_id: string
+          vendor_id?: string | null
+        }
+        Update: {
+          allocation_date?: string
+          amount?: number
+          bill_id?: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          source_id?: string
+          source_type?: string
+          user_id?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_allocations_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "v_bill_open_balance"
+            referencedColumns: ["bill_id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "v_gstr3b_inputs"
+            referencedColumns: ["bill_id"]
+          },
+        ]
+      }
+      payment_links: {
+        Row: {
+          amount: number
+          amount_paid: number | null
+          created_at: string | null
+          description: string | null
+          id: string
+          razorpay_link_id: string | null
+          status: string | null
+          updated_at: string | null
+          url: string
+          user_id: string
+          vendor_id: string | null
+          vendor_name: string
+        }
+        Insert: {
+          amount: number
+          amount_paid?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          razorpay_link_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          url: string
+          user_id: string
+          vendor_id?: string | null
+          vendor_name: string
+        }
+        Update: {
+          amount?: number
+          amount_paid?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          razorpay_link_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          url?: string
+          user_id?: string
+          vendor_id?: string | null
+          vendor_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_links_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_gstin_compliance"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "payment_links_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_received: {
         Row: {
           amount: number
           attachments: Json | null
           bank_charges: number | null
+          branch_id: string | null
+          cost_center_id: string | null
           created_at: string | null
           customer_id: string | null
           customer_name: string
+          department: string | null
           deposit_account: string | null
           deposit_reference: string | null
           description: string | null
@@ -2922,6 +5093,7 @@ export type Database = {
           payment_mode: string | null
           payment_type: string
           place_of_supply: string | null
+          project_id: string | null
           reference_number: string | null
           status: string | null
           tax_amount: number | null
@@ -2933,9 +5105,12 @@ export type Database = {
           amount?: number
           attachments?: Json | null
           bank_charges?: number | null
+          branch_id?: string | null
+          cost_center_id?: string | null
           created_at?: string | null
           customer_id?: string | null
           customer_name: string
+          department?: string | null
           deposit_account?: string | null
           deposit_reference?: string | null
           description?: string | null
@@ -2946,6 +5121,7 @@ export type Database = {
           payment_mode?: string | null
           payment_type: string
           place_of_supply?: string | null
+          project_id?: string | null
           reference_number?: string | null
           status?: string | null
           tax_amount?: number | null
@@ -2957,9 +5133,12 @@ export type Database = {
           amount?: number
           attachments?: Json | null
           bank_charges?: number | null
+          branch_id?: string | null
+          cost_center_id?: string | null
           created_at?: string | null
           customer_id?: string | null
           customer_name?: string
+          department?: string | null
           deposit_account?: string | null
           deposit_reference?: string | null
           description?: string | null
@@ -2970,6 +5149,7 @@ export type Database = {
           payment_mode?: string | null
           payment_type?: string
           place_of_supply?: string | null
+          project_id?: string | null
           reference_number?: string | null
           status?: string | null
           tax_amount?: number | null
@@ -2979,11 +5159,39 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "payment_received_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_received_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+          {
             foreignKeyName: "payment_received_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_received_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_balance"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "payment_received_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_profitability"
+            referencedColumns: ["customer_id"]
           },
         ]
       }
@@ -3111,6 +5319,34 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payout_records_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_ar_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "payout_records_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "payout_records_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "payout_records_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_outstanding_report"
+            referencedColumns: ["invoice_id"]
+          },
+          {
             foreignKeyName: "payout_records_recipient_id_fkey"
             columns: ["recipient_id"]
             isOneToOne: false
@@ -3216,30 +5452,63 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_balance"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_profitability"
+            referencedColumns: ["customer_id"]
+          },
         ]
       }
       purchase_bills: {
         Row: {
           amount: number
+          asset_amount: number | null
           bill_attachment_name: string | null
           bill_attachment_url: string | null
           bill_date: string
           bill_number: string
+          branch_id: string | null
+          cess_amount: number
           cgst_amount: number | null
+          classification: string | null
+          cost_center_id: string | null
           created_at: string | null
+          department: string | null
           due_date: string
           gst_amount: number
           id: string
           igst_amount: number | null
+          intra_state: boolean | null
           is_rcm: boolean | null
+          itc_blocked_reason: string | null
+          itc_claimed_period: string | null
           itc_eligible: boolean | null
+          itc_reversal_reason: string | null
+          itc_status: string | null
           items: Json
+          lifecycle_changed_at: string | null
+          lifecycle_changed_by: string | null
+          lifecycle_status: string
           notes: string | null
           order_number: string | null
           org_id: string | null
           paid_amount: number | null
           payment_terms: string | null
           place_of_supply: string | null
+          prepaid_amount: number | null
+          project_id: string | null
+          rcm_amount: number
+          rcm_rate: number
+          seller_state: string | null
           sgst_amount: number | null
           status: string | null
           subject: string | null
@@ -3257,25 +5526,44 @@ export type Database = {
         }
         Insert: {
           amount: number
+          asset_amount?: number | null
           bill_attachment_name?: string | null
           bill_attachment_url?: string | null
           bill_date: string
           bill_number: string
+          branch_id?: string | null
+          cess_amount?: number
           cgst_amount?: number | null
+          classification?: string | null
+          cost_center_id?: string | null
           created_at?: string | null
+          department?: string | null
           due_date: string
           gst_amount: number
           id?: string
           igst_amount?: number | null
+          intra_state?: boolean | null
           is_rcm?: boolean | null
+          itc_blocked_reason?: string | null
+          itc_claimed_period?: string | null
           itc_eligible?: boolean | null
+          itc_reversal_reason?: string | null
+          itc_status?: string | null
           items?: Json
+          lifecycle_changed_at?: string | null
+          lifecycle_changed_by?: string | null
+          lifecycle_status?: string
           notes?: string | null
           order_number?: string | null
           org_id?: string | null
           paid_amount?: number | null
           payment_terms?: string | null
           place_of_supply?: string | null
+          prepaid_amount?: number | null
+          project_id?: string | null
+          rcm_amount?: number
+          rcm_rate?: number
+          seller_state?: string | null
           sgst_amount?: number | null
           status?: string | null
           subject?: string | null
@@ -3293,25 +5581,44 @@ export type Database = {
         }
         Update: {
           amount?: number
+          asset_amount?: number | null
           bill_attachment_name?: string | null
           bill_attachment_url?: string | null
           bill_date?: string
           bill_number?: string
+          branch_id?: string | null
+          cess_amount?: number
           cgst_amount?: number | null
+          classification?: string | null
+          cost_center_id?: string | null
           created_at?: string | null
+          department?: string | null
           due_date?: string
           gst_amount?: number
           id?: string
           igst_amount?: number | null
+          intra_state?: boolean | null
           is_rcm?: boolean | null
+          itc_blocked_reason?: string | null
+          itc_claimed_period?: string | null
           itc_eligible?: boolean | null
+          itc_reversal_reason?: string | null
+          itc_status?: string | null
           items?: Json
+          lifecycle_changed_at?: string | null
+          lifecycle_changed_by?: string | null
+          lifecycle_status?: string
           notes?: string | null
           order_number?: string | null
           org_id?: string | null
           paid_amount?: number | null
           payment_terms?: string | null
           place_of_supply?: string | null
+          prepaid_amount?: number | null
+          project_id?: string | null
+          rcm_amount?: number
+          rcm_rate?: number
+          seller_state?: string | null
           sgst_amount?: number | null
           status?: string | null
           subject?: string | null
@@ -3329,11 +5636,32 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "purchase_bills_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_bills_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+          {
             foreignKeyName: "purchase_bills_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_bills_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_gstin_compliance"
+            referencedColumns: ["vendor_id"]
           },
           {
             foreignKeyName: "purchase_bills_vendor_id_fkey"
@@ -3346,11 +5674,14 @@ export type Database = {
       }
       purchase_orders: {
         Row: {
+          auto_liability_via_invoice: boolean | null
           created_at: string | null
           discount: number | null
           due_date: string
+          fulfillment_status: string | null
           id: string
           items: Json
+          line_fulfillment: Json | null
           notes: string | null
           order_date: string
           order_number: string
@@ -3380,11 +5711,14 @@ export type Database = {
           vendor_udyam_aadhaar: string | null
         }
         Insert: {
+          auto_liability_via_invoice?: boolean | null
           created_at?: string | null
           discount?: number | null
           due_date: string
+          fulfillment_status?: string | null
           id?: string
           items?: Json
+          line_fulfillment?: Json | null
           notes?: string | null
           order_date: string
           order_number: string
@@ -3414,11 +5748,14 @@ export type Database = {
           vendor_udyam_aadhaar?: string | null
         }
         Update: {
+          auto_liability_via_invoice?: boolean | null
           created_at?: string | null
           discount?: number | null
           due_date?: string
+          fulfillment_status?: string | null
           id?: string
           items?: Json
+          line_fulfillment?: Json | null
           notes?: string | null
           order_date?: string
           order_number?: string
@@ -3457,6 +5794,280 @@ export type Database = {
           },
           {
             foreignKeyName: "purchase_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_gstin_compliance"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_return_items: {
+        Row: {
+          amount: number
+          bill_line_key: string | null
+          condition: string
+          created_at: string | null
+          gst_amount: number
+          gst_rate: number
+          hsn_sac: string | null
+          id: string
+          notes: string | null
+          original_quantity: number | null
+          product_id: string | null
+          product_name: string
+          quantity: number
+          rate: number
+          return_id: string
+          total_amount: number
+          uom: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          bill_line_key?: string | null
+          condition?: string
+          created_at?: string | null
+          gst_amount?: number
+          gst_rate?: number
+          hsn_sac?: string | null
+          id?: string
+          notes?: string | null
+          original_quantity?: number | null
+          product_id?: string | null
+          product_name: string
+          quantity: number
+          rate?: number
+          return_id: string
+          total_amount?: number
+          uom?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          bill_line_key?: string | null
+          condition?: string
+          created_at?: string | null
+          gst_amount?: number
+          gst_rate?: number
+          hsn_sac?: string | null
+          id?: string
+          notes?: string | null
+          original_quantity?: number | null
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          rate?: number
+          return_id?: string
+          total_amount?: number
+          uom?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_return_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_return_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_kpi"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "purchase_return_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "purchase_return_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "vw_stock_summary"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "purchase_return_items_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_returns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_return_items_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_return_register"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_returns: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          bill_id: string
+          bill_number: string
+          branch_id: string | null
+          cgst_amount: number
+          cost_center_id: string | null
+          created_at: string | null
+          debit_note_id: string | null
+          department: string | null
+          gst_amount: number
+          id: string
+          igst_amount: number
+          intra_state: boolean | null
+          inventory_reduced: number | null
+          notes: string | null
+          outcome: string
+          place_of_supply: string | null
+          project_id: string | null
+          reason: string | null
+          return_date: string
+          return_number: string
+          return_type: string
+          sgst_amount: number
+          status: string
+          subtotal: number
+          total_amount: number
+          updated_at: string | null
+          user_id: string
+          vendor_address: string | null
+          vendor_email: string | null
+          vendor_gst: string | null
+          vendor_id: string | null
+          vendor_name: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          bill_id: string
+          bill_number: string
+          branch_id?: string | null
+          cgst_amount?: number
+          cost_center_id?: string | null
+          created_at?: string | null
+          debit_note_id?: string | null
+          department?: string | null
+          gst_amount?: number
+          id?: string
+          igst_amount?: number
+          intra_state?: boolean | null
+          inventory_reduced?: number | null
+          notes?: string | null
+          outcome?: string
+          place_of_supply?: string | null
+          project_id?: string | null
+          reason?: string | null
+          return_date?: string
+          return_number: string
+          return_type?: string
+          sgst_amount?: number
+          status?: string
+          subtotal?: number
+          total_amount?: number
+          updated_at?: string | null
+          user_id: string
+          vendor_address?: string | null
+          vendor_email?: string | null
+          vendor_gst?: string | null
+          vendor_id?: string | null
+          vendor_name: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          bill_id?: string
+          bill_number?: string
+          branch_id?: string | null
+          cgst_amount?: number
+          cost_center_id?: string | null
+          created_at?: string | null
+          debit_note_id?: string | null
+          department?: string | null
+          gst_amount?: number
+          id?: string
+          igst_amount?: number
+          intra_state?: boolean | null
+          inventory_reduced?: number | null
+          notes?: string | null
+          outcome?: string
+          place_of_supply?: string | null
+          project_id?: string | null
+          reason?: string | null
+          return_date?: string
+          return_number?: string
+          return_type?: string
+          sgst_amount?: number
+          status?: string
+          subtotal?: number
+          total_amount?: number
+          updated_at?: string | null
+          user_id?: string
+          vendor_address?: string | null
+          vendor_email?: string | null
+          vendor_gst?: string | null
+          vendor_id?: string | null
+          vendor_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_returns_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_returns_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "v_bill_open_balance"
+            referencedColumns: ["bill_id"]
+          },
+          {
+            foreignKeyName: "purchase_returns_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "v_gstr3b_inputs"
+            referencedColumns: ["bill_id"]
+          },
+          {
+            foreignKeyName: "purchase_returns_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_returns_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+          {
+            foreignKeyName: "purchase_returns_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_gstin_compliance"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "purchase_returns_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
@@ -3643,6 +6254,108 @@ export type Database = {
           },
         ]
       }
+      recurring_bills: {
+        Row: {
+          amount: number
+          branch_id: string | null
+          classification: string
+          cost_center_id: string | null
+          created_at: string | null
+          department: string | null
+          due_offset_days: number | null
+          end_date: string | null
+          frequency: string
+          gst_rate: number
+          id: string
+          interval_count: number
+          is_active: boolean
+          is_rcm: boolean
+          itc_eligible: boolean
+          items: Json | null
+          last_generated_date: string | null
+          next_due_date: string
+          notes: string | null
+          project_id: string | null
+          start_date: string
+          template_name: string
+          updated_at: string | null
+          user_id: string
+          vendor_id: string | null
+          vendor_name: string
+        }
+        Insert: {
+          amount: number
+          branch_id?: string | null
+          classification?: string
+          cost_center_id?: string | null
+          created_at?: string | null
+          department?: string | null
+          due_offset_days?: number | null
+          end_date?: string | null
+          frequency: string
+          gst_rate?: number
+          id?: string
+          interval_count?: number
+          is_active?: boolean
+          is_rcm?: boolean
+          itc_eligible?: boolean
+          items?: Json | null
+          last_generated_date?: string | null
+          next_due_date: string
+          notes?: string | null
+          project_id?: string | null
+          start_date: string
+          template_name: string
+          updated_at?: string | null
+          user_id: string
+          vendor_id?: string | null
+          vendor_name: string
+        }
+        Update: {
+          amount?: number
+          branch_id?: string | null
+          classification?: string
+          cost_center_id?: string | null
+          created_at?: string | null
+          department?: string | null
+          due_offset_days?: number | null
+          end_date?: string | null
+          frequency?: string
+          gst_rate?: number
+          id?: string
+          interval_count?: number
+          is_active?: boolean
+          is_rcm?: boolean
+          itc_eligible?: boolean
+          items?: Json | null
+          last_generated_date?: string | null
+          next_due_date?: string
+          notes?: string | null
+          project_id?: string | null
+          start_date?: string
+          template_name?: string
+          updated_at?: string | null
+          user_id?: string
+          vendor_id?: string | null
+          vendor_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_bills_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_bills_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+        ]
+      }
       recurring_expenses: {
         Row: {
           amount: number
@@ -3736,6 +6449,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_expenses_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_gstin_compliance"
+            referencedColumns: ["vendor_id"]
           },
           {
             foreignKeyName: "recurring_expenses_vendor_id_fkey"
@@ -3975,7 +6695,68 @@ export type Database = {
             referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "revenue_recognition_schedules_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_ar_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "revenue_recognition_schedules_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "revenue_recognition_schedules_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "revenue_recognition_schedules_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_outstanding_report"
+            referencedColumns: ["invoice_id"]
+          },
         ]
+      }
+      role_definitions: {
+        Row: {
+          created_at: string | null
+          display_name: string
+          id: string
+          is_active: boolean
+          permissions: string[]
+          role_key: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          display_name: string
+          id?: string
+          is_active?: boolean
+          permissions?: string[]
+          role_key: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          permissions?: string[]
+          role_key?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       role_permissions: {
         Row: {
@@ -4088,37 +6869,439 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_return_items: {
+        Row: {
+          amount: number
+          condition: string
+          created_at: string | null
+          gst_amount: number
+          gst_rate: number
+          hsn_sac: string | null
+          id: string
+          invoice_line_key: string | null
+          notes: string | null
+          original_quantity: number | null
+          product_id: string | null
+          product_name: string
+          quantity: number
+          rate: number
+          return_id: string
+          total_amount: number
+          uom: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          condition?: string
+          created_at?: string | null
+          gst_amount?: number
+          gst_rate?: number
+          hsn_sac?: string | null
+          id?: string
+          invoice_line_key?: string | null
+          notes?: string | null
+          original_quantity?: number | null
+          product_id?: string | null
+          product_name: string
+          quantity: number
+          rate?: number
+          return_id: string
+          total_amount?: number
+          uom?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          condition?: string
+          created_at?: string | null
+          gst_amount?: number
+          gst_rate?: number
+          hsn_sac?: string | null
+          id?: string
+          invoice_line_key?: string | null
+          notes?: string | null
+          original_quantity?: number | null
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          rate?: number
+          return_id?: string
+          total_amount?: number
+          uom?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_return_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_return_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_kpi"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "sales_return_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "sales_return_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "vw_stock_summary"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "sales_return_items_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "sales_returns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_return_items_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_return_register"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_returns: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          branch_id: string | null
+          cgst_amount: number
+          cogs_reversed: number | null
+          cost_center_id: string | null
+          created_at: string | null
+          credit_note_id: string | null
+          customer_address: string | null
+          customer_email: string | null
+          customer_gst: string | null
+          customer_id: string | null
+          customer_name: string
+          department: string | null
+          gst_amount: number
+          id: string
+          igst_amount: number
+          intra_state: boolean | null
+          invoice_id: string
+          invoice_number: string
+          notes: string | null
+          outcome: string
+          place_of_supply: string | null
+          project_id: string | null
+          reason: string | null
+          return_date: string
+          return_number: string
+          return_type: string
+          sgst_amount: number
+          status: string
+          subtotal: number
+          total_amount: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          branch_id?: string | null
+          cgst_amount?: number
+          cogs_reversed?: number | null
+          cost_center_id?: string | null
+          created_at?: string | null
+          credit_note_id?: string | null
+          customer_address?: string | null
+          customer_email?: string | null
+          customer_gst?: string | null
+          customer_id?: string | null
+          customer_name: string
+          department?: string | null
+          gst_amount?: number
+          id?: string
+          igst_amount?: number
+          intra_state?: boolean | null
+          invoice_id: string
+          invoice_number: string
+          notes?: string | null
+          outcome?: string
+          place_of_supply?: string | null
+          project_id?: string | null
+          reason?: string | null
+          return_date?: string
+          return_number: string
+          return_type?: string
+          sgst_amount?: number
+          status?: string
+          subtotal?: number
+          total_amount?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          branch_id?: string | null
+          cgst_amount?: number
+          cogs_reversed?: number | null
+          cost_center_id?: string | null
+          created_at?: string | null
+          credit_note_id?: string | null
+          customer_address?: string | null
+          customer_email?: string | null
+          customer_gst?: string | null
+          customer_id?: string | null
+          customer_name?: string
+          department?: string | null
+          gst_amount?: number
+          id?: string
+          igst_amount?: number
+          intra_state?: boolean | null
+          invoice_id?: string
+          invoice_number?: string
+          notes?: string | null
+          outcome?: string
+          place_of_supply?: string | null
+          project_id?: string | null
+          reason?: string | null
+          return_date?: string
+          return_number?: string
+          return_type?: string
+          sgst_amount?: number
+          status?: string
+          subtotal?: number
+          total_amount?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_returns_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_returns_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+          {
+            foreignKeyName: "sales_returns_credit_note_id_fkey"
+            columns: ["credit_note_id"]
+            isOneToOne: false
+            referencedRelation: "credit_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_returns_credit_note_id_fkey"
+            columns: ["credit_note_id"]
+            isOneToOne: false
+            referencedRelation: "v_credit_note_balances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_returns_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_returns_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_balance"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "sales_returns_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_profitability"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "sales_returns_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_returns_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_ar_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "sales_returns_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "sales_returns_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "sales_returns_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_outstanding_report"
+            referencedColumns: ["invoice_id"]
+          },
+        ]
+      }
+      stock_adjustment_items: {
+        Row: {
+          adjustment_id: string
+          adjustment_type: string
+          created_at: string | null
+          id: string
+          notes: string | null
+          product_id: string
+          product_name: string
+          quantity_delta: number
+          unit_cost: number
+          user_id: string
+          value_delta: number
+          warehouse_id: string | null
+        }
+        Insert: {
+          adjustment_id: string
+          adjustment_type?: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          product_id: string
+          product_name: string
+          quantity_delta: number
+          unit_cost?: number
+          user_id: string
+          value_delta?: number
+          warehouse_id?: string | null
+        }
+        Update: {
+          adjustment_id?: string
+          adjustment_type?: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          product_id?: string
+          product_name?: string
+          quantity_delta?: number
+          unit_cost?: number
+          user_id?: string
+          value_delta?: number
+          warehouse_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_adjustment_items_adjustment_id_fkey"
+            columns: ["adjustment_id"]
+            isOneToOne: false
+            referencedRelation: "stock_adjustments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_adjustment_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_adjustment_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_kpi"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "stock_adjustment_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "stock_adjustment_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "vw_stock_summary"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "stock_adjustment_items_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_adjustments: {
         Row: {
           adjustment_date: string
           adjustment_number: string
+          approved_at: string | null
+          approved_by: string | null
           created_at: string | null
           id: string
           items: Json
+          journal_id: string | null
           reason: string | null
           status: string | null
+          total_value_delta: number | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           adjustment_date?: string
           adjustment_number: string
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string | null
           id?: string
           items?: Json
+          journal_id?: string | null
           reason?: string | null
           status?: string | null
+          total_value_delta?: number | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           adjustment_date?: string
           adjustment_number?: string
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string | null
           id?: string
           items?: Json
+          journal_id?: string | null
           reason?: string | null
           status?: string | null
+          total_value_delta?: number | null
           updated_at?: string | null
           user_id?: string
         }
@@ -4474,6 +7657,34 @@ export type Database = {
             referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "transaction_fees_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_ar_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "transaction_fees_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "transaction_fees_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "transaction_fees_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_outstanding_report"
+            referencedColumns: ["invoice_id"]
+          },
         ]
       }
       unit_conversions: {
@@ -4511,6 +7722,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "inventory"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unit_conversions_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_kpi"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "unit_conversions_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["item_id"]
           },
           {
             foreignKeyName: "unit_conversions_item_id_fkey"
@@ -4635,6 +7860,44 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_role_assignments: {
+        Row: {
+          granted_at: string | null
+          granted_by: string | null
+          id: string
+          member_user_id: string
+          revoked_at: string | null
+          role_id: string
+          tenant_id: string
+        }
+        Insert: {
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          member_user_id: string
+          revoked_at?: string | null
+          role_id: string
+          tenant_id: string
+        }
+        Update: {
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          member_user_id?: string
+          revoked_at?: string | null
+          role_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_role_assignments_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "role_definitions"
             referencedColumns: ["id"]
           },
         ]
@@ -4835,6 +8098,13 @@ export type Database = {
             foreignKeyName: "vehicle_mileage_logs_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "v_vendor_gstin_compliance"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "vehicle_mileage_logs_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
@@ -4848,12 +8118,16 @@ export type Database = {
           amount: number
           attachment_name: string | null
           attachment_url: string | null
+          branch_id: string | null
+          cost_center_id: string | null
           created_at: string
+          department: string | null
           id: string
           journal_id: string | null
           notes: string | null
           org_id: string | null
           payment_mode: string
+          project_id: string | null
           reference_number: string | null
           status: string
           unadjusted_amount: number
@@ -4869,12 +8143,16 @@ export type Database = {
           amount: number
           attachment_name?: string | null
           attachment_url?: string | null
+          branch_id?: string | null
+          cost_center_id?: string | null
           created_at?: string
+          department?: string | null
           id?: string
           journal_id?: string | null
           notes?: string | null
           org_id?: string | null
           payment_mode?: string
+          project_id?: string | null
           reference_number?: string | null
           status?: string
           unadjusted_amount?: number
@@ -4890,12 +8168,16 @@ export type Database = {
           amount?: number
           attachment_name?: string | null
           attachment_url?: string | null
+          branch_id?: string | null
+          cost_center_id?: string | null
           created_at?: string
+          department?: string | null
           id?: string
           journal_id?: string | null
           notes?: string | null
           org_id?: string | null
           payment_mode?: string
+          project_id?: string | null
           reference_number?: string | null
           status?: string
           unadjusted_amount?: number
@@ -4906,11 +8188,46 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "vendor_advances_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_advances_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+          {
             foreignKeyName: "vendor_advances_journal_id_fkey"
             columns: ["journal_id"]
             isOneToOne: false
             referencedRelation: "journals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_advances_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "v_gl_movements"
+            referencedColumns: ["journal_id"]
+          },
+          {
+            foreignKeyName: "vendor_advances_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["journal_id"]
+          },
+          {
+            foreignKeyName: "vendor_advances_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_gstin_compliance"
+            referencedColumns: ["vendor_id"]
           },
           {
             foreignKeyName: "vendor_advances_vendor_id_fkey"
@@ -4930,7 +8247,10 @@ export type Database = {
           attachment_url: string | null
           bill_id: string
           bill_number: string
+          branch_id: string | null
+          cost_center_id: string | null
           created_at: string
+          department: string | null
           id: string
           journal_id: string | null
           notes: string | null
@@ -4938,6 +8258,7 @@ export type Database = {
           payment_date: string
           payment_mode: string
           payment_type: string
+          project_id: string | null
           reference_number: string | null
           user_id: string
           vendor_id: string
@@ -4951,7 +8272,10 @@ export type Database = {
           attachment_url?: string | null
           bill_id: string
           bill_number: string
+          branch_id?: string | null
+          cost_center_id?: string | null
           created_at?: string
+          department?: string | null
           id?: string
           journal_id?: string | null
           notes?: string | null
@@ -4959,6 +8283,7 @@ export type Database = {
           payment_date: string
           payment_mode?: string
           payment_type?: string
+          project_id?: string | null
           reference_number?: string | null
           user_id: string
           vendor_id: string
@@ -4972,7 +8297,10 @@ export type Database = {
           attachment_url?: string | null
           bill_id?: string
           bill_number?: string
+          branch_id?: string | null
+          cost_center_id?: string | null
           created_at?: string
+          department?: string | null
           id?: string
           journal_id?: string | null
           notes?: string | null
@@ -4980,12 +8308,20 @@ export type Database = {
           payment_date?: string
           payment_mode?: string
           payment_type?: string
+          project_id?: string | null
           reference_number?: string | null
           user_id?: string
           vendor_id?: string
           vendor_name?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "vendor_bill_payments_advance_id_fkey"
+            columns: ["advance_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_advance_available"
+            referencedColumns: ["advance_id"]
+          },
           {
             foreignKeyName: "vendor_bill_payments_advance_id_fkey"
             columns: ["advance_id"]
@@ -5001,10 +8337,237 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "vendor_bill_payments_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "v_bill_open_balance"
+            referencedColumns: ["bill_id"]
+          },
+          {
+            foreignKeyName: "vendor_bill_payments_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "v_gstr3b_inputs"
+            referencedColumns: ["bill_id"]
+          },
+          {
+            foreignKeyName: "vendor_bill_payments_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_bill_payments_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+          {
             foreignKeyName: "vendor_bill_payments_journal_id_fkey"
             columns: ["journal_id"]
             isOneToOne: false
             referencedRelation: "journals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_bill_payments_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "v_gl_movements"
+            referencedColumns: ["journal_id"]
+          },
+          {
+            foreignKeyName: "vendor_bill_payments_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["journal_id"]
+          },
+        ]
+      }
+      vendor_documents: {
+        Row: {
+          created_at: string | null
+          document_label: string | null
+          document_type: string
+          file_data_url: string | null
+          file_mime_type: string | null
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          id: string
+          meta: Json | null
+          notes: string | null
+          status: string | null
+          updated_at: string | null
+          uploaded_at: string | null
+          user_id: string
+          vendor_id: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_label?: string | null
+          document_type: string
+          file_data_url?: string | null
+          file_mime_type?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          meta?: Json | null
+          notes?: string | null
+          status?: string | null
+          updated_at?: string | null
+          uploaded_at?: string | null
+          user_id: string
+          vendor_id: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          document_label?: string | null
+          document_type?: string
+          file_data_url?: string | null
+          file_mime_type?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          meta?: Json | null
+          notes?: string | null
+          status?: string | null
+          updated_at?: string | null
+          uploaded_at?: string | null
+          user_id?: string
+          vendor_id?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_documents_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_gstin_compliance"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "vendor_documents_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_liabilities: {
+        Row: {
+          amount: number
+          bill_number: string | null
+          created_at: string | null
+          due_date: string | null
+          expense_id: string | null
+          id: string
+          notes: string | null
+          outstanding_amount: number | null
+          paid_amount: number | null
+          po_id: string | null
+          po_line_index: number | null
+          po_number: string | null
+          product_description: string | null
+          quantity: number | null
+          source: string | null
+          status: string
+          tax_amount: number | null
+          total_amount: number
+          unit_price: number | null
+          updated_at: string | null
+          user_id: string
+          vendor_id: string | null
+          vendor_name: string
+        }
+        Insert: {
+          amount: number
+          bill_number?: string | null
+          created_at?: string | null
+          due_date?: string | null
+          expense_id?: string | null
+          id?: string
+          notes?: string | null
+          outstanding_amount?: number | null
+          paid_amount?: number | null
+          po_id?: string | null
+          po_line_index?: number | null
+          po_number?: string | null
+          product_description?: string | null
+          quantity?: number | null
+          source?: string | null
+          status?: string
+          tax_amount?: number | null
+          total_amount: number
+          unit_price?: number | null
+          updated_at?: string | null
+          user_id: string
+          vendor_id?: string | null
+          vendor_name: string
+        }
+        Update: {
+          amount?: number
+          bill_number?: string | null
+          created_at?: string | null
+          due_date?: string | null
+          expense_id?: string | null
+          id?: string
+          notes?: string | null
+          outstanding_amount?: number | null
+          paid_amount?: number | null
+          po_id?: string | null
+          po_line_index?: number | null
+          po_number?: string | null
+          product_description?: string | null
+          quantity?: number | null
+          source?: string | null
+          status?: string
+          tax_amount?: number | null
+          total_amount?: number
+          unit_price?: number | null
+          updated_at?: string | null
+          user_id?: string
+          vendor_id?: string | null
+          vendor_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_liabilities_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_liabilities_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_liabilities_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_gstin_compliance"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "vendor_liabilities_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -5012,81 +8575,120 @@ export type Database = {
       vendors: {
         Row: {
           address: string | null
+          annual_turnover: number | null
           bank_account_holder: string | null
           bank_account_number: string | null
           bank_branch: string | null
           bank_ifsc: string | null
           bank_name: string | null
+          cin_number: string | null
           company_name: string | null
           created_at: string | null
+          declaration_206cca_206ab: boolean | null
+          einvoice_applicable: boolean | null
+          einvoice_non_applicable_declared: boolean | null
           email: string | null
           gst_number: string | null
           gst_treatment: string | null
           id: string
+          incorporation_type: string | null
+          it_declaration_received: boolean | null
+          itr_filed_years: Json | null
           linked_tds_section_id: string | null
           msme_registered: boolean
           name: string
+          onboarding_completed_at: string | null
+          onboarding_notes: string | null
+          onboarding_status: string | null
           org_id: string | null
           pan: string | null
           payment_terms: number | null
           phone: string | null
           state: string | null
           tds_enabled: boolean | null
+          turnover_fy: string | null
           udyam_aadhaar: string | null
           updated_at: string | null
           user_id: string
+          vendor_code: string | null
         }
         Insert: {
           address?: string | null
+          annual_turnover?: number | null
           bank_account_holder?: string | null
           bank_account_number?: string | null
           bank_branch?: string | null
           bank_ifsc?: string | null
           bank_name?: string | null
+          cin_number?: string | null
           company_name?: string | null
           created_at?: string | null
+          declaration_206cca_206ab?: boolean | null
+          einvoice_applicable?: boolean | null
+          einvoice_non_applicable_declared?: boolean | null
           email?: string | null
           gst_number?: string | null
           gst_treatment?: string | null
           id?: string
+          incorporation_type?: string | null
+          it_declaration_received?: boolean | null
+          itr_filed_years?: Json | null
           linked_tds_section_id?: string | null
           msme_registered?: boolean
           name: string
+          onboarding_completed_at?: string | null
+          onboarding_notes?: string | null
+          onboarding_status?: string | null
           org_id?: string | null
           pan?: string | null
           payment_terms?: number | null
           phone?: string | null
           state?: string | null
           tds_enabled?: boolean | null
+          turnover_fy?: string | null
           udyam_aadhaar?: string | null
           updated_at?: string | null
           user_id: string
+          vendor_code?: string | null
         }
         Update: {
           address?: string | null
+          annual_turnover?: number | null
           bank_account_holder?: string | null
           bank_account_number?: string | null
           bank_branch?: string | null
           bank_ifsc?: string | null
           bank_name?: string | null
+          cin_number?: string | null
           company_name?: string | null
           created_at?: string | null
+          declaration_206cca_206ab?: boolean | null
+          einvoice_applicable?: boolean | null
+          einvoice_non_applicable_declared?: boolean | null
           email?: string | null
           gst_number?: string | null
           gst_treatment?: string | null
           id?: string
+          incorporation_type?: string | null
+          it_declaration_received?: boolean | null
+          itr_filed_years?: Json | null
           linked_tds_section_id?: string | null
           msme_registered?: boolean
           name?: string
+          onboarding_completed_at?: string | null
+          onboarding_notes?: string | null
+          onboarding_status?: string | null
           org_id?: string | null
           pan?: string | null
           payment_terms?: number | null
           phone?: string | null
           state?: string | null
           tds_enabled?: boolean | null
+          turnover_fy?: string | null
           udyam_aadhaar?: string | null
           updated_at?: string | null
           user_id?: string
+          vendor_code?: string | null
         }
         Relationships: [
           {
@@ -5094,6 +8696,171 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warehouse_transfer_items: {
+        Row: {
+          created_at: string | null
+          id: string
+          notes: string | null
+          product_id: string
+          product_name: string
+          quantity: number
+          total_value: number
+          transfer_id: string
+          unit_cost: number
+          uom: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          product_id: string
+          product_name: string
+          quantity: number
+          total_value?: number
+          transfer_id: string
+          unit_cost?: number
+          uom?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          product_id?: string
+          product_name?: string
+          quantity?: number
+          total_value?: number
+          transfer_id?: string
+          unit_cost?: number
+          uom?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warehouse_transfer_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouse_transfer_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_kpi"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "warehouse_transfer_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "warehouse_transfer_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "vw_stock_summary"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "warehouse_transfer_items_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: false
+            referencedRelation: "warehouse_transfers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warehouse_transfers: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          from_warehouse_id: string
+          from_warehouse_name: string | null
+          id: string
+          is_interstate: boolean
+          notes: string | null
+          reason: string | null
+          received_at: string | null
+          received_by: string | null
+          same_gstin: boolean
+          status: string
+          to_warehouse_id: string
+          to_warehouse_name: string | null
+          total_quantity: number
+          total_value: number
+          transfer_date: string
+          transfer_number: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          from_warehouse_id: string
+          from_warehouse_name?: string | null
+          id?: string
+          is_interstate?: boolean
+          notes?: string | null
+          reason?: string | null
+          received_at?: string | null
+          received_by?: string | null
+          same_gstin?: boolean
+          status?: string
+          to_warehouse_id: string
+          to_warehouse_name?: string | null
+          total_quantity?: number
+          total_value?: number
+          transfer_date?: string
+          transfer_number: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          from_warehouse_id?: string
+          from_warehouse_name?: string | null
+          id?: string
+          is_interstate?: boolean
+          notes?: string | null
+          reason?: string | null
+          received_at?: string | null
+          received_by?: string | null
+          same_gstin?: boolean
+          status?: string
+          to_warehouse_id?: string
+          to_warehouse_name?: string | null
+          total_quantity?: number
+          total_value?: number
+          transfer_date?: string
+          transfer_number?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warehouse_transfers_from_warehouse_id_fkey"
+            columns: ["from_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouse_transfers_to_warehouse_id_fkey"
+            columns: ["to_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
         ]
@@ -5136,6 +8903,721 @@ export type Database = {
       }
     }
     Views: {
+      v_account_tree: {
+        Row: {
+          account_code: string | null
+          account_group: string | null
+          account_name: string | null
+          account_subgroup: string | null
+          account_type: string | null
+          ancestors: string[] | null
+          depth: number | null
+          display_order: number | null
+          id: string | null
+          is_active: boolean | null
+          is_group: boolean | null
+          opening_balance: number | null
+          parent_account_id: string | null
+          path: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_account_tree_balance: {
+        Row: {
+          account_code: string | null
+          account_group: string | null
+          account_name: string | null
+          account_subgroup: string | null
+          account_type: string | null
+          display_order: number | null
+          id: string | null
+          is_group: boolean | null
+          parent_account_id: string | null
+          rollup_balance: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_ap_aging: {
+        Row: {
+          bill_count: number | null
+          bucket_0_30: number | null
+          bucket_31_60: number | null
+          bucket_61_90: number | null
+          bucket_90_plus: number | null
+          not_yet_due: number | null
+          oldest_days: number | null
+          total_open: number | null
+          user_id: string | null
+          vendor_id: string | null
+          vendor_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_bills_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_gstin_compliance"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "purchase_bills_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_ap_dashboard: {
+        Row: {
+          itc_pending_value: number | null
+          open_bills: number | null
+          overdue_amount: number | null
+          total_payable: number | null
+          unadjusted_advances: number | null
+          upcoming_30d: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_ar_aging: {
+        Row: {
+          bucket: string | null
+          customer_id: string | null
+          customer_name: string | null
+          days_overdue: number | null
+          due_date: string | null
+          invoice_date: string | null
+          invoice_id: string | null
+          invoice_number: string | null
+          outstanding: number | null
+          paid_amount: number | null
+          status: string | null
+          total_amount: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_balance"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_profitability"
+            referencedColumns: ["customer_id"]
+          },
+        ]
+      }
+      v_ar_aging_summary: {
+        Row: {
+          customer_id: string | null
+          customer_name: string | null
+          invoice_count: number | null
+          not_due: number | null
+          overdue_0_30: number | null
+          overdue_31_60: number | null
+          overdue_61_90: number | null
+          overdue_90_plus: number | null
+          total_outstanding: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_balance"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_profitability"
+            referencedColumns: ["customer_id"]
+          },
+        ]
+      }
+      v_ar_dashboard: {
+        Row: {
+          active_customer_count: number | null
+          open_fraud_alerts: number | null
+          open_invoice_count: number | null
+          overdue_count: number | null
+          paid_count: number | null
+          pending_approvals: number | null
+          this_month_billed: number | null
+          this_month_collected: number | null
+          total_outstanding: number | null
+          total_overdue: number | null
+          unapplied_advances: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_balance_sheet: {
+        Row: {
+          account_code: string | null
+          account_id: string | null
+          account_name: string | null
+          account_type: string | null
+          closing_balance: number | null
+          opening_balance: number | null
+          total_credit: number | null
+          total_debit: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_bill_open_balance: {
+        Row: {
+          bill_date: string | null
+          bill_id: string | null
+          bill_number: string | null
+          days_to_due: number | null
+          due_date: string | null
+          open_amount: number | null
+          open_status: string | null
+          paid_amount: number | null
+          total_amount: number | null
+          user_id: string | null
+          vendor_id: string | null
+          vendor_name: string | null
+        }
+        Insert: {
+          bill_date?: string | null
+          bill_id?: string | null
+          bill_number?: string | null
+          days_to_due?: never
+          due_date?: string | null
+          open_amount?: never
+          open_status?: never
+          paid_amount?: number | null
+          total_amount?: number | null
+          user_id?: string | null
+          vendor_id?: string | null
+          vendor_name?: string | null
+        }
+        Update: {
+          bill_date?: string | null
+          bill_id?: string | null
+          bill_number?: string | null
+          days_to_due?: never
+          due_date?: string | null
+          open_amount?: never
+          open_status?: never
+          paid_amount?: number | null
+          total_amount?: number | null
+          user_id?: string | null
+          vendor_id?: string | null
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_bills_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_gstin_compliance"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "purchase_bills_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_cash_flow: {
+        Row: {
+          account_name: string | null
+          inflow: number | null
+          net: number | null
+          outflow: number | null
+          period: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_cash_inflow_forecast: {
+        Row: {
+          expected_inflow: number | null
+          invoice_count: number | null
+          overdue_portion: number | null
+          user_id: string | null
+          week: string | null
+        }
+        Relationships: []
+      }
+      v_cash_outflow_forecast: {
+        Row: {
+          bill_count: number | null
+          forecast_amount: number | null
+          user_id: string | null
+          week_start: string | null
+        }
+        Relationships: []
+      }
+      v_collection_report: {
+        Row: {
+          amount: number | null
+          bank_charges: number | null
+          customer_id: string | null
+          customer_name: string | null
+          deposit_account: string | null
+          month: string | null
+          payment_date: string | null
+          payment_mode: string | null
+          payment_type: string | null
+          reference_number: string | null
+          status: string | null
+          tds: number | null
+          user_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          bank_charges?: never
+          customer_id?: string | null
+          customer_name?: string | null
+          deposit_account?: string | null
+          month?: never
+          payment_date?: string | null
+          payment_mode?: string | null
+          payment_type?: string | null
+          reference_number?: string | null
+          status?: string | null
+          tds?: never
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          bank_charges?: never
+          customer_id?: string | null
+          customer_name?: string | null
+          deposit_account?: string | null
+          month?: never
+          payment_date?: string | null
+          payment_mode?: string | null
+          payment_type?: string | null
+          reference_number?: string | null
+          status?: string | null
+          tds?: never
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_received_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_received_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_balance"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "payment_received_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_profitability"
+            referencedColumns: ["customer_id"]
+          },
+        ]
+      }
+      v_cost_center_pnl: {
+        Row: {
+          account_type: string | null
+          cost_center_code: string | null
+          cost_center_id: string | null
+          cost_center_name: string | null
+          expense: number | null
+          income: number | null
+          net: number | null
+          period: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_lines_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_lines_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+        ]
+      }
+      v_cost_center_spend: {
+        Row: {
+          bill_spend: number | null
+          budget_amount: number | null
+          code: string | null
+          cost_center_id: string | null
+          expense_spend: number | null
+          name: string | null
+          total_spend: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_credit_note_balances: {
+        Row: {
+          client_name: string | null
+          credit_note_date: string | null
+          credit_note_number: string | null
+          id: string | null
+          original_invoice_id: string | null
+          outcome: string | null
+          refundable_balance: number | null
+          return_id: string | null
+          status: string | null
+          total_amount: number | null
+          user_id: string | null
+          utilized_amount: number | null
+        }
+        Insert: {
+          client_name?: string | null
+          credit_note_date?: string | null
+          credit_note_number?: string | null
+          id?: string | null
+          original_invoice_id?: string | null
+          outcome?: string | null
+          refundable_balance?: never
+          return_id?: string | null
+          status?: string | null
+          total_amount?: number | null
+          user_id?: string | null
+          utilized_amount?: number | null
+        }
+        Update: {
+          client_name?: string | null
+          credit_note_date?: string | null
+          credit_note_number?: string | null
+          id?: string | null
+          original_invoice_id?: string | null
+          outcome?: string | null
+          refundable_balance?: never
+          return_id?: string | null
+          status?: string | null
+          total_amount?: number | null
+          user_id?: string | null
+          utilized_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_notes_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "sales_returns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_notes_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "v_sales_return_register"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_customer_balance: {
+        Row: {
+          customer_id: string | null
+          customer_name: string | null
+          opening_balance: number | null
+          total_advance_adjusted: number | null
+          total_credit_notes: number | null
+          total_invoiced: number | null
+          total_received: number | null
+          user_id: string | null
+        }
+        Insert: {
+          customer_id?: string | null
+          customer_name?: string | null
+          opening_balance?: never
+          total_advance_adjusted?: never
+          total_credit_notes?: never
+          total_invoiced?: never
+          total_received?: never
+          user_id?: string | null
+        }
+        Update: {
+          customer_id?: string | null
+          customer_name?: string | null
+          opening_balance?: never
+          total_advance_adjusted?: never
+          total_credit_notes?: never
+          total_invoiced?: never
+          total_received?: never
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      v_customer_concentration: {
+        Row: {
+          customer_id: string | null
+          customer_name: string | null
+          invoice_count: number | null
+          overdue_amount: number | null
+          pct_of_total: number | null
+          total_outstanding: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_balance"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_profitability"
+            referencedColumns: ["customer_id"]
+          },
+        ]
+      }
+      v_customer_ledger: {
+        Row: {
+          credit: number | null
+          customer_id: string | null
+          customer_name: string | null
+          debit: number | null
+          due_date: string | null
+          notes: string | null
+          receivable_delta: number | null
+          reference: string | null
+          source_id: string | null
+          status: string | null
+          txn_date: string | null
+          txn_type: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_customer_profitability: {
+        Row: {
+          cogs: number | null
+          customer_id: string | null
+          customer_name: string | null
+          returns_value: number | null
+          revenue: number | null
+          user_id: string | null
+        }
+        Insert: {
+          cogs?: never
+          customer_id?: string | null
+          customer_name?: string | null
+          returns_value?: never
+          revenue?: never
+          user_id?: string | null
+        }
+        Update: {
+          cogs?: never
+          customer_id?: string | null
+          customer_name?: string | null
+          returns_value?: never
+          revenue?: never
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      v_customer_subledger: {
+        Row: {
+          account_name: string | null
+          account_type: string | null
+          credit: number | null
+          customer_id: string | null
+          customer_name: string | null
+          debit: number | null
+          journal_number: string | null
+          narration: string | null
+          receivable_delta: number | null
+          txn_date: string | null
+          txn_type: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_debit_note_balances: {
+        Row: {
+          debit_note_date: string | null
+          debit_note_number: string | null
+          id: string | null
+          original_bill_id: string | null
+          outcome: string | null
+          refundable_balance: number | null
+          return_id: string | null
+          status: string | null
+          total_amount: number | null
+          user_id: string | null
+          utilized_amount: number | null
+          vendor_name: string | null
+        }
+        Insert: {
+          debit_note_date?: string | null
+          debit_note_number?: string | null
+          id?: string | null
+          original_bill_id?: string | null
+          outcome?: string | null
+          refundable_balance?: never
+          return_id?: string | null
+          status?: string | null
+          total_amount?: number | null
+          user_id?: string | null
+          utilized_amount?: number | null
+          vendor_name?: string | null
+        }
+        Update: {
+          debit_note_date?: string | null
+          debit_note_number?: string | null
+          id?: string | null
+          original_bill_id?: string | null
+          outcome?: string | null
+          refundable_balance?: never
+          return_id?: string | null
+          status?: string | null
+          total_amount?: number | null
+          user_id?: string | null
+          utilized_amount?: number | null
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debit_notes_original_bill_id_fkey"
+            columns: ["original_bill_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debit_notes_original_bill_id_fkey"
+            columns: ["original_bill_id"]
+            isOneToOne: false
+            referencedRelation: "v_bill_open_balance"
+            referencedColumns: ["bill_id"]
+          },
+          {
+            foreignKeyName: "debit_notes_original_bill_id_fkey"
+            columns: ["original_bill_id"]
+            isOneToOne: false
+            referencedRelation: "v_gstr3b_inputs"
+            referencedColumns: ["bill_id"]
+          },
+          {
+            foreignKeyName: "debit_notes_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_returns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debit_notes_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "v_purchase_return_register"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_gl_movements: {
+        Row: {
+          account_code: string | null
+          account_id: string | null
+          account_name: string | null
+          account_type: string | null
+          branch_id: string | null
+          cost_center_id: string | null
+          credit: number | null
+          customer_id: string | null
+          debit: number | null
+          department: string | null
+          entry_date: string | null
+          journal_id: string | null
+          journal_narration: string | null
+          journal_number: string | null
+          journal_status: string | null
+          line_id: string | null
+          line_narration: string | null
+          project_id: string | null
+          source_id: string | null
+          source_type: string | null
+          tax_type: string | null
+          user_id: string | null
+          vendor_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_lines_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_lines_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+        ]
+      }
+      v_gst_itc_summary: {
+        Row: {
+          bill_count: number | null
+          gross_value: number | null
+          itc_available: number | null
+          period_month: string | null
+          taxable_value: number | null
+          user_id: string | null
+          vendor_gst_number: string | null
+          vendor_name: string | null
+        }
+        Relationships: []
+      }
       v_gst_monthly_itc: {
         Row: {
           bill_count: number | null
@@ -5161,6 +9643,1038 @@ export type Database = {
           taxable_value: number | null
           total_gst: number | null
           user_id: string | null
+        }
+        Relationships: []
+      }
+      v_gstr3b_inputs: {
+        Row: {
+          bill_id: string | null
+          bill_number: string | null
+          cess_amount: number | null
+          cgst_amount: number | null
+          cost_center_id: string | null
+          gstr3b_section: string | null
+          igst_amount: number | null
+          intra_state: boolean | null
+          is_rcm: boolean | null
+          itc_claimed_period: string | null
+          itc_status: string | null
+          period: string | null
+          project_id: string | null
+          sgst_amount: number | null
+          taxable_value: number | null
+          total_tax: number | null
+          user_id: string | null
+          vendor_gst_number: string | null
+          vendor_gst_status: string | null
+          vendor_id: string | null
+          vendor_name: string | null
+        }
+        Insert: {
+          bill_id?: string | null
+          bill_number?: string | null
+          cess_amount?: number | null
+          cgst_amount?: number | null
+          cost_center_id?: string | null
+          gstr3b_section?: never
+          igst_amount?: number | null
+          intra_state?: boolean | null
+          is_rcm?: boolean | null
+          itc_claimed_period?: string | null
+          itc_status?: string | null
+          period?: never
+          project_id?: string | null
+          sgst_amount?: number | null
+          taxable_value?: number | null
+          total_tax?: number | null
+          user_id?: string | null
+          vendor_gst_number?: string | null
+          vendor_gst_status?: string | null
+          vendor_id?: string | null
+          vendor_name?: string | null
+        }
+        Update: {
+          bill_id?: string | null
+          bill_number?: string | null
+          cess_amount?: number | null
+          cgst_amount?: number | null
+          cost_center_id?: string | null
+          gstr3b_section?: never
+          igst_amount?: number | null
+          intra_state?: boolean | null
+          is_rcm?: boolean | null
+          itc_claimed_period?: string | null
+          itc_status?: string | null
+          period?: never
+          project_id?: string | null
+          sgst_amount?: number | null
+          taxable_value?: number | null
+          total_tax?: number | null
+          user_id?: string | null
+          vendor_gst_number?: string | null
+          vendor_gst_status?: string | null
+          vendor_id?: string | null
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_bills_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_bills_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+          {
+            foreignKeyName: "purchase_bills_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_gstin_compliance"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "purchase_bills_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_hsn_summary: {
+        Row: {
+          gst_in: number | null
+          gst_out: number | null
+          hsn_sac: string | null
+          qty_in: number | null
+          qty_out: number | null
+          taxable_in: number | null
+          taxable_out: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_inventory_gl_reconciliation: {
+        Row: {
+          gl_value: number | null
+          item_count: number | null
+          status: string | null
+          subledger_value: number | null
+          user_id: string | null
+          variance: number | null
+        }
+        Relationships: []
+      }
+      v_inventory_kpi: {
+        Row: {
+          average_cost: number | null
+          category: string | null
+          cogs_last_90: number | null
+          days_of_inventory: number | null
+          gmroi_last_90: number | null
+          gross_margin_last_90: number | null
+          item_id: string | null
+          last_movement_date: string | null
+          movement_class: string | null
+          product_name: string | null
+          qty_sold_last_90: number | null
+          reorder_level: number | null
+          revenue_last_90: number | null
+          sku: string | null
+          stock_quantity: number | null
+          stock_value: number | null
+          turnover_last_90: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_inventory_valuation: {
+        Row: {
+          average_cost: number | null
+          computed_value: number | null
+          item_id: string | null
+          product_name: string | null
+          stock_quantity: number | null
+          stock_value: number | null
+          type: string | null
+          user_id: string | null
+          valuation_drift: number | null
+        }
+        Insert: {
+          average_cost?: number | null
+          computed_value?: never
+          item_id?: string | null
+          product_name?: string | null
+          stock_quantity?: number | null
+          stock_value?: number | null
+          type?: string | null
+          user_id?: string | null
+          valuation_drift?: never
+        }
+        Update: {
+          average_cost?: number | null
+          computed_value?: never
+          item_id?: string | null
+          product_name?: string | null
+          stock_quantity?: number | null
+          stock_value?: number | null
+          type?: string | null
+          user_id?: string | null
+          valuation_drift?: never
+        }
+        Relationships: []
+      }
+      v_invoice_register: {
+        Row: {
+          branch_id: string | null
+          cess_amount: number | null
+          cgst_amount: number | null
+          client_address: string | null
+          client_gst_number: string | null
+          client_name: string | null
+          cost_center_id: string | null
+          department: string | null
+          due_date: string | null
+          gst_amount: number | null
+          igst_amount: number | null
+          intra_state: boolean | null
+          invoice_date: string | null
+          invoice_id: string | null
+          invoice_number: string | null
+          items: Json | null
+          lifecycle_stage: string | null
+          outstanding: number | null
+          paid_amount: number | null
+          place_of_supply: string | null
+          project_id: string | null
+          rate_buckets: Json | null
+          seller_state: string | null
+          sgst_amount: number | null
+          status: string | null
+          taxable_value: number | null
+          total_amount: number | null
+          user_id: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          cess_amount?: never
+          cgst_amount?: never
+          client_address?: string | null
+          client_gst_number?: string | null
+          client_name?: string | null
+          cost_center_id?: string | null
+          department?: string | null
+          due_date?: string | null
+          gst_amount?: number | null
+          igst_amount?: never
+          intra_state?: never
+          invoice_date?: string | null
+          invoice_id?: string | null
+          invoice_number?: string | null
+          items?: Json | null
+          lifecycle_stage?: string | null
+          outstanding?: never
+          paid_amount?: never
+          place_of_supply?: string | null
+          project_id?: string | null
+          rate_buckets?: Json | null
+          seller_state?: string | null
+          sgst_amount?: never
+          status?: string | null
+          taxable_value?: number | null
+          total_amount?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          cess_amount?: never
+          cgst_amount?: never
+          client_address?: string | null
+          client_gst_number?: string | null
+          client_name?: string | null
+          cost_center_id?: string | null
+          department?: string | null
+          due_date?: string | null
+          gst_amount?: number | null
+          igst_amount?: never
+          intra_state?: never
+          invoice_date?: string | null
+          invoice_id?: string | null
+          invoice_number?: string | null
+          items?: Json | null
+          lifecycle_stage?: string | null
+          outstanding?: never
+          paid_amount?: never
+          place_of_supply?: string | null
+          project_id?: string | null
+          rate_buckets?: Json | null
+          seller_state?: string | null
+          sgst_amount?: never
+          status?: string | null
+          taxable_value?: number | null
+          total_amount?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+        ]
+      }
+      v_invoice_register_with_journal: {
+        Row: {
+          branch_id: string | null
+          cess_amount: number | null
+          cgst_amount: number | null
+          client_address: string | null
+          client_gst_number: string | null
+          client_name: string | null
+          cost_center_id: string | null
+          department: string | null
+          due_date: string | null
+          gst_amount: number | null
+          igst_amount: number | null
+          intra_state: boolean | null
+          invoice_date: string | null
+          invoice_id: string | null
+          invoice_number: string | null
+          is_reversed: boolean | null
+          items: Json | null
+          journal_id: string | null
+          journal_number: string | null
+          lifecycle_stage: string | null
+          outstanding: number | null
+          paid_amount: number | null
+          place_of_supply: string | null
+          posted_at: string | null
+          project_id: string | null
+          rate_buckets: Json | null
+          seller_state: string | null
+          sgst_amount: number | null
+          status: string | null
+          taxable_value: number | null
+          total_amount: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "v_cost_center_spend"
+            referencedColumns: ["cost_center_id"]
+          },
+        ]
+      }
+      v_itc_pipeline: {
+        Row: {
+          bill_count: number | null
+          cess: number | null
+          cgst: number | null
+          igst: number | null
+          itc_status: string | null
+          period: string | null
+          sgst: number | null
+          taxable_value: number | null
+          total_itc: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_item_movement_ledger: {
+        Row: {
+          cogs_amount: number | null
+          id: string | null
+          item_id: string | null
+          movement_date: string | null
+          movement_type: string | null
+          notes: string | null
+          party_name: string | null
+          product_name: string | null
+          quantity_in: number | null
+          quantity_out: number | null
+          running_qty: number | null
+          running_value: number | null
+          source_id: string | null
+          source_number: string | null
+          source_type: string | null
+          unit_cost: number | null
+          user_id: string | null
+          value_in: number | null
+          value_out: number | null
+          warehouse_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_kpi"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "vw_stock_summary"
+            referencedColumns: ["item_id"]
+          },
+        ]
+      }
+      v_lifecycle_pending: {
+        Row: {
+          amount: number | null
+          counterparty: string | null
+          doc_date: string | null
+          id: string | null
+          kind: string | null
+          lifecycle_changed_at: string | null
+          lifecycle_changed_by: string | null
+          lifecycle_status: string | null
+          reference: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_open_ar_fraud_alerts: {
+        Row: {
+          alert_type: string | null
+          amount: number | null
+          counterparty: string | null
+          created_at: string | null
+          details: Json | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string | null
+          reference: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string | null
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          alert_type?: string | null
+          amount?: number | null
+          counterparty?: never
+          created_at?: string | null
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string | null
+          reference?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          alert_type?: string | null
+          amount?: number | null
+          counterparty?: never
+          created_at?: string | null
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string | null
+          reference?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      v_open_fraud_alerts: {
+        Row: {
+          alert_type: string | null
+          amount: number | null
+          counterparty: string | null
+          created_at: string | null
+          details: Json | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string | null
+          reference: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string | null
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          alert_type?: string | null
+          amount?: number | null
+          counterparty?: never
+          created_at?: string | null
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string | null
+          reference?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          alert_type?: string | null
+          amount?: number | null
+          counterparty?: never
+          created_at?: string | null
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string | null
+          reference?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      v_outstanding_report: {
+        Row: {
+          bucket: string | null
+          customer_id: string | null
+          customer_name: string | null
+          days_overdue: number | null
+          due_date: string | null
+          invoice_date: string | null
+          invoice_id: string | null
+          invoice_number: string | null
+          outstanding: number | null
+          paid_amount: number | null
+          status: string | null
+          total_amount: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_balance"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_profitability"
+            referencedColumns: ["customer_id"]
+          },
+        ]
+      }
+      v_pending_approvals: {
+        Row: {
+          amount: number | null
+          current_level: number | null
+          due_date: string | null
+          entity_date: string | null
+          entity_id: string | null
+          entity_type: string | null
+          reference: string | null
+          request_id: string | null
+          requested_at: string | null
+          requested_by: string | null
+          required_levels: number | null
+          rule_perms: string[] | null
+          user_id: string | null
+          vendor_name: string | null
+        }
+        Relationships: []
+      }
+      v_pending_ar_approvals: {
+        Row: {
+          amount: number | null
+          counterparty: string | null
+          current_level: number | null
+          entity_date: string | null
+          entity_id: string | null
+          entity_type: string | null
+          reference: string | null
+          request_id: string | null
+          requested_at: string | null
+          requested_by: string | null
+          required_levels: number | null
+          rule_perms: string[] | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_pnl_summary: {
+        Row: {
+          account_code: string | null
+          account_id: string | null
+          account_name: string | null
+          account_type: string | null
+          amount: number | null
+          period: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_project_pnl: {
+        Row: {
+          account_type: string | null
+          expense: number | null
+          income: number | null
+          net: number | null
+          period: string | null
+          project_id: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_purchase_return_register: {
+        Row: {
+          bill_id: string | null
+          bill_number: string | null
+          cgst_amount: number | null
+          created_at: string | null
+          debit_note_id: string | null
+          debit_note_number: string | null
+          debit_refundable: number | null
+          debit_utilized: number | null
+          gst_amount: number | null
+          id: string | null
+          igst_amount: number | null
+          inventory_reduced: number | null
+          outcome: string | null
+          reason: string | null
+          return_date: string | null
+          return_number: string | null
+          return_type: string | null
+          sgst_amount: number | null
+          status: string | null
+          subtotal: number | null
+          total_amount: number | null
+          user_id: string | null
+          vendor_id: string | null
+          vendor_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_returns_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_returns_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "v_bill_open_balance"
+            referencedColumns: ["bill_id"]
+          },
+          {
+            foreignKeyName: "purchase_returns_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "v_gstr3b_inputs"
+            referencedColumns: ["bill_id"]
+          },
+          {
+            foreignKeyName: "purchase_returns_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_gstin_compliance"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "purchase_returns_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_sales_return_register: {
+        Row: {
+          cgst_amount: number | null
+          cogs_reversed: number | null
+          created_at: string | null
+          credit_note_id: string | null
+          credit_note_number: string | null
+          credit_refundable: number | null
+          credit_utilized: number | null
+          customer_id: string | null
+          customer_name: string | null
+          gst_amount: number | null
+          id: string | null
+          igst_amount: number | null
+          invoice_id: string | null
+          invoice_number: string | null
+          outcome: string | null
+          reason: string | null
+          return_date: string | null
+          return_number: string | null
+          return_type: string | null
+          sgst_amount: number | null
+          status: string | null
+          subtotal: number | null
+          total_amount: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_returns_credit_note_id_fkey"
+            columns: ["credit_note_id"]
+            isOneToOne: false
+            referencedRelation: "credit_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_returns_credit_note_id_fkey"
+            columns: ["credit_note_id"]
+            isOneToOne: false
+            referencedRelation: "v_credit_note_balances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_returns_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_returns_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_balance"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "sales_returns_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_profitability"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "sales_returns_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_returns_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_ar_aging"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "sales_returns_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "sales_returns_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_register_with_journal"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "sales_returns_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_outstanding_report"
+            referencedColumns: ["invoice_id"]
+          },
+        ]
+      }
+      v_trial_balance: {
+        Row: {
+          account_code: string | null
+          account_id: string | null
+          account_name: string | null
+          account_type: string | null
+          closing_balance: number | null
+          opening_balance: number | null
+          total_credit: number | null
+          total_debit: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_user_permissions: {
+        Row: {
+          member_user_id: string | null
+          permissions: string[] | null
+          tenant_id: string | null
+        }
+        Relationships: []
+      }
+      v_vendor_advance_available: {
+        Row: {
+          adjusted_amount: number | null
+          advance_amount: number | null
+          advance_date: string | null
+          advance_id: string | null
+          advance_number: string | null
+          available_amount: number | null
+          status: string | null
+          user_id: string | null
+          vendor_id: string | null
+          vendor_name: string | null
+        }
+        Insert: {
+          adjusted_amount?: never
+          advance_amount?: number | null
+          advance_date?: string | null
+          advance_id?: string | null
+          advance_number?: string | null
+          available_amount?: never
+          status?: string | null
+          user_id?: string | null
+          vendor_id?: string | null
+          vendor_name?: string | null
+        }
+        Update: {
+          adjusted_amount?: never
+          advance_amount?: number | null
+          advance_date?: string | null
+          advance_id?: string | null
+          advance_number?: string | null
+          available_amount?: never
+          status?: string | null
+          user_id?: string | null
+          vendor_id?: string | null
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_advances_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_gstin_compliance"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "vendor_advances_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_vendor_classification_history: {
+        Row: {
+          bill_count: number | null
+          classification: string | null
+          rank: number | null
+          user_id: string | null
+          vendor_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_bills_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_gstin_compliance"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "purchase_bills_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_vendor_concentration: {
+        Row: {
+          bill_count: number | null
+          spend_12m: number | null
+          user_id: string | null
+          vendor_id: string | null
+          vendor_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_bills_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_gstin_compliance"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "purchase_bills_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_vendor_gstin_compliance: {
+        Row: {
+          compliance_flag: string | null
+          composition_with_itc: number | null
+          gst_number: string | null
+          gst_treatment: string | null
+          recent_bill_count: number | null
+          recent_itc_value: number | null
+          reversed_count: number | null
+          suspicious_unregistered_with_gst: number | null
+          user_id: string | null
+          vendor_id: string | null
+          vendor_name: string | null
+        }
+        Relationships: []
+      }
+      v_vendor_ledger: {
+        Row: {
+          credit: number | null
+          debit: number | null
+          narration: string | null
+          reference: string | null
+          source_id: string | null
+          txn_date: string | null
+          txn_type: string | null
+          user_id: string | null
+          vendor_id: string | null
+          vendor_name: string | null
+        }
+        Relationships: []
+      }
+      v_vendor_liability_summary: {
+        Row: {
+          committed_open: number | null
+          liability_count: number | null
+          net_liability: number | null
+          overdue_outstanding: number | null
+          total_invoiced: number | null
+          total_outstanding: number | null
+          total_paid: number | null
+          user_id: string | null
+          vendor_id: string | null
+          vendor_name: string | null
+        }
+        Relationships: []
+      }
+      v_vendor_price_anomalies: {
+        Row: {
+          bill_id: string | null
+          item_id: string | null
+          movement_date: string | null
+          pct_change: number | null
+          rolling_avg: number | null
+          unit_cost: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_kpi"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "vw_stock_summary"
+            referencedColumns: ["item_id"]
+          },
+        ]
+      }
+      v_vendor_subledger: {
+        Row: {
+          account_name: string | null
+          account_type: string | null
+          credit: number | null
+          debit: number | null
+          journal_number: string | null
+          narration: string | null
+          payable_delta: number | null
+          txn_date: string | null
+          txn_type: string | null
+          user_id: string | null
+          vendor_id: string | null
+          vendor_name: string | null
         }
         Relationships: []
       }
@@ -5192,6 +10706,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "inventory"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_kpi"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["item_id"]
           },
           {
             foreignKeyName: "inventory_movements_item_id_fkey"
@@ -5295,6 +10823,20 @@ export type Database = {
             foreignKeyName: "inventory_batches_item_id_fkey"
             columns: ["item_id"]
             isOneToOne: false
+            referencedRelation: "v_inventory_kpi"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "inventory_batches_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "inventory_batches_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
             referencedRelation: "vw_stock_summary"
             referencedColumns: ["item_id"]
           },
@@ -5389,6 +10931,20 @@ export type Database = {
             foreignKeyName: "inventory_movements_item_id_fkey"
             columns: ["item_id"]
             isOneToOne: false
+            referencedRelation: "v_inventory_kpi"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
             referencedRelation: "vw_stock_summary"
             referencedColumns: ["item_id"]
           },
@@ -5403,6 +10959,47 @@ export type Database = {
       }
     }
     Functions: {
+      act_on_approval: {
+        Args: {
+          p_action: string
+          p_actor_id: string
+          p_actor_role?: string
+          p_notes?: string
+          p_request_id: string
+        }
+        Returns: string
+      }
+      allocate_payment_to_bills: {
+        Args: {
+          p_allocations: Json
+          p_date?: string
+          p_source_id: string
+          p_source_type: string
+          p_user_id: string
+          p_vendor_id: string
+        }
+        Returns: number
+      }
+      allocate_payment_to_invoices: {
+        Args: {
+          p_allocations: Json
+          p_customer_id: string
+          p_date?: string
+          p_source_id: string
+          p_source_type: string
+          p_user_id: string
+        }
+        Returns: number
+      }
+      apply_payment_to_liabilities: {
+        Args: {
+          p_amount: number
+          p_payment_id?: string
+          p_user_id: string
+          p_vendor_id: string
+        }
+        Returns: number
+      }
       approve_journal_from_bank_statement: {
         Args: {
           p_approval_id: string
@@ -5469,7 +11066,23 @@ export type Database = {
         Returns: undefined
       }
       ensure_default_warehouse: { Args: { p_user_id: string }; Returns: string }
+      generate_ar_recurring_invoices: {
+        Args: { p_as_of?: string; p_user_id?: string }
+        Returns: {
+          invoice_id: string
+          invoice_number: string
+          recurring_id: string
+        }[]
+      }
       generate_expense_number: { Args: never; Returns: string }
+      generate_recurring_bills: {
+        Args: { p_as_of?: string; p_user_id?: string }
+        Returns: {
+          bill_id: string
+          bill_number: string
+          recurring_id: string
+        }[]
+      }
       get_invoice_for_payment: {
         Args: { p_invoice_id: string; p_token: string }
         Returns: Json
@@ -5490,6 +11103,7 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      gstin_state_code: { Args: { p_gstin: string }; Returns: string }
       has_ca_access: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
@@ -5510,13 +11124,73 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
+      is_period_locked: {
+        Args: { p_date: string; p_user_id: string }
+        Returns: boolean
+      }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      post_journal: {
+        Args: {
+          p_idempotency_key: string
+          p_journal_date: string
+          p_journal_number: string
+          p_lines: Json
+          p_narration: string
+          p_notes?: string
+          p_posted_by?: string
+          p_source_id: string
+          p_source_type: string
+          p_status?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      rebuild_inventory_stock: {
+        Args: { p_item_id?: string; p_user_id: string }
+        Returns: undefined
+      }
+      refresh_bill_payment_status: {
+        Args: { p_bill_id: string }
+        Returns: undefined
+      }
+      refresh_po_fulfillment: { Args: { p_po_id: string }; Returns: undefined }
+      reverse_journal: {
+        Args: {
+          p_journal_id: string
+          p_reason?: string
+          p_reversal_date?: string
+          p_reversal_number?: string
+          p_reversed_by?: string
+        }
+        Returns: string
+      }
+      seed_default_account_tree: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      seed_default_roles: { Args: { p_user_id: string }; Returns: undefined }
       setup_basic_accounts_for_user: {
         Args: { p_user_id: string }
         Returns: undefined
       }
+      transition_bill: {
+        Args: { p_actor?: string; p_id: string; p_notes?: string; p_to: string }
+        Returns: undefined
+      }
+      transition_expense: {
+        Args: { p_actor?: string; p_id: string; p_notes?: string; p_to: string }
+        Returns: undefined
+      }
       user_belongs_to_org: {
         Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_has_permission: {
+        Args: { p_member_id: string; p_perm: string; p_tenant_id: string }
+        Returns: boolean
+      }
+      valid_lifecycle_transition: {
+        Args: { p_from: string; p_to: string }
         Returns: boolean
       }
     }
