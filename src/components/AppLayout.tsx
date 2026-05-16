@@ -52,10 +52,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     const isSm = size === 'sm';
     return (
       <nav
-        className={cn(
-          'inline-flex items-center rounded-full border border-border/70 bg-card/80 p-1 shadow-sm backdrop-blur',
-          isSm ? 'gap-0.5' : 'gap-1'
-        )}
+        className={cn('inline-flex items-center', isSm ? 'gap-1' : 'gap-2')}
         aria-label="Primary"
       >
         {TOP_NAV_ITEMS.map((item) => {
@@ -66,15 +63,29 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               key={item.label}
               to={item.to}
               className={cn(
-                'inline-flex items-center rounded-full text-sm transition-colors whitespace-nowrap',
-                isSm ? 'gap-1 px-3 py-1.5 text-xs' : 'gap-2 px-5 py-2',
+                'relative inline-flex items-center whitespace-nowrap transition-colors',
+                isSm ? 'gap-1.5 px-3 py-3 text-xs' : 'gap-2 px-5 py-4 text-sm',
                 isActive
-                  ? 'bg-primary font-medium text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'font-semibold text-white'
+                  : 'text-white/60 hover:text-white/90'
               )}
             >
               <Icon className={isSm ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
               <span>{item.label}</span>
+              {isActive && (
+                <>
+                  {/* Glowing underline beam */}
+                  <span
+                    className="pointer-events-none absolute inset-x-2 bottom-0 h-[2px] rounded-full bg-[#4f8cff]"
+                    style={{ boxShadow: '0 0 12px 2px rgba(79,140,255,0.9), 0 0 24px 6px rgba(79,140,255,0.45)' }}
+                  />
+                  {/* Soft halo glow above the beam */}
+                  <span
+                    className="pointer-events-none absolute inset-x-0 -bottom-1 h-8 rounded-full opacity-70 blur-xl"
+                    style={{ background: 'radial-gradient(ellipse at bottom, rgba(79,140,255,0.55), transparent 70%)' }}
+                  />
+                </>
+              )}
             </Link>
           );
         })}
