@@ -223,10 +223,9 @@ const Dashboard = () => {
 
   return (
     <>
-      <div className="min-h-full bg-background">
-        <div className="rounded-t-none rounded-b-[48px] md:rounded-b-[72px] border border-t-0 border-border/60 bg-card shadow-[0_24px_48px_-32px_hsl(var(--foreground)/0.18)]">
-          <div className="mx-auto max-w-[1500px] space-y-6 p-4 md:p-6">
-            <div className="overflow-visible px-5 py-6 md:px-7 md:py-8">
+      <div className="min-h-full bg-background p-4 md:p-6">
+        <div className="mx-auto max-w-[1500px] space-y-6">
+          <div className="overflow-visible px-5 py-6 md:px-7 md:py-8">
             <div className="mb-1 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex items-start gap-4">
                 <SidebarTrigger className="mt-1 md:hidden" />
@@ -658,7 +657,6 @@ const Dashboard = () => {
               )}
             </CardContent>
           </Card>
-          </div>
         </div>
       </div>
 
