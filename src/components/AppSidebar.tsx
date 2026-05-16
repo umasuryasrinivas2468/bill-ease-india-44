@@ -297,10 +297,7 @@ export function AppSidebar() {
       ? "rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90"
       : "rounded-xl text-foreground font-medium hover:bg-primary/10 hover:text-foreground";
 
-  const sectionActiveCls = (key: string) =>
-    activeKey === key
-      ? "rounded-xl bg-primary text-primary-foreground font-semibold"
-      : "rounded-xl text-foreground font-medium hover:bg-primary/10 hover:text-foreground";
+  const sectionTriggerCls = "rounded-xl text-foreground font-medium hover:bg-primary/10 hover:text-foreground";
 
   const triggerCls = isCollapsed
     ? "flex w-full items-center justify-center rounded-xl px-0 py-3"
@@ -387,7 +384,7 @@ export function AppSidebar() {
                         <div className="w-full">
                           <SidebarMenuButton
                             asChild
-                            className={`w-full px-0 py-1 ${sectionActiveCls(section.key)}`}
+                            className={`w-full px-0 py-1 ${sectionTriggerCls}`}
                             title={section.title}
                           >
                             <CollapsibleTrigger className={triggerCls}>

@@ -53,7 +53,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     return (
       <nav
         className={cn(
-          'inline-flex items-center rounded-full border border-border/70 bg-card/80 p-1 shadow-sm backdrop-blur',
+          'inline-flex items-center rounded-full border border-black/20 bg-black p-1 shadow-sm',
           isSm ? 'gap-0.5' : 'gap-1'
         )}
         aria-label="Primary"
@@ -69,8 +69,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 'inline-flex items-center rounded-full text-sm transition-colors whitespace-nowrap',
                 isSm ? 'gap-1 px-3 py-1.5 text-xs' : 'gap-2 px-5 py-2',
                 isActive
-                  ? 'bg-primary font-medium text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-white font-medium text-black shadow-sm'
+                  : 'text-white/70 hover:text-white'
               )}
             >
               <Icon className={isSm ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
