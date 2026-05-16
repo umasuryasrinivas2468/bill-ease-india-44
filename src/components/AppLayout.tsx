@@ -99,8 +99,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <AppSidebar />
 
         <SidebarInset className="flex-1 w-full overflow-x-hidden bg-transparent">
-          <header className="z-10">
-              <div className="relative bg-[#0b0b0f] text-white rounded-t-none rounded-bl-[32px] rounded-br-[32px] shadow-[0_12px_30px_-14px_rgba(0,0,0,0.55)] overflow-hidden">
+          <header className="z-10 -mx-0 -mt-0">
+              <div className="relative bg-[#0b0b0f] text-white rounded-tl-none rounded-tr-none rounded-bl-[40px] rounded-br-[40px] shadow-[0_14px_32px_-16px_rgba(0,0,0,0.6)]">
                 {/* subtle top sheen */}
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
 
