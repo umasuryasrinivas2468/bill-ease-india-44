@@ -76,39 +76,70 @@ export interface PostJournalInput {
 // Other utility files used to keep their own copies; consolidating prevents
 // drift (e.g. one file creating "Purchase Account", another "Purchase Expense").
 export const STANDARD_ACCOUNTS = {
-  ACCOUNTS_PAYABLE:        { name: 'Accounts Payable',        type: 'Liability' as AccountType },
-  ACCOUNTS_RECEIVABLE:     { name: 'Accounts Receivable',     type: 'Asset'     as AccountType },
-  BANK:                    { name: 'Bank Account',            type: 'Asset'     as AccountType },
-  CASH:                    { name: 'Cash Account',            type: 'Asset'     as AccountType },
-  INVENTORY:               { name: 'Inventory Asset',         type: 'Asset'     as AccountType },
-  PURCHASE_EXPENSE:        { name: 'Purchase Account',        type: 'Expense'   as AccountType },
-  COGS:                    { name: 'Cost of Goods Sold',      type: 'Expense'   as AccountType },
-  SALES:                   { name: 'Sales Revenue',           type: 'Income'    as AccountType },
-  SALES_RETURNS:           { name: 'Sales Returns',            type: 'Income'    as AccountType },
-  PURCHASE_RETURNS:        { name: 'Purchase Returns',         type: 'Expense'   as AccountType },
-  ITC:                     { name: 'Input Tax Credit',        type: 'Asset'     as AccountType },
-  OUTPUT_GST:              { name: 'Output GST',              type: 'Liability' as AccountType },
-  OUTPUT_GST_ON_ADVANCES:  { name: 'Output GST on Advances',  type: 'Liability' as AccountType },
-  RCM_LIABILITY:           { name: 'RCM Tax Liability',       type: 'Liability' as AccountType },
-  CGST_INPUT:              { name: 'CGST Input',              type: 'Asset'     as AccountType },
-  SGST_INPUT:              { name: 'SGST Input',              type: 'Asset'     as AccountType },
-  IGST_INPUT:              { name: 'IGST Input',              type: 'Asset'     as AccountType },
-  CESS_INPUT:              { name: 'Cess Input',              type: 'Asset'     as AccountType },
-  CGST_OUTPUT:             { name: 'CGST Output',             type: 'Liability' as AccountType },
-  SGST_OUTPUT:             { name: 'SGST Output',             type: 'Liability' as AccountType },
-  IGST_OUTPUT:             { name: 'IGST Output',             type: 'Liability' as AccountType },
-  CESS_OUTPUT:             { name: 'Cess Output',             type: 'Liability' as AccountType },
-  VENDOR_ADVANCES:         { name: 'Vendor Advances',         type: 'Asset'     as AccountType },
-  CUSTOMER_ADVANCES:       { name: 'Customer Advances',       type: 'Liability' as AccountType },
-  TDS_PAYABLE:             { name: 'TDS Payable',             type: 'Liability' as AccountType },
-  INVENTORY_ADJUSTMENTS:   { name: 'Inventory Adjustments',   type: 'Expense'   as AccountType },
-  ROUND_OFF:               { name: 'Round Off',               type: 'Expense'   as AccountType },
-  FIXED_ASSETS:            { name: 'Fixed Assets',            type: 'Asset'     as AccountType },
-  PREPAID_EXPENSES:        { name: 'Prepaid Expenses',        type: 'Asset'     as AccountType },
+  ACCOUNTS_PAYABLE:        { name: 'Accounts Payable',        type: 'Liability' as AccountType, scenario: 'ap_control' },
+  ACCOUNTS_RECEIVABLE:     { name: 'Accounts Receivable',     type: 'Asset'     as AccountType, scenario: 'ar_control' },
+  BANK:                    { name: 'Bank Account',            type: 'Asset'     as AccountType, scenario: 'bank_default' },
+  CASH:                    { name: 'Cash Account',            type: 'Asset'     as AccountType, scenario: 'cash_default' },
+  INVENTORY:               { name: 'Inventory Asset',         type: 'Asset'     as AccountType, scenario: 'inventory_asset' },
+  PURCHASE_EXPENSE:        { name: 'Purchase Account',        type: 'Expense'   as AccountType, scenario: 'purchase_expense' },
+  COGS:                    { name: 'Cost of Goods Sold',      type: 'Expense'   as AccountType, scenario: 'cogs' },
+  SALES:                   { name: 'Sales Revenue',           type: 'Income'    as AccountType, scenario: 'sales_revenue' },
+  SALES_RETURNS:           { name: 'Sales Returns',            type: 'Income'    as AccountType, scenario: 'sales_returns' },
+  PURCHASE_RETURNS:        { name: 'Purchase Returns',         type: 'Expense'   as AccountType, scenario: 'purchase_returns' },
+  ITC:                     { name: 'Input Tax Credit',        type: 'Asset'     as AccountType, scenario: 'itc' },
+  OUTPUT_GST:              { name: 'Output GST',              type: 'Liability' as AccountType, scenario: 'output_gst' },
+  OUTPUT_GST_ON_ADVANCES:  { name: 'Output GST on Advances',  type: 'Liability' as AccountType, scenario: 'output_gst_on_advances' },
+  RCM_LIABILITY:           { name: 'RCM Tax Liability',       type: 'Liability' as AccountType, scenario: 'rcm_liability' },
+  CGST_INPUT:              { name: 'CGST Input',              type: 'Asset'     as AccountType, scenario: 'cgst_input' },
+  SGST_INPUT:              { name: 'SGST Input',              type: 'Asset'     as AccountType, scenario: 'sgst_input' },
+  IGST_INPUT:              { name: 'IGST Input',              type: 'Asset'     as AccountType, scenario: 'igst_input' },
+  CESS_INPUT:              { name: 'Cess Input',              type: 'Asset'     as AccountType, scenario: 'cess_input' },
+  CGST_OUTPUT:             { name: 'CGST Output',             type: 'Liability' as AccountType, scenario: 'cgst_output' },
+  SGST_OUTPUT:             { name: 'SGST Output',             type: 'Liability' as AccountType, scenario: 'sgst_output' },
+  IGST_OUTPUT:             { name: 'IGST Output',             type: 'Liability' as AccountType, scenario: 'igst_output' },
+  CESS_OUTPUT:             { name: 'Cess Output',             type: 'Liability' as AccountType, scenario: 'cess_output' },
+  VENDOR_ADVANCES:         { name: 'Vendor Advances',         type: 'Asset'     as AccountType, scenario: 'vendor_advances' },
+  CUSTOMER_ADVANCES:       { name: 'Customer Advances',       type: 'Liability' as AccountType, scenario: 'customer_advances' },
+  TDS_PAYABLE:             { name: 'TDS Payable',             type: 'Liability' as AccountType, scenario: 'tds_payable' },
+  INVENTORY_ADJUSTMENTS:   { name: 'Inventory Adjustments',   type: 'Expense'   as AccountType, scenario: 'inventory_adjustments' },
+  ROUND_OFF:               { name: 'Round Off',               type: 'Expense'   as AccountType, scenario: 'round_off' },
+  FIXED_ASSETS:            { name: 'Fixed Assets',            type: 'Asset'     as AccountType, scenario: 'fixed_assets' },
+  PREPAID_EXPENSES:        { name: 'Prepaid Expenses',        type: 'Asset'     as AccountType, scenario: 'prepaid_expenses' },
 } as const;
+
+// Name → scenario_key reverse map. Used by getOrCreateAccount to consult
+// account_mapping when a standard ledger is requested.
+const NAME_TO_SCENARIO: Record<string, string> = Object.values(STANDARD_ACCOUNTS).reduce(
+  (acc, def) => {
+    acc[def.name.toLowerCase()] = def.scenario;
+    return acc;
+  },
+  {} as Record<string, string>
+);
 
 const ACCOUNT_TYPE_PREFIX: Record<AccountType, string> = {
   Asset: '1', Liability: '2', Equity: '3', Income: '4', Expense: '5',
+};
+
+// Pulls account_id from the account_mapping table when the caller asked for
+// a standard ledger (matched by name → scenario_key). Returns null on miss so
+// getOrCreateAccount can fall back to its legacy name lookup + auto-create.
+const resolveMappedAccount = async (
+  uid: string,
+  accountName: string
+): Promise<string | null> => {
+  const key = NAME_TO_SCENARIO[accountName.toLowerCase()];
+  if (!key) return null;
+  try {
+    const { data, error } = await supabase.rpc('resolve_account_mapping', {
+      p_user_id: uid,
+      p_scenario_key: key,
+    });
+    if (error) return null;
+    return (data as string | null) ?? null;
+  } catch {
+    return null;
+  }
 };
 
 export const getOrCreateAccount = async (
@@ -117,6 +148,10 @@ export const getOrCreateAccount = async (
   accountType: AccountType
 ): Promise<string> => {
   const uid = normalizeUserId(userId);
+
+  // 1. Mapping table wins when the user has configured it.
+  const mapped = await resolveMappedAccount(uid, accountName);
+  if (mapped) return mapped;
 
   const { data: existing } = await supabase
     .from('accounts')

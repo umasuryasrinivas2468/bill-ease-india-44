@@ -3,7 +3,7 @@
 -- Line-item-level vendor liability ledger driven by invoice→PO matching.
 -- Flow: PO created → invoice uploaded via expense-ocr → matched to PO →
 -- vendor_liabilities rows created for invoiced products only. Partial
--- deliveries keep the PO open for the remaining quantity.
+-- deliveries keep the PO open for the remaining quantity. 
 -- ============================================================================
 
 -- ── 1. Extend expenses with PO link + match status ─────────────────────────
