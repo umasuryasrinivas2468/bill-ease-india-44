@@ -14,7 +14,9 @@ import {
   postPurchaseBill, postVendorPayment, postVendorAdvance, postAdvanceAdjustment,
   postInvoice, postPaymentReceived, postCogs, postInventoryAdjustment,
   postCreditNote,
-  postJournal, getOrCreateAccount, STANDARD_ACCOUNTS,
+  postJournal, getOrCreateAccount,
+  resolveCustomerReceivableAccount,
+  STANDARD_ACCOUNTS,
   type JournalLineInput,
 } from './journalEngine';
 
@@ -129,7 +131,7 @@ export const postPaymentLinkJournal = async (
 ) => {
   const uid = normalizeUserId(userId);
   const bankId = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.BANK.name, 'Asset');
-  const arId   = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.ACCOUNTS_RECEIVABLE.name, 'Asset');
+  const arId   = await resolveCustomerReceivableAccount(uid, payment.customer_id);
   const tags = { customer_id: payment.customer_id };
   return postJournal({
     user_id: uid, date: payment.date,
@@ -184,7 +186,7 @@ export const postCustomerAdvanceAdjustmentJournal = async (
 ) => {
   const uid = normalizeUserId(userId);
   const advLiabId = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.CUSTOMER_ADVANCES.name, 'Liability');
-  const arId      = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.ACCOUNTS_RECEIVABLE.name, 'Asset');
+  const arId      = await resolveCustomerReceivableAccount(uid, adjustment.customer_id);
   const tags = { customer_id: adjustment.customer_id };
   return postJournal({
     user_id: uid, date: adjustment.date,

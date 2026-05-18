@@ -142,6 +142,101 @@ const resolveMappedAccount = async (
   }
 };
 
+// ── vendor / customer sub-ledger resolvers ──────────────────────────────────
+// Each vendor and client has its own leaf account in the COA under a control
+// group (Sundry Creditors / Sundry Debtors). Auto-created and linked via the
+// `vendors.subledger_account_id` / `clients.subledger_account_id` columns —
+// see migration 20260518000001_vendor_client_subledgers.sql.
+//
+// These resolvers prefer the per-party leaf; on miss they fall back to the
+// generic AP/AR control account so legacy callers without a vendor/customer
+// id still post correctly.
+
+const _subledgerCache = new Map<string, string>();
+const subCacheKey = (kind: 'vendor' | 'client', id: string) => `${kind}:${id}`;
+
+/**
+ * Resolve the account a vendor's payable should land on.
+ *
+ * - If `vendorId` is set and the vendor has a `subledger_account_id`, use it.
+ * - Otherwise calls `ensure_vendor_subledger` RPC to lazy-create one.
+ * - Falls back to the AP control account when no vendor_id is provided.
+ *
+ * `fallbackName` lets callers route to a different control (e.g. Vendor
+ * Advances) when the call site isn't really payable-flavoured.
+ */
+export const resolveVendorPayableAccount = async (
+  uid: string,
+  vendorId?: string | null,
+  fallbackName: string = STANDARD_ACCOUNTS.ACCOUNTS_PAYABLE.name,
+  fallbackType: AccountType = 'Liability',
+): Promise<string> => {
+  if (vendorId) {
+    const key = subCacheKey('vendor', vendorId);
+    const cached = _subledgerCache.get(key);
+    if (cached) return cached;
+
+    const { data } = await supabase
+      .from('vendors')
+      .select('subledger_account_id')
+      .eq('id', vendorId)
+      .maybeSingle();
+    if (data?.subledger_account_id) {
+      _subledgerCache.set(key, data.subledger_account_id as string);
+      return data.subledger_account_id as string;
+    }
+
+    // Trigger should have created it on insert. Defensive: call the RPC so
+    // pre-migration vendors still resolve correctly.
+    try {
+      const { data: ensured } = await supabase.rpc('ensure_vendor_subledger', { p_vendor_id: vendorId });
+      if (ensured) {
+        _subledgerCache.set(key, ensured as string);
+        return ensured as string;
+      }
+    } catch {
+      // fall through to control
+    }
+  }
+  return getOrCreateAccount(uid, fallbackName, fallbackType);
+};
+
+/** Resolve the account a customer's receivable should land on. Mirror of
+ *  `resolveVendorPayableAccount`. */
+export const resolveCustomerReceivableAccount = async (
+  uid: string,
+  customerId?: string | null,
+  fallbackName: string = STANDARD_ACCOUNTS.ACCOUNTS_RECEIVABLE.name,
+  fallbackType: AccountType = 'Asset',
+): Promise<string> => {
+  if (customerId) {
+    const key = subCacheKey('client', customerId);
+    const cached = _subledgerCache.get(key);
+    if (cached) return cached;
+
+    const { data } = await supabase
+      .from('clients')
+      .select('subledger_account_id')
+      .eq('id', customerId)
+      .maybeSingle();
+    if (data?.subledger_account_id) {
+      _subledgerCache.set(key, data.subledger_account_id as string);
+      return data.subledger_account_id as string;
+    }
+
+    try {
+      const { data: ensured } = await supabase.rpc('ensure_client_subledger', { p_client_id: customerId });
+      if (ensured) {
+        _subledgerCache.set(key, ensured as string);
+        return ensured as string;
+      }
+    } catch {
+      // fall through to control
+    }
+  }
+  return getOrCreateAccount(uid, fallbackName, fallbackType);
+};
+
 export const getOrCreateAccount = async (
   userId: string,
   accountName: string,
@@ -346,7 +441,8 @@ export const postPurchaseBill = async (
   const prepaidAmt   = Number(bill.prepaid_amount   || 0);
   const purchaseAmt  = Math.max(0, bill.amount - inventoryAmt - assetAmt - prepaidAmt);
 
-  const apId        = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.ACCOUNTS_PAYABLE.name, 'Liability');
+  // Route AP credit to vendor's own sub-ledger when we know the vendor.
+  const apId        = await resolveVendorPayableAccount(uid, bill.vendor_id);
   const inventoryId = inventoryAmt > 0 ? await getOrCreateAccount(uid, STANDARD_ACCOUNTS.INVENTORY.name,        'Asset')   : null;
   const assetId     = assetAmt     > 0 ? await getOrCreateAccount(uid, STANDARD_ACCOUNTS.FIXED_ASSETS.name,     'Asset')   : null;
   const prepaidId   = prepaidAmt   > 0 ? await getOrCreateAccount(uid, STANDARD_ACCOUNTS.PREPAID_EXPENSES.name, 'Asset')   : null;
@@ -448,7 +544,7 @@ export const postVendorPayment = async (
   payment: PostVendorPaymentArgs
 ): Promise<string> => {
   const uid = normalizeUserId(userId);
-  const apId   = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.ACCOUNTS_PAYABLE.name, 'Liability');
+  const apId   = await resolveVendorPayableAccount(uid, payment.vendor_id);
   const cashy  = (payment.payment_mode === 'cash') ? STANDARD_ACCOUNTS.CASH : STANDARD_ACCOUNTS.BANK;
   const bankId = await getOrCreateAccount(uid, cashy.name, 'Asset');
   const tags = { vendor_id: payment.vendor_id, cost_center_id: payment.cost_center_id, project_id: payment.project_id };
@@ -516,7 +612,7 @@ export const postAdvanceAdjustment = async (
   adj: PostAdvanceAdjustmentArgs
 ): Promise<string> => {
   const uid = normalizeUserId(userId);
-  const apId      = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.ACCOUNTS_PAYABLE.name, 'Liability');
+  const apId      = await resolveVendorPayableAccount(uid, adj.vendor_id);
   const advanceId = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.VENDOR_ADVANCES.name, 'Asset');
   const tags = { vendor_id: adj.vendor_id };
   return postJournal({
@@ -604,7 +700,7 @@ export const postExpense = async (
     // The vendor receives only the taxable amount (their invoice has no GST).
     const cashOut = expense.amount;
     if (onCredit) {
-      const apId = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.ACCOUNTS_PAYABLE.name, 'Liability');
+      const apId = await resolveVendorPayableAccount(uid, expense.vendor_id);
       lines.push({ account_id: apId, credit: cashOut, line_narration: `Payable for ${expense.category_name}${expense.vendor_name ? ' — ' + expense.vendor_name : ''}`, ...tags });
     } else {
       const cashy = expense.payment_mode === 'cash' ? STANDARD_ACCOUNTS.CASH : STANDARD_ACCOUNTS.BANK;
@@ -620,7 +716,7 @@ export const postExpense = async (
     // Non-RCM: vendor charges the GST, so it leaves the bank/AP along with the principal.
     const cashOut = expense.amount + tax;
     if (onCredit) {
-      const apId = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.ACCOUNTS_PAYABLE.name, 'Liability');
+      const apId = await resolveVendorPayableAccount(uid, expense.vendor_id);
       lines.push({ account_id: apId, credit: cashOut, line_narration: `Payable for ${expense.category_name}${expense.vendor_name ? ' — ' + expense.vendor_name : ''}`, ...tags });
     } else {
       const cashy = expense.payment_mode === 'cash' ? STANDARD_ACCOUNTS.CASH : STANDARD_ACCOUNTS.BANK;
@@ -668,7 +764,7 @@ export interface PostInvoiceArgs {
  */
 export const postInvoice = async (userId: string, invoice: PostInvoiceArgs): Promise<string> => {
   const uid = normalizeUserId(userId);
-  const arId    = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.ACCOUNTS_RECEIVABLE.name, 'Asset');
+  const arId    = await resolveCustomerReceivableAccount(uid, invoice.customer_id);
   const salesId = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.SALES.name, 'Income');
   const tags = { customer_id: invoice.customer_id, cost_center_id: invoice.cost_center_id, project_id: invoice.project_id, branch_id: invoice.branch_id };
   const lines: JournalLineInput[] = [
@@ -732,7 +828,7 @@ export interface PostCreditNoteArgs {
  */
 export const postCreditNote = async (userId: string, cn: PostCreditNoteArgs): Promise<string> => {
   const uid = normalizeUserId(userId);
-  const arId         = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.ACCOUNTS_RECEIVABLE.name, 'Asset');
+  const arId         = await resolveCustomerReceivableAccount(uid, cn.customer_id);
   const returnsId    = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.SALES_RETURNS.name, 'Income');
   const tags = { customer_id: cn.customer_id, cost_center_id: cn.cost_center_id, project_id: cn.project_id, branch_id: cn.branch_id };
 
@@ -794,7 +890,7 @@ export const postPaymentReceived = async (userId: string, payment: PostPaymentRe
   const uid = normalizeUserId(userId);
   const cashy  = payment.payment_mode === 'cash' ? STANDARD_ACCOUNTS.CASH : STANDARD_ACCOUNTS.BANK;
   const bankId = await getOrCreateAccount(uid, cashy.name, 'Asset');
-  const arId   = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.ACCOUNTS_RECEIVABLE.name, 'Asset');
+  const arId   = await resolveCustomerReceivableAccount(uid, payment.customer_id);
   const tags = { customer_id: payment.customer_id };
   return postJournal({
     user_id: uid, date: payment.date,
@@ -891,7 +987,7 @@ export interface PostDebitNoteArgs {
  */
 export const postDebitNote = async (userId: string, dn: PostDebitNoteArgs): Promise<string> => {
   const uid = normalizeUserId(userId);
-  const apId         = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.ACCOUNTS_PAYABLE.name, 'Liability');
+  const apId         = await resolveVendorPayableAccount(uid, dn.vendor_id);
   const returnsId    = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.PURCHASE_RETURNS.name, 'Expense');
   const tags = { vendor_id: dn.vendor_id, cost_center_id: dn.cost_center_id, project_id: dn.project_id, branch_id: dn.branch_id };
   const itcEligible = dn.itc_eligible !== false;

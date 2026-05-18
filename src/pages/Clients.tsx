@@ -17,6 +17,7 @@ import { supabase } from '@/lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/clerk-react';
 import ImportDialog from '@/components/ImportDialog';
+import PrimaryLedgerSelect, { LedgerMappedBadge } from '@/components/accounting/PrimaryLedgerSelect';
 
 const INDIAN_STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat",
@@ -33,6 +34,7 @@ const emptyClient = {
   company_name: '', display_name: '', language: 'English',
   gst_treatment: 'registered', place_of_supply: '', pan: '',
   tax_preference: 'taxable', currency: 'INR', opening_balance: 0, payment_terms: 30,
+  primary_ledger_account_id: null as string | null,
 };
 
 // Reusable client form
@@ -218,6 +220,21 @@ const ClientFormFields = ({ data, onChange }: { data: any; onChange: (d: any) =>
       <div className="space-y-1.5">
         <Label className="text-xs">Billing Address</Label>
         <Textarea value={data.address || ''} onChange={e => set('address', e.target.value)} placeholder="Enter billing address" rows={2} />
+      </div>
+
+      {/* Primary Ledger Account */}
+      <div className="border-t pt-3">
+        <p className="text-xs font-semibold text-muted-foreground mb-2">ACCOUNTING</p>
+        <Label className="text-xs">Primary Ledger Account</Label>
+        <p className="text-[11px] text-muted-foreground mb-1.5">
+          All receivable postings will route to this customer's sub-ledger under the selected group.
+        </p>
+        <PrimaryLedgerSelect
+          kind="client"
+          value={data.primary_ledger_account_id ?? null}
+          onChange={(id) => set('primary_ledger_account_id', id)}
+          gstTreatment={data.gst_treatment}
+        />
       </div>
     </div>
   );
@@ -409,6 +426,11 @@ const Clients = () => {
                   {client.place_of_supply && <Badge variant="outline" className="text-[10px]">{client.place_of_supply}</Badge>}
                   {client.payment_terms != null && <Badge variant="outline" className="text-[10px]">Net {client.payment_terms}</Badge>}
                   {client.opening_balance != null && client.opening_balance > 0 && <Badge variant="outline" className="text-[10px]">OB: ₹{client.opening_balance.toLocaleString('en-IN')}</Badge>}
+                  <LedgerMappedBadge
+                    primaryName={client.primary_ledger_name}
+                    subledgerCode={client.subledger_code}
+                    subledgerName={client.subledger_name}
+                  />
                 </div>
                 <div className="flex gap-2 pt-1">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => viewClientInvoices(client)}>

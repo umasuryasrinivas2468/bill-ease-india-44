@@ -18,6 +18,7 @@ import { GST_TREATMENTS, INDIAN_STATES } from '@/constants/india';
 import VendorCharts from '@/components/vendors/VendorCharts';
 import VendorHealthBadge, { computeVendorScore, VendorScore } from '@/components/vendors/VendorHealthBadge';
 import VendorOnboardingDialog from '@/components/vendors/VendorOnboardingDialog';
+import PrimaryLedgerSelect, { LedgerMappedBadge } from '@/components/accounting/PrimaryLedgerSelect';
 
 interface VendorRecord {
   id: string;
@@ -41,6 +42,12 @@ interface VendorRecord {
   tds_enabled?: boolean;
   vendor_code?: string | null;
   onboarding_status?: 'draft' | 'submitted' | 'verified' | 'rejected' | null;
+  primary_ledger_account_id?: string | null;
+  subledger_account_id?: string | null;
+  primary_ledger_name?: string | null;
+  primary_ledger_code?: string | null;
+  subledger_name?: string | null;
+  subledger_code?: string | null;
 }
 
 export default function Vendors() {
@@ -77,6 +84,7 @@ export default function Vendors() {
     bank_branch: '',
     linked_tds_section_id: null,
     tds_enabled: false,
+    primary_ledger_account_id: null,
   };
 
   const [form, setForm] = useState<Partial<VendorRecord>>(emptyForm);
@@ -89,12 +97,17 @@ export default function Vendors() {
   const fetchVendors = async () => {
     setLoading(true);
     try {
-      const [vendorsRes, billsRes] = await Promise.all([
+      const [vendorsRes, ledgerRes, billsRes] = await Promise.all([
         supabase
           .from('vendors')
-          .select('id, name, company_name, email, phone, address, pan, gst_number, gst_treatment, state, msme_registered, udyam_aadhaar, bank_account_holder, bank_account_number, bank_ifsc, bank_name, bank_branch, linked_tds_section_id, tds_enabled, vendor_code, onboarding_status')
+          .select('id, name, company_name, email, phone, address, pan, gst_number, gst_treatment, state, msme_registered, udyam_aadhaar, bank_account_holder, bank_account_number, bank_ifsc, bank_name, bank_branch, linked_tds_section_id, tds_enabled, vendor_code, onboarding_status, primary_ledger_account_id, subledger_account_id')
           .eq('user_id', user?.id)
           .order('created_at', { ascending: false }),
+        // View join — names of mapped primary ledger + sub-ledger leaf
+        supabase
+          .from('v_vendors_with_ledger' as any)
+          .select('id, primary_ledger_code, primary_ledger_name, subledger_code, subledger_name')
+          .eq('user_id', user?.id),
         supabase
           .from('purchase_bills' as any)
           .select('vendor_id, status, total_amount, bill_date, due_date')
@@ -102,7 +115,12 @@ export default function Vendors() {
       ]);
 
       if (vendorsRes.error) throw vendorsRes.error;
-      const loadedVendors = (vendorsRes.data || []) as any[];
+      const ledgerByVendor = new Map<string, any>();
+      for (const row of (ledgerRes.data || []) as any[]) ledgerByVendor.set(row.id, row);
+      const loadedVendors = ((vendorsRes.data || []) as any[]).map((v) => ({
+        ...v,
+        ...(ledgerByVendor.get(v.id) ?? {}),
+      }));
       setVendors(loadedVendors);
 
       // Group bills by vendor and compute scores
@@ -172,6 +190,7 @@ export default function Vendors() {
         bank_branch: form.bank_branch,
         linked_tds_section_id: form.linked_tds_section_id,
         tds_enabled: form.tds_enabled || false,
+        primary_ledger_account_id: form.primary_ledger_account_id ?? null,
       };
 
       if (editing) {
@@ -257,6 +276,7 @@ export default function Vendors() {
                 <TableHead>Company</TableHead>
                 <TableHead>GST</TableHead>
                 <TableHead>State</TableHead>
+                <TableHead>Ledger</TableHead>
                 <TableHead>TDS</TableHead>
                 <TableHead>Onboarding</TableHead>
                 <TableHead>Health</TableHead>
@@ -278,6 +298,13 @@ export default function Vendors() {
                     <TableCell>{v.company_name || '-'}</TableCell>
                     <TableCell>{v.gst_number || '-'}</TableCell>
                     <TableCell>{v.state || '-'}</TableCell>
+                    <TableCell>
+                      <LedgerMappedBadge
+                        primaryName={v.primary_ledger_name}
+                        subledgerCode={v.subledger_code}
+                        subledgerName={v.subledger_name}
+                      />
+                    </TableCell>
                     <TableCell>{v.tds_enabled ? 'Enabled' : 'Disabled'}</TableCell>
                     <TableCell>
                       <Badge className={statusColor}>{status}</Badge>
@@ -303,7 +330,7 @@ export default function Vendors() {
               })}
               {vendors.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No vendors found</TableCell>
+                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">No vendors found</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -371,6 +398,21 @@ export default function Vendors() {
             <div className="md:col-span-2">
               <Label>Address</Label>
               <Input value={form.address || ''} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+            </div>
+
+            <div className="md:col-span-2 border-t pt-3 mt-1">
+              <Label className="mb-1.5 block">
+                Primary Ledger Account
+                <span className="text-xs text-muted-foreground font-normal ml-2">
+                  All payable postings will route to this vendor's sub-ledger under the selected group.
+                </span>
+              </Label>
+              <PrimaryLedgerSelect
+                kind="vendor"
+                value={form.primary_ledger_account_id ?? null}
+                onChange={(id) => setForm({ ...form, primary_ledger_account_id: id })}
+                gstTreatment={form.gst_treatment}
+              />
             </div>
 
             <div className="flex items-center gap-2 md:col-span-2">

@@ -25,6 +25,13 @@ export interface Client {
   opening_balance?: number;
   payment_terms?: number;
   created_at: string;
+  // Deep ledger mapping (Tally-style sub-ledger).
+  primary_ledger_account_id?: string | null;
+  subledger_account_id?: string | null;
+  primary_ledger_code?: string | null;
+  primary_ledger_name?: string | null;
+  subledger_code?: string | null;
+  subledger_name?: string | null;
 }
 
 export const useClients = () => {
@@ -39,29 +46,55 @@ export const useClients = () => {
       }
       
       console.log('Fetching clients for user:', user.id);
-      
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error('Error fetching clients:', error);
-        throw error;
+
+      const [clientsRes, ledgerRes] = await Promise.all([
+        supabase
+          .from('clients')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
+        // View join — primary ledger group + auto-created sub-ledger leaf.
+        supabase
+          .from('v_clients_with_ledger' as any)
+          .select('id, primary_ledger_code, primary_ledger_name, subledger_code, subledger_name')
+          .eq('user_id', user.id),
+      ]);
+
+      if (clientsRes.error) {
+        console.error('Error fetching clients:', clientsRes.error);
+        throw clientsRes.error;
       }
-      
-      console.log('Fetched clients:', data);
-      return data as Client[];
+
+      const ledgerById = new Map<string, any>();
+      for (const r of (ledgerRes.data || []) as any[]) ledgerById.set(r.id, r);
+      const merged = ((clientsRes.data || []) as any[]).map((c) => ({
+        ...c,
+        ...(ledgerById.get(c.id) ?? {}),
+      })) as Client[];
+
+      console.log('Fetched clients:', merged.length);
+      return merged;
     },
     enabled: !!user?.id,
   });
 };
 
+// View-only columns surfaced by v_clients_with_ledger — strip before write
+// so Supabase doesn't 400 on unknown columns.
+const VIEW_ONLY_KEYS = [
+  'primary_ledger_code', 'primary_ledger_name',
+  'subledger_code', 'subledger_name', 'subledger_account_id',
+] as const;
+function stripViewOnly<T extends Record<string, unknown>>(o: T): T {
+  const out: Record<string, unknown> = { ...o };
+  for (const k of VIEW_ONLY_KEYS) delete out[k];
+  return out as T;
+}
+
 export const useCreateClient = () => {
   const queryClient = useQueryClient();
   const { user } = useUser();
-  
+
   return useMutation({
     mutationFn: async (clientData: Omit<Client, 'id' | 'created_at'>) => {
       if (!user?.id) {
@@ -100,7 +133,7 @@ export const useCreateClient = () => {
       
       const { data, error } = await supabase
         .from('clients')
-        .insert([{ ...clientData, user_id: user.id }])
+        .insert([{ ...stripViewOnly(clientData as any), user_id: user.id }])
         .select()
         .single();
       
@@ -163,7 +196,7 @@ export const useUpdateClient = () => {
       
       const { data, error } = await supabase
         .from('clients')
-        .update(clientData)
+        .update(stripViewOnly(clientData as any))
         .eq('id', id)
         .eq('user_id', user.id)
         .select()
