@@ -46,6 +46,7 @@ import {
   PieChart,
   TrendingDown,
   ClipboardCheck,
+  Plus,
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import { useAuthorization } from "@/hooks/useAuthorization";
@@ -187,6 +188,28 @@ const SECTIONS: NavSection[] = [
       { title: "Cost Centers", url: "/cost-centers", icon: FolderKanban },
       { title: "Financial Year Closing", url: comingSoon("Financial Year Closing"), icon: Lock },
       { title: "CA Workspace", url: "/ca", icon: Briefcase },
+    ],
+  },
+  {
+    key: "fixed-assets",
+    title: "Fixed Assets",
+    icon: Boxes,
+    items: [
+      { title: "Asset Dashboard", url: "/assets", icon: BarChart3 },
+      { title: "Asset Register", url: "/assets/register", icon: ListTree },
+      { title: "New Asset", url: "/assets/create", icon: Plus },
+      { title: "Depreciation Run", url: "/assets/depreciation", icon: CalendarClock },
+    ],
+  },
+  {
+    key: "liabilities",
+    title: "Liabilities & Loans",
+    icon: Banknote,
+    items: [
+      { title: "Liabilities Dashboard", url: "/liabilities", icon: BarChart3 },
+      { title: "All Liabilities", url: "/liabilities/list", icon: ListTree },
+      { title: "New Liability", url: "/liabilities/create", icon: Plus },
+      { title: "EMI Calendar", url: "/liabilities/emi-calendar", icon: CalendarDays },
     ],
   },
   {

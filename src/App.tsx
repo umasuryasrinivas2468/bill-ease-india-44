@@ -113,6 +113,16 @@ import ProfitLoss from "./pages/accounting/ProfitLoss";
 import ProjectProfitLoss from "./pages/accounting/ProjectProfitLoss";
 import ManualJournals from "./pages/accounting/ManualJournals";
 import FinancialStatements from "./pages/FinancialStatements";
+import AssetsDashboard from "./pages/assets/AssetsDashboard";
+import AssetRegister from "./pages/assets/AssetRegister";
+import CreateAsset from "./pages/assets/CreateAsset";
+import AssetDetail from "./pages/assets/AssetDetail";
+import DepreciationRun from "./pages/assets/DepreciationRun";
+import LiabilitiesDashboard from "./pages/liabilities/LiabilitiesDashboard";
+import LiabilitiesList from "./pages/liabilities/LiabilitiesList";
+import CreateLiability from "./pages/liabilities/CreateLiability";
+import LiabilityDetail from "./pages/liabilities/LiabilityDetail";
+import EmiCalendar from "./pages/liabilities/EmiCalendar";
 
 const queryClient = new QueryClient();
 
@@ -289,6 +299,21 @@ function App() {
                           <Route path="/accounting/project-profit-loss" element={<ProjectProfitLoss />} />
                           <Route path="/accounting/manual-journals" element={<ManualJournals />} />
                           <Route path="/accounting/financial-statements" element={<FinancialStatements />} />
+
+                          {/* Fixed Assets */}
+                          <Route path="/assets" element={<AssetsDashboard />} />
+                          <Route path="/assets/register" element={<AssetRegister />} />
+                          <Route path="/assets/create" element={<CreateAsset />} />
+                          <Route path="/assets/depreciation" element={<DepreciationRun />} />
+                          <Route path="/assets/:id" element={<AssetDetail />} />
+
+                          {/* Liabilities & Loans */}
+                          <Route path="/liabilities" element={<LiabilitiesDashboard />} />
+                          <Route path="/liabilities/list" element={<LiabilitiesList />} />
+                          <Route path="/liabilities/create" element={<CreateLiability />} />
+                          <Route path="/liabilities/emi-calendar" element={<EmiCalendar />} />
+                          <Route path="/liabilities/:id" element={<LiabilityDetail />} />
+
                           <Route path="/expenses" element={<Expenses />} />
                           <Route path="/compliance/gst" element={<GSTCompliance />} />
                           <Route path="/gst-compliance" element={<GSTCompliance />} />

@@ -13,7 +13,22 @@ import { usePerformanceData } from '@/hooks/usePerformanceData';
 import VoiceInput from '@/components/ai-command/VoiceInput';
 import ExampleCommands from '@/components/ai-command/ExampleCommands';
 import ChatMessage, { type ChatMessageData } from '@/components/ai-command/ChatMessage';
+import SmartSuggestions from '@/components/ai-command/SmartSuggestions';
+import JournalActionCard from '@/components/ai-command/JournalActionCard';
 import { postInvoiceJournal, postPurchaseBillJournal } from '@/utils/autoJournalEntry';
+import { parseCommandWithLLM, isLLMIntentAvailable, type AICommandIntent } from '@/services/aiCommandIntentService';
+import {
+  fetchSmartSuggestions,
+  isSuggestionsAvailable,
+  type BusinessSnapshot,
+  type SmartSuggestion,
+} from '@/services/aiCommandSuggestionsService';
+import { parseJournalFromText, loadCoaSnapshot } from '@/services/aiJournalParserService';
+import { computeJournalImpact } from '@/services/shadowPostingService';
+import {
+  executeProposedJournal, reverseExecutedJournal, decidePolicy, AUTO_EXECUTE_THRESHOLD,
+} from '@/services/aiCommandExecutorService';
+import type { AIJournalAction } from '@/types/aiJournalAction';
 
 // ── Regex patterns for intent detection ──
 
@@ -195,18 +210,34 @@ const tryExtractPaymentMode = (text: string): string => {
   return 'bank';
 };
 
+// Verbs that strongly indicate a *transaction*, not a navigation request.
+// If any of these appear, we refuse to navigate even if a keyword matches.
+const TRANSACTION_VERB_RE =
+  /\b(paid|pay|bought|buy|sold|sell|received|receive|create|make|add|generate|record|raise|log|transfer|send|invoice|bill|expense|spent|spend|charge|charged|debit|credit|from|to|for|via|with|using|@|₹|rs\.?|inr|gst|cgst|sgst|igst)\b/i;
+
 const resolveNavigationTarget = (text: string) => {
   const normalized = text.trim().toLowerCase();
   if (!normalized) return null;
+  // Long prompts are almost always transactions — bail out fast.
+  if (normalized.length > 40) return null;
+  // If the prompt looks transactional, never route to navigation.
+  if (TRANSACTION_VERB_RE.test(normalized)) return null;
+
   return (
     NAVIGATION_TARGETS.find((t) =>
-      t.keywords.some(
-        (kw) =>
-          normalized === kw || normalized.includes(kw) ||
-          normalized === `open ${kw}` || normalized === `go to ${kw}` ||
-          normalized === `show ${kw}` || normalized === `navigate to ${kw}` ||
-          normalized === `take me to ${kw}`
-      )
+      t.keywords.some((kw) => {
+        // Only allow EXACT match or canonical "open/go to/show/navigate to/take me to" phrasings.
+        return (
+          normalized === kw ||
+          normalized === `open ${kw}` ||
+          normalized === `go to ${kw}` ||
+          normalized === `show ${kw}` ||
+          normalized === `navigate to ${kw}` ||
+          normalized === `take me to ${kw}` ||
+          normalized === `${kw} page` ||
+          normalized === `the ${kw}`
+        );
+      }),
     ) || null
   );
 };
@@ -268,7 +299,13 @@ const AICommandBar: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [messages, setMessages] = useState<ChatMessageData[]>([]);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [suggestions, setSuggestions] = useState<SmartSuggestion[]>([]);
+  const [previewLine, setPreviewLine] = useState('');
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  // Journal-grounded actions, keyed by chat message id.
+  const [journalActions, setJournalActions] = useState<Record<string, AIJournalAction>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
+  const suggestionsAbortRef = useRef<AbortController | null>(null);
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -284,6 +321,109 @@ const AICommandBar: React.FC = () => {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isLoading]);
+
+  // ── Smart suggestion snapshot (memoised slice of real business data) ──
+  const businessSnapshot: BusinessSnapshot = useMemo(() => {
+    const pd: any = performanceData || {};
+    const invoices: any[] = Array.isArray(pd.invoices) ? pd.invoices : [];
+    const clients: any[] = Array.isArray(pd.clients) ? pd.clients : [];
+    const inventories: any[] = Array.isArray(pd.inventories) ? pd.inventories : [];
+
+    const today = Date.now();
+    const overdueInvoices = invoices
+      .filter((inv) => inv?.status !== 'paid' && inv?.due_date)
+      .map((inv) => ({
+        number: inv.invoice_number || inv.number || '',
+        client: inv.client_name || 'Client',
+        amount: Number(inv.total_amount || 0),
+        daysOverdue: Math.max(
+          0,
+          Math.floor((today - new Date(inv.due_date).getTime()) / 86400000),
+        ),
+      }))
+      .filter((inv) => inv.daysOverdue > 0)
+      .sort((a, b) => b.daysOverdue - a.daysOverdue)
+      .slice(0, 5);
+
+    const recentClients = clients
+      .slice()
+      .sort((a, b) =>
+        String(b?.created_at || '').localeCompare(String(a?.created_at || '')),
+      )
+      .map((c) => c?.name)
+      .filter((n): n is string => typeof n === 'string' && n.length > 0)
+      .slice(0, 6);
+
+    const lowStockItems = inventories
+      .filter(
+        (it) =>
+          Number(it?.stock_quantity || 0) > 0 &&
+          Number(it?.stock_quantity || 0) <= Number(it?.reorder_level || 5),
+      )
+      .map((it) => ({
+        name: it.product_name,
+        quantity: Number(it.stock_quantity || 0),
+      }))
+      .slice(0, 5);
+
+    const topClientEntry = Object.entries(pd.revenueByClient || {})
+      .sort((a, b) => Number(b[1]) - Number(a[1]))[0];
+
+    return {
+      businessName: pd.businessName,
+      clientsCount: pd.clientsCount,
+      vendorsCount: pd.vendorsCount,
+      pendingInvoices: invoices.filter((inv) => inv?.status === 'pending').length,
+      overdueInvoices,
+      recentClients,
+      lowStockItems,
+      topClient: topClientEntry
+        ? { name: topClientEntry[0], revenue: Number(topClientEntry[1]) }
+        : null,
+      totalRevenue: pd.totalRevenue,
+      totalExpenses: pd.totalExpenses,
+    };
+    // performanceData is a fresh object on every render; depend on its primitive
+    // markers so we don't refire on every parent re-render.
+  }, [
+    (performanceData as any)?.invoicesCreated,
+    (performanceData as any)?.clientsCount,
+    (performanceData as any)?.totalRevenue,
+  ]);
+
+  // ── Debounced live suggestions ──
+  useEffect(() => {
+    if (!isExpanded || pendingAction || !isSuggestionsAvailable()) {
+      setSuggestions([]);
+      setPreviewLine('');
+      return;
+    }
+
+    // Cancel any in-flight request first.
+    suggestionsAbortRef.current?.abort();
+    const controller = new AbortController();
+    suggestionsAbortRef.current = controller;
+
+    setSuggestionsLoading(true);
+    const timer = window.setTimeout(async () => {
+      const result = await fetchSmartSuggestions(input, businessSnapshot, controller.signal);
+      if (controller.signal.aborted) return;
+      if (result) {
+        setSuggestions(result.suggestions);
+        setPreviewLine(result.preview);
+      } else {
+        setSuggestions([]);
+        setPreviewLine('');
+      }
+      setSuggestionsLoading(false);
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+      setSuggestionsLoading(false);
+    };
+  }, [input, isExpanded, pendingAction, businessSnapshot]);
 
   const addUserMessage = (content: string) => {
     setMessages((prev) => [...prev, { id: createId(), role: 'user', content, timestamp: new Date() }]);
@@ -313,10 +453,69 @@ const AICommandBar: React.FC = () => {
 
   const invalidateAll = () => {
     ['invoices', 'clients', 'vendors', 'inventory', 'expenses', 'purchase-bills',
-      'sales-orders', 'purchase-orders', 'quotations', 'dashboard-stats', 'payables', 'receivables'].forEach(key =>
+      'sales-orders', 'purchase-orders', 'quotations', 'dashboard-stats', 'payables', 'receivables',
+      'journals-with-lines', 'accounts'].forEach(key =>
       queryClient.invalidateQueries({ queryKey: [key] })
     );
   };
+
+  // ── Journal-grounded action helpers ──
+  const addJournalAction = (action: AIJournalAction) => {
+    const messageId = createId();
+    setMessages((prev) => [
+      ...prev,
+      { id: messageId, role: 'assistant', content: '', timestamp: new Date(), recordType: 'journal_action' },
+    ]);
+    setJournalActions((prev) => ({ ...prev, [messageId]: { ...action, id: messageId } }));
+    return messageId;
+  };
+
+  const updateJournalAction = (messageId: string, patch: Partial<AIJournalAction>) => {
+    setJournalActions((prev) => ({
+      ...prev,
+      [messageId]: { ...(prev[messageId] || {} as AIJournalAction), ...patch, id: messageId },
+    }));
+  };
+
+  const handleExecuteAction = async (messageId: string) => {
+    if (!user?.id) return;
+    const action = journalActions[messageId];
+    if (!action || action.status === 'executing' || action.status === 'posted') return;
+    updateJournalAction(messageId, { status: 'executing' });
+    try {
+      const reversal = await executeProposedJournal(user.id, action.proposal);
+      updateJournalAction(messageId, { status: 'posted', reversal });
+      invalidateAll();
+      toast({ title: 'Journal posted', description: action.proposal.narration });
+    } catch (err: any) {
+      updateJournalAction(messageId, { status: 'failed', error: err?.message || String(err) });
+      toast({ title: 'Posting failed', description: err?.message || String(err), variant: 'destructive' });
+    }
+  };
+
+  const handleUndoAction = async (messageId: string) => {
+    const action = journalActions[messageId];
+    if (!action?.reversal) return;
+    try {
+      const reversed = await reverseExecutedJournal(action.reversal, { reason: 'AI command bar undo' });
+      updateJournalAction(messageId, { status: 'reversed', reversal: reversed });
+      invalidateAll();
+      toast({ title: 'Reversed', description: 'Paired reversal journal posted.' });
+    } catch (err: any) {
+      toast({ title: 'Undo failed', description: err?.message || String(err), variant: 'destructive' });
+    }
+  };
+
+  const handleCancelAction = (messageId: string) => {
+    updateJournalAction(messageId, { status: 'cancelled' });
+  };
+
+  // Warm the COA snapshot when the bar opens so the first parse is faster.
+  useEffect(() => {
+    if (isExpanded && user?.id) {
+      loadCoaSnapshot(user.id).catch(() => { /* non-fatal */ });
+    }
+  }, [isExpanded, user?.id]);
 
   // ── Entity Resolution ──
 
@@ -1010,20 +1209,103 @@ const AICommandBar: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // 1. Navigation check (only for non-create commands)
-      const navigationTarget = resolveNavigationTarget(prompt);
-      if (navigationTarget && !/(create|make|add|generate|record|raise|log)\b/i.test(prompt)) {
+      // 0. Journal-grounded pipeline (Features 1+2+3):
+      //    a) Ask Claude Opus 4 to emit a balanced double-entry journal against
+      //       the user's live COA.
+      //    b) Shadow-post for impact preview (no DB writes).
+      //    c) Confidence-gated execution: auto-execute high-confidence parses,
+      //       otherwise show the action card for confirmation. Either way the
+      //       executed journal carries a paired-reversal handle (one-tap undo).
+      //
+      // Looks transactional? Force the journal path even if the model produced
+      // a weak parse — the user explicitly typed a financial action.
+      const looksTransactional = TRANSACTION_VERB_RE.test(prompt);
+      try {
+        const parsed = await parseJournalFromText({ userId: user.id, prompt });
+        if (parsed && parsed.result.proposal.lines.length >= 2) {
+          const { result, validation } = parsed;
+          const coa = await loadCoaSnapshot(user.id);
+          const impact = computeJournalImpact(result.proposal, coa);
+          const policy = decidePolicy(result.confidence, validation);
+          const action: AIJournalAction = {
+            id: '',
+            proposal: result.proposal,
+            validation,
+            impact,
+            confidence: result.confidence,
+            explanation: result.explanation,
+            status: 'pending',
+          };
+          const messageId = addJournalAction(action);
+
+          if (policy === 'auto_execute' && result.confidence >= AUTO_EXECUTE_THRESHOLD) {
+            // Fire-and-forget execution; the card updates itself when it completes.
+            void handleExecuteAction(messageId);
+          }
+          // For 'require_confirmation' and 'refuse' we just render the card and
+          // let the user decide. Either path short-circuits the legacy flow.
+          return;
+        }
+        // Parser returned null/empty but the prompt is clearly transactional —
+        // tell the user instead of silently routing to nav or advisor.
+        if (looksTransactional) {
+          addAssistantMessage({
+            content:
+              'I could not turn that into a balanced journal. Likely causes:\n' +
+              '- OpenRouter key is missing or invalid (check `.env` → `VITE_OPENROUTER_API_KEY`).\n' +
+              '- Your Chart of Accounts has no leaf accounts yet (visit Accounting → Chart of Accounts).\n' +
+              '- The model could not match an account in your COA. Try rephrasing with more detail (vendor, account name).',
+            success: false,
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn('[AICommandBar] journal-grounded pipeline failed, falling back', err);
+        if (looksTransactional) {
+          addAssistantMessage({
+            content: `Journal parser error: ${(err as any)?.message || String(err)}`,
+            success: false,
+          });
+          return;
+        }
+      }
+
+      // 1. LLM-based intent parsing via OpenRouter (Claude Opus 4) — high-accuracy
+      // path. Falls through silently when the key is missing, the call fails, or
+      // confidence is too low to act on.
+      let workingPrompt = prompt;
+      let llmIntent: AICommandIntent | null = null;
+      if (isLLMIntentAvailable()) {
+        const parsed = await parseCommandWithLLM(prompt);
+        if (parsed && parsed.confidence >= 0.6) {
+          // Use the canonical rewrite so downstream regex extractors get clean input.
+          if (parsed.normalizedPrompt && parsed.normalizedPrompt.trim().length > 0) {
+            workingPrompt = parsed.normalizedPrompt;
+          }
+          if (parsed.intent && parsed.intent !== 'unknown' && parsed.intent !== 'answer') {
+            llmIntent = parsed.intent;
+          }
+        }
+      }
+
+      // 2. Navigation check (only for non-create commands)
+      const navigationTarget = resolveNavigationTarget(workingPrompt);
+      if (
+        (llmIntent === 'navigate' || (!llmIntent && navigationTarget)) &&
+        navigationTarget &&
+        !/(create|make|add|generate|record|raise|log)\b/i.test(workingPrompt)
+      ) {
         navigate(navigationTarget.route);
         addAssistantMessage({ content: `Opening **${navigationTarget.label}**.`, recordType: 'navigation', success: true });
         return;
       }
 
-      // 2. Detect intent
-      const intent = detectIntent(prompt);
+      // 3. Detect intent (prefer LLM, fall back to regex)
+      const intent = llmIntent && llmIntent !== 'navigate' ? llmIntent : detectIntent(workingPrompt);
 
       if (intent) {
-        // 3. Execute local intent
-        const result = await executeIntent(intent, prompt);
+        // 4. Execute local intent on the normalized prompt
+        const result = await executeIntent(intent, workingPrompt);
         if (result === 'pending') return; // waiting for user confirmation
         if (result) {
           addAssistantMessage({ content: result.message, recordType: result.recordType, recordId: result.recordId, success: true });
@@ -1031,11 +1313,11 @@ const AICommandBar: React.FC = () => {
         }
       }
 
-      // 4. Try server-side AI
+      // 5. Try server-side AI (use the canonical prompt for higher accuracy)
       try {
         const { data, error } = await supabase.functions.invoke('ai-command', {
           body: {
-            prompt,
+            prompt: workingPrompt,
             userId: user.id,
             voiceLanguage: 'english',
             conversationHistory: messages
@@ -1062,9 +1344,9 @@ const AICommandBar: React.FC = () => {
         }
       } catch { /* fall through to advisor */ }
 
-      // 5. Financial advisor fallback
+      // 6. Financial advisor fallback
       const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke('financial-advisor', {
-        body: { question: prompt, dataContext: performanceData },
+        body: { question: workingPrompt, dataContext: performanceData },
       });
       if (fallbackError) throw fallbackError;
 
@@ -1106,9 +1388,21 @@ const AICommandBar: React.FC = () => {
             <ScrollArea className="h-[42vh] p-3" ref={scrollRef as any}>
               <div className="space-y-3">
                 {!hasMessages && <ExampleCommands onSelect={(text) => void runCommand(text)} disabled={isLoading} />}
-                {messages.map((message) => (
-                  <ChatMessage key={message.id} message={message} onNavigate={navigate} />
-                ))}
+                {messages.map((message) => {
+                  const action = journalActions[message.id];
+                  if (action) {
+                    return (
+                      <JournalActionCard
+                        key={message.id}
+                        action={action}
+                        onExecute={() => void handleExecuteAction(message.id)}
+                        onCancel={() => handleCancelAction(message.id)}
+                        onUndo={() => void handleUndoAction(message.id)}
+                      />
+                    );
+                  }
+                  return <ChatMessage key={message.id} message={message} onNavigate={navigate} />;
+                })}
                 {isLoading && (
                   <div className="flex gap-3 justify-start">
                     <div className="h-8 w-8 shrink-0 rounded-full bg-primary flex items-center justify-center">
@@ -1125,6 +1419,17 @@ const AICommandBar: React.FC = () => {
               </div>
             </ScrollArea>
           </div>
+        )}
+
+        {/* Smart suggestions strip (above the input) */}
+        {isExpanded && !pendingAction && (
+          <SmartSuggestions
+            suggestions={suggestions}
+            preview={previewLine}
+            loading={suggestionsLoading}
+            disabled={isLoading}
+            onSelect={(text) => void runCommand(text)}
+          />
         )}
 
         {/* Collapsed pill */}
