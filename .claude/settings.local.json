@@ -22,7 +22,11 @@
       "Bash(grep -n \"\\\\\\\\\\\\\\\\\\\\.\" \"C:/Users/54712/Downloads/bill-ease-india-44-12/src/services/salesReturnService.ts\")",
       "Bash(npm run *)",
       "Bash(Get-ChildItem *)",
-      "Bash(grep -E \"fixedAssets|fixedAssetService|depreciationService|assetDisposalService|liabilityService|liabilities|useFixedAssets|useDepreciation|useLiabilities|pages\\\\\\\\\\\\\\\\assets|pages\\\\\\\\\\\\\\\\liabilities|App.tsx|AppSidebar\")"
+      "Bash(grep -E \"fixedAssets|fixedAssetService|depreciationService|assetDisposalService|liabilityService|liabilities|useFixedAssets|useDepreciation|useLiabilities|pages\\\\\\\\\\\\\\\\assets|pages\\\\\\\\\\\\\\\\liabilities|App.tsx|AppSidebar\")",
+      "Bash(findstr /i \"asset liab\")",
+      "Bash(findstr /i \"asset\")",
+      "Bash(findstr /i \"liab\")",
+      "Bash(echo \"EXIT=$?\")"
     ]
   }
 }

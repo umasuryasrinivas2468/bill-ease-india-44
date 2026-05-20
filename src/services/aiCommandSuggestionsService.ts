@@ -1,14 +1,14 @@
 // Live, context-aware suggestion engine for the AI Command Bar.
 //
 // Given partial input + a slim slice of the user's real business data, asks
-// Claude Opus 4 (via OpenRouter) for:
+// Gemini Flash for:
 //   - 2-4 fully-formed command suggestions tailored to the moment
 //   - a one-line "preview" of what the current input is about to do
 //
 // Designed to be called from a debounced effect (300-400ms). Returns null on
 // any failure so the UI can quietly degrade to static examples.
 
-import { isOpenRouterConfigured, openRouterJSON } from '@/lib/openrouter';
+import { isGeminiConfigured, geminiJSON } from '@/lib/gemini';
 
 export interface BusinessSnapshot {
   businessName?: string;
@@ -93,18 +93,18 @@ export const fetchSmartSuggestions = async (
   snapshot: BusinessSnapshot,
   signal?: AbortSignal,
 ): Promise<SuggestionsResult | null> => {
-  if (!isOpenRouterConfigured()) return null;
+  if (!isGeminiConfigured()) return null;
   try {
-    const parsed = await openRouterJSON<SuggestionsResult>({
+    const parsed = await geminiJSON<SuggestionsResult>({
       messages: [
         { role: 'system', content: SUGGESTIONS_SYSTEM_PROMPT },
         { role: 'user', content: buildUserPrompt(partial.trim(), snapshot) },
       ],
-      // A fast cheaper model is fine here — accuracy comes from the snapshot
-      // grounding, not raw reasoning power. Falls back to env default if unset.
-      model:
-        (import.meta.env.VITE_OPENROUTER_SUGGESTIONS_MODEL as string) ||
-        'anthropic/claude-sonnet-4',
+      // Gemini Flash is already fast/cheap; accuracy comes from snapshot
+      // grounding rather than raw reasoning power. Optional per-service override.
+      ...((import.meta.env.VITE_GEMINI_SUGGESTIONS_MODEL as string)
+        ? { model: import.meta.env.VITE_GEMINI_SUGGESTIONS_MODEL as string }
+        : {}),
       temperature: 0.3,
       maxTokens: 500,
       signal,
@@ -130,4 +130,4 @@ export const fetchSmartSuggestions = async (
   }
 };
 
-export const isSuggestionsAvailable = isOpenRouterConfigured;
+export const isSuggestionsAvailable = isGeminiConfigured;

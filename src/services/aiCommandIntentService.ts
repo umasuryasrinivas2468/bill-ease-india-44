@@ -1,12 +1,12 @@
-// Uses OpenRouter (Claude Opus 4 by default) to classify a free-text command
-// from the AI Command Bar into one of the app's known intents, and to normalize
-// the prompt into a canonical form that the existing regex extractors can parse
+// Uses Gemini (Flash 2.5 by default) to classify a free-text command from the
+// AI Command Bar into one of the app's known intents, and to normalize the
+// prompt into a canonical form that the existing regex extractors can parse
 // reliably.
 //
 // This is an accuracy upgrade over pure regex intent detection — it handles
 // fuzzy phrasing, typos, code-switching (e.g. Hinglish), and varied word order.
 
-import { isOpenRouterConfigured, openRouterJSON } from '@/lib/openrouter';
+import { isGeminiConfigured, geminiJSON } from '@/lib/gemini';
 
 export type AICommandIntent =
   | 'create_invoice'
@@ -128,12 +128,12 @@ export const parseCommandWithLLM = async (
   prompt: string,
   signal?: AbortSignal,
 ): Promise<ParsedCommand | null> => {
-  if (!isOpenRouterConfigured()) return null;
+  if (!isGeminiConfigured()) return null;
   const trimmed = prompt.trim();
   if (!trimmed) return null;
 
   try {
-    const parsed = await openRouterJSON<ParsedCommand>({
+    const parsed = await geminiJSON<ParsedCommand>({
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: trimmed },
@@ -158,9 +158,9 @@ export const parseCommandWithLLM = async (
     return parsed;
   } catch (err) {
     // Never block the command bar on LLM failure — caller falls back to regex.
-    console.warn('[aiCommandIntentService] OpenRouter parse failed:', err);
+    console.warn('[aiCommandIntentService] Gemini parse failed:', err);
     return null;
   }
 };
 
-export const isLLMIntentAvailable = isOpenRouterConfigured;
+export const isLLMIntentAvailable = isGeminiConfigured;

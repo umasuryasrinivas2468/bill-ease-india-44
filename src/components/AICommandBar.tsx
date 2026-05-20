@@ -29,6 +29,13 @@ import {
   executeProposedJournal, reverseExecutedJournal, decidePolicy, AUTO_EXECUTE_THRESHOLD,
 } from '@/services/aiCommandExecutorService';
 import type { AIJournalAction } from '@/types/aiJournalAction';
+import {
+  runAgent,
+  isAgentAvailable,
+  type AgentStep,
+  type AgentToolExecutionResult,
+  type AgentToolRegistry,
+} from '@/services/aiAgentService';
 
 // ── Regex patterns for intent detection ──
 
@@ -208,6 +215,19 @@ const tryExtractPaymentMode = (text: string): string => {
   if (lower.includes('cheque') || lower.includes('check')) return 'cheque';
   if (lower.includes('card') || lower.includes('credit')) return 'credit_card';
   return 'bank';
+};
+
+// Compound-request detection: when the prompt asks for two or more actions
+// joined by "then" / "and then" / "after that" / "next" / "also" with an
+// action verb on each side, route through the tool-calling agent.
+const COMPOUND_CONNECTIVE_RE = /\b(?:and\s+then|then|after\s+that|next|also)\b/i;
+const ACTION_VERB_RE = /\b(create|make|add|generate|record|raise|log|invoice|bill|pay|send|share|email|update|delete|remove|check|show)\b/i;
+
+const looksCompound = (text: string): boolean => {
+  if (!COMPOUND_CONNECTIVE_RE.test(text)) return false;
+  const parts = text.split(/\b(?:and\s+then|then|after\s+that|next|also)\b/i);
+  if (parts.length < 2) return false;
+  return parts.filter((p) => ACTION_VERB_RE.test(p)).length >= 2;
 };
 
 // Verbs that strongly indicate a *transaction*, not a navigation request.
@@ -1187,6 +1207,161 @@ const AICommandBar: React.FC = () => {
     }
   };
 
+  // ── Agent tool registry ──────────────────────────────────────────────────
+  // Maps Gemini tool calls onto the existing handlers + a few read helpers.
+  // Created per-call so it closes over fresh component state.
+  const buildAgentTools = (): AgentToolRegistry => {
+    const fromIntent = async (
+      intent: string,
+      args: Record<string, unknown>,
+    ): Promise<AgentToolExecutionResult> => {
+      const promptArg = typeof args?.prompt === 'string' ? args.prompt.trim() : '';
+      if (!promptArg) return { ok: false, summary: 'Missing "prompt" argument.' };
+      try {
+        const result = await executeIntent(intent, promptArg);
+        if (result === 'pending') {
+          return {
+            ok: true,
+            summary:
+              'Action requires user yes/no confirmation. A confirmation message has been shown to the user — stop here and reply with a short prompt asking them to confirm.',
+          };
+        }
+        if (!result) return { ok: false, summary: 'Handler returned no result (user may not be signed in).' };
+        return {
+          ok: true,
+          summary: typeof result.message === 'string' ? result.message : `Completed ${intent}.`,
+          recordType: result.recordType,
+          recordId: result.recordId,
+        };
+      } catch (err) {
+        return { ok: false, summary: `${intent} failed: ${(err as Error)?.message || String(err)}` };
+      }
+    };
+
+    return {
+      create_invoice: (a) => fromIntent('create_invoice', a),
+      create_bill: (a) => fromIntent('create_bill', a),
+      create_expense: (a) => fromIntent('create_expense', a),
+      create_sales_order: (a) => fromIntent('create_sales_order', a),
+      create_purchase_order: (a) => fromIntent('create_purchase_order', a),
+      create_quotation: (a) => fromIntent('create_quotation', a),
+      create_client: (a) => fromIntent('create_client', a),
+      create_vendor: (a) => fromIntent('create_vendor', a),
+      create_inventory: (a) => fromIntent('create_inventory', a),
+      record_payment: (a) => fromIntent('record_payment', a),
+      check_stock: (a) => fromIntent('check_stock', a),
+      create_payment_link: (a) => fromIntent('create_payment_link', a),
+
+      list_clients: async (a) => {
+        if (!user?.id) return { ok: false, summary: 'Not signed in.' };
+        const q = typeof a?.query === 'string' ? a.query : '';
+        const limit = Math.min(Number(a?.limit) || 10, 25);
+        let query = supabase.from('clients').select('id, name, email, phone').eq('user_id', user.id).limit(limit);
+        if (q) query = query.ilike('name', `%${q}%`);
+        const { data, error } = await query;
+        if (error) return { ok: false, summary: error.message };
+        const list = (data || []).map((c) => ({ id: c.id, name: c.name, email: c.email, phone: c.phone }));
+        return { ok: true, summary: `${list.length} client(s) found.`, data: { clients: list } };
+      },
+
+      list_vendors: async (a) => {
+        if (!user?.id) return { ok: false, summary: 'Not signed in.' };
+        const q = typeof a?.query === 'string' ? a.query : '';
+        const limit = Math.min(Number(a?.limit) || 10, 25);
+        let query = supabase.from('vendors').select('id, name, email, phone').eq('user_id', user.id).limit(limit);
+        if (q) query = query.ilike('name', `%${q}%`);
+        const { data, error } = await query;
+        if (error) return { ok: false, summary: error.message };
+        const list = (data || []).map((v) => ({ id: v.id, name: v.name, email: v.email, phone: v.phone }));
+        return { ok: true, summary: `${list.length} vendor(s) found.`, data: { vendors: list } };
+      },
+
+      list_inventory_items: async (a) => {
+        if (!user?.id) return { ok: false, summary: 'Not signed in.' };
+        const q = typeof a?.query === 'string' ? a.query : '';
+        const limit = Math.min(Number(a?.limit) || 10, 25);
+        let query = supabase
+          .from('inventory')
+          .select('id, product_name, sku, stock_quantity, selling_price')
+          .eq('user_id', user.id)
+          .limit(limit);
+        if (q) query = query.ilike('product_name', `%${q}%`);
+        const { data, error } = await query;
+        if (error) return { ok: false, summary: error.message };
+        return { ok: true, summary: `${(data || []).length} item(s).`, data: { items: data || [] } };
+      },
+
+      get_overdue_invoices: async (a) => {
+        if (!user?.id) return { ok: false, summary: 'Not signed in.' };
+        const limit = Math.min(Number(a?.limit) || 10, 25);
+        const today = new Date().toISOString().split('T')[0];
+        const { data, error } = await supabase
+          .from('invoices')
+          .select('invoice_number, client_name, total_amount, due_date, status')
+          .eq('user_id', user.id)
+          .in('status', ['pending', 'overdue', 'partial'])
+          .lt('due_date', today)
+          .order('due_date', { ascending: true })
+          .limit(limit);
+        if (error) return { ok: false, summary: error.message };
+        return { ok: true, summary: `${(data || []).length} overdue invoice(s).`, data: { invoices: data || [] } };
+      },
+
+      get_business_snapshot: async () => {
+        return { ok: true, summary: 'Snapshot returned.', data: { snapshot: businessSnapshot } };
+      },
+
+      post_journal_from_text: async (a) => {
+        if (!user?.id) return { ok: false, summary: 'Not signed in.' };
+        const promptArg = typeof a?.prompt === 'string' ? a.prompt.trim() : '';
+        if (!promptArg) return { ok: false, summary: 'Missing "prompt".' };
+        try {
+          const parsed = await parseJournalFromText({ userId: user.id, prompt: promptArg });
+          if (!parsed || parsed.result.proposal.lines.length < 2) {
+            return { ok: false, summary: 'Could not produce a balanced journal from that prompt.' };
+          }
+          const { result, validation } = parsed;
+          const coa = await loadCoaSnapshot(user.id);
+          const impact = computeJournalImpact(result.proposal, coa);
+          const policy = decidePolicy(result.confidence, validation);
+          const action: AIJournalAction = {
+            id: '',
+            proposal: result.proposal,
+            validation,
+            impact,
+            confidence: result.confidence,
+            explanation: result.explanation,
+            status: 'pending',
+          };
+          const messageId = addJournalAction(action);
+          if (policy === 'auto_execute' && result.confidence >= AUTO_EXECUTE_THRESHOLD) {
+            void handleExecuteAction(messageId);
+            return {
+              ok: true,
+              summary: `Journal auto-posted: ${result.proposal.narration}`,
+              recordType: 'journal',
+            };
+          }
+          return {
+            ok: true,
+            summary: `Journal proposal prepared (confidence ${(result.confidence * 100).toFixed(0)}%). Awaiting user confirmation in the chat.`,
+          };
+        } catch (err) {
+          return { ok: false, summary: `Journal parse failed: ${(err as Error)?.message || String(err)}` };
+        }
+      },
+
+      navigate: async (a) => {
+        const target = typeof a?.target === 'string' ? a.target : '';
+        if (!target) return { ok: false, summary: 'Missing "target".' };
+        const resolved = resolveNavigationTarget(target);
+        if (!resolved) return { ok: false, summary: `No page matched "${target}".` };
+        navigate(resolved.route);
+        return { ok: true, summary: `Opened ${resolved.label}.`, recordType: 'navigation' };
+      },
+    };
+  };
+
   // ── Main command runner ──
 
   const runCommand = async (promptText: string) => {
@@ -1209,8 +1384,50 @@ const AICommandBar: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // 0a. Tool-calling agent (compound requests only).
+      //     Routes things like "create client X then invoice them ₹50k 18% GST"
+      //     through Gemini with the full tool catalog. Single-shot requests
+      //     fall through to the journal-grounded pipeline below — it produces
+      //     a richer JournalActionCard UI for one-shot transactions.
+      if (looksCompound(prompt) && isAgentAvailable()) {
+        try {
+          const stepBuffer: AgentStep[] = [];
+          const result = await runAgent({
+            prompt,
+            tools: buildAgentTools(),
+            businessContext: JSON.stringify({
+              businessName: businessSnapshot.businessName,
+              clientsCount: businessSnapshot.clientsCount,
+              vendorsCount: businessSnapshot.vendorsCount,
+              pendingInvoices: businessSnapshot.pendingInvoices,
+              recentClients: (businessSnapshot.recentClients || []).slice(0, 5),
+            }),
+            conversationHistory: messages
+              .slice(-6)
+              .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+            onStep: (step) => stepBuffer.push(step),
+            signal: undefined,
+          });
+
+          const toolLines = stepBuffer
+            .filter((s) => s.kind === 'tool_call')
+            .map((s) => `- **${s.tool}** ${s.args ? `\`${JSON.stringify(s.args).slice(0, 120)}\`` : ''}`);
+          const stepsBlock = toolLines.length > 0 ? `\n\n_Steps taken:_\n${toolLines.join('\n')}` : '';
+          addAssistantMessage({
+            content: `${result.message}${stepsBlock}`,
+            success: true,
+            recordType: result.createdRecords[0]?.recordType,
+            recordId: result.createdRecords[0]?.recordId,
+          });
+          return;
+        } catch (err) {
+          console.warn('[AICommandBar] agent path failed, falling back to single-shot', err);
+          // Fall through to the existing pipeline.
+        }
+      }
+
       // 0. Journal-grounded pipeline (Features 1+2+3):
-      //    a) Ask Claude Opus 4 to emit a balanced double-entry journal against
+      //    a) Ask Gemini to emit a balanced double-entry journal against
       //       the user's live COA.
       //    b) Shadow-post for impact preview (no DB writes).
       //    c) Confidence-gated execution: auto-execute high-confidence parses,
@@ -1252,7 +1469,7 @@ const AICommandBar: React.FC = () => {
           addAssistantMessage({
             content:
               'I could not turn that into a balanced journal. Likely causes:\n' +
-              '- OpenRouter key is missing or invalid (check `.env` → `VITE_OPENROUTER_API_KEY`).\n' +
+              '- Gemini key is missing or invalid (check `.env` → `VITE_GEMINI_API_KEY`).\n' +
               '- Your Chart of Accounts has no leaf accounts yet (visit Accounting → Chart of Accounts).\n' +
               '- The model could not match an account in your COA. Try rephrasing with more detail (vendor, account name).',
             success: false,
@@ -1270,9 +1487,9 @@ const AICommandBar: React.FC = () => {
         }
       }
 
-      // 1. LLM-based intent parsing via OpenRouter (Claude Opus 4) — high-accuracy
-      // path. Falls through silently when the key is missing, the call fails, or
-      // confidence is too low to act on.
+      // 1. LLM-based intent parsing via Gemini — high-accuracy path. Falls
+      // through silently when the key is missing, the call fails, or confidence
+      // is too low to act on.
       let workingPrompt = prompt;
       let llmIntent: AICommandIntent | null = null;
       if (isLLMIntentAvailable()) {

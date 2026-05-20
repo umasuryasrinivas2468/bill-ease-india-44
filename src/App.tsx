@@ -118,6 +118,7 @@ import AssetRegister from "./pages/assets/AssetRegister";
 import CreateAsset from "./pages/assets/CreateAsset";
 import AssetDetail from "./pages/assets/AssetDetail";
 import DepreciationRun from "./pages/assets/DepreciationRun";
+import MaintenanceDashboard from "./pages/assets/MaintenanceDashboard";
 import LiabilitiesDashboard from "./pages/liabilities/LiabilitiesDashboard";
 import LiabilitiesList from "./pages/liabilities/LiabilitiesList";
 import CreateLiability from "./pages/liabilities/CreateLiability";
@@ -305,6 +306,7 @@ function App() {
                           <Route path="/assets/register" element={<AssetRegister />} />
                           <Route path="/assets/create" element={<CreateAsset />} />
                           <Route path="/assets/depreciation" element={<DepreciationRun />} />
+                          <Route path="/assets/maintenance" element={<MaintenanceDashboard />} />
                           <Route path="/assets/:id" element={<AssetDetail />} />
 
                           {/* Liabilities & Loans */}

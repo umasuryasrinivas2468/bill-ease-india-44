@@ -47,6 +47,7 @@ import {
   TrendingDown,
   ClipboardCheck,
   Plus,
+  Wrench,
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import { useAuthorization } from "@/hooks/useAuthorization";
@@ -191,6 +192,15 @@ const SECTIONS: NavSection[] = [
     ],
   },
   {
+    key: "space",
+    title: "Space",
+    icon: FolderKanban,
+    items: [
+      { title: "Projects", url: "/space/projects", icon: FolderKanban },
+      { title: "Timesheet", url: "/space/timesheet", icon: CalendarClock },
+    ],
+  },
+  {
     key: "fixed-assets",
     title: "Fixed Assets",
     icon: Boxes,
@@ -199,6 +209,7 @@ const SECTIONS: NavSection[] = [
       { title: "Asset Register", url: "/assets/register", icon: ListTree },
       { title: "New Asset", url: "/assets/create", icon: Plus },
       { title: "Depreciation Run", url: "/assets/depreciation", icon: CalendarClock },
+      { title: "Maintenance", url: "/assets/maintenance", icon: Wrench },
     ],
   },
   {

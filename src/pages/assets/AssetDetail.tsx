@@ -16,6 +16,7 @@ import {
   useFixedAsset, useAssetTransactions, useAssetDepreciationSchedule, useDisposeAsset,
 } from '@/hooks/useFixedAssets';
 import { usePostDepreciationPeriod, useRegenerateSchedule } from '@/hooks/useDepreciation';
+import MaintenanceTab from '@/components/assets/MaintenanceTab';
 
 const inr = (n: number | null | undefined) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
@@ -117,6 +118,7 @@ const AssetDetail: React.FC = () => {
         <TabsList>
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="schedule">Depreciation schedule</TabsTrigger>
+          <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
@@ -194,6 +196,10 @@ const AssetDetail: React.FC = () => {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="maintenance" className="pt-2">
+          <MaintenanceTab assetId={asset.id} assetName={asset.name} />
         </TabsContent>
 
         <TabsContent value="history" className="pt-2">

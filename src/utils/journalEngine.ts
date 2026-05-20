@@ -40,7 +40,20 @@ export type SourceType =
   | 'accrual' | 'accrual_reversal'
   | 'recurring'
   | 'opening_balance'
-  | 'manual';
+  | 'manual'
+  | 'reversal'
+  | 'asset_purchase' | 'asset_purchase_reversal'
+  | 'asset_capitalization'
+  | 'depreciation' | 'depreciation_reversal'
+  | 'asset_impairment'
+  | 'asset_transfer'
+  | 'asset_disposal' | 'asset_disposal_reversal'
+  | 'asset_write_off'
+  | 'asset_maintenance' | 'asset_maintenance_reversal'
+  | 'loan_disbursement' | 'loan_disbursement_reversal'
+  | 'loan_emi' | 'loan_emi_reversal'
+  | 'loan_interest_accrual'
+  | 'liability_settlement';
 
 export type TaxType = 'cgst' | 'sgst' | 'igst' | 'cess' | 'rcm_input' | 'rcm_output' | 'itc' | 'output_gst' | 'tds' | 'tcs';
 

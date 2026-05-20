@@ -2,9 +2,8 @@
 // Feature 1: Journal-Grounded NL Parser
 //
 // Takes a free-text command (e.g. "Bill from ABC Supplies for ₹50,000 + 18%
-// GST, paid via HDFC") and asks Claude Opus 4 to emit a fully-formed
-// double-entry journal — line-by-line Dr/Cr against the user's actual COA
-// account_ids.
+// GST, paid via HDFC") and asks Gemini to emit a fully-formed double-entry
+// journal — line-by-line Dr/Cr against the user's actual COA account_ids.
 //
 // The model is constrained by:
 //   1. A live slice of the user's leaf accounts (id + code + name + type).
@@ -22,7 +21,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { normalizeUserId } from '@/lib/userUtils';
-import { isOpenRouterConfigured, openRouterJSON } from '@/lib/openrouter';
+import { isGeminiConfigured, geminiJSON } from '@/lib/gemini';
 import type { SourceType } from '@/utils/journalEngine';
 import type {
   CoaSnapshotAccount,
@@ -197,8 +196,8 @@ export interface ParseJournalArgs {
 export const parseJournalFromText = async (
   args: ParseJournalArgs,
 ): Promise<{ result: JournalParseResult; validation: JournalValidation } | null> => {
-  if (!isOpenRouterConfigured()) {
-    throw new Error('OpenRouter API key missing. Set VITE_OPENROUTER_API_KEY in .env and restart the dev server.');
+  if (!isGeminiConfigured()) {
+    throw new Error('Gemini API key missing. Set VITE_GEMINI_API_KEY in .env and restart the dev server.');
   }
   const trimmed = args.prompt.trim();
   if (!trimmed) return null;
@@ -214,18 +213,18 @@ export const parseJournalFromText = async (
     { role: 'user' as const, content: buildUserPrompt(trimmed, coa, today) },
   ];
 
-  // Let OpenRouter errors propagate — the AI Command Bar shows them inline so
+  // Let Gemini errors propagate — the AI Command Bar shows them inline so
   // misconfigurations (bad key, unknown model, rate limit) are diagnosable
   // without DevTools.
-  let parsed: JournalParseResult = await openRouterJSON<JournalParseResult>({
+  let parsed: JournalParseResult = await geminiJSON<JournalParseResult>({
     messages,
     temperature: 0.1,
-    maxTokens: 1200,
+    maxTokens: 1500,
     signal: args.signal,
   });
 
   if (!parsed || !parsed.proposal) {
-    throw new Error('OpenRouter returned a response that did not parse as a journal proposal.');
+    throw new Error('Gemini returned a response that did not parse as a journal proposal.');
   }
 
   // Decorate lines with denormalised account info for downstream display.
@@ -253,14 +252,14 @@ ${validation.errors.map((e) => `- ${e}`).join('\n')}
 
 Fix ONLY these issues. Return the corrected JSON with the same shape. Do not change valid lines.`;
     try {
-      const repaired = await openRouterJSON<JournalParseResult>({
+      const repaired = await geminiJSON<JournalParseResult>({
         messages: [
           ...messages,
           { role: 'assistant' as const, content: JSON.stringify(parsed) },
           { role: 'user' as const, content: repairPrompt },
         ],
         temperature: 0.0,
-        maxTokens: 1200,
+        maxTokens: 1500,
         signal: args.signal,
       });
       if (repaired && repaired.proposal) {
