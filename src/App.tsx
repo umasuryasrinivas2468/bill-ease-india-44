@@ -119,11 +119,29 @@ import CreateAsset from "./pages/assets/CreateAsset";
 import AssetDetail from "./pages/assets/AssetDetail";
 import DepreciationRun from "./pages/assets/DepreciationRun";
 import MaintenanceDashboard from "./pages/assets/MaintenanceDashboard";
+import CoverageDashboard from "./pages/assets/CoverageDashboard";
+import TransferLog from "./pages/assets/TransferLog";
+import AllocationsDashboard from "./pages/assets/AllocationsDashboard";
+import AuditDashboard from "./pages/assets/AuditDashboard";
+import AuditSession from "./pages/assets/AuditSession";
+import LeasesDashboard from "./pages/assets/LeasesDashboard";
+import LeaseDetail from "./pages/assets/LeaseDetail";
+import CwipDashboard from "./pages/assets/CwipDashboard";
+import CwipDetail from "./pages/assets/CwipDetail";
+import DisposalRequests from "./pages/assets/DisposalRequests";
 import LiabilitiesDashboard from "./pages/liabilities/LiabilitiesDashboard";
 import LiabilitiesList from "./pages/liabilities/LiabilitiesList";
 import CreateLiability from "./pages/liabilities/CreateLiability";
 import LiabilityDetail from "./pages/liabilities/LiabilityDetail";
 import EmiCalendar from "./pages/liabilities/EmiCalendar";
+import NetWorthDashboard from "./pages/liabilities/NetWorthDashboard";
+import ForecastDashboard from "./pages/liabilities/ForecastDashboard";
+import CovenantsList from "./pages/liabilities/CovenantsList";
+import AssetLiabilityMIS from "./pages/reports/AssetLiabilityMIS";
+import CfoSnapshot from "./pages/reports/CfoSnapshot";
+import DocumentVault from "./pages/DocumentVault";
+import Approvals from "./pages/Approvals";
+import AssetInsights from "./pages/AssetInsights";
 
 const queryClient = new QueryClient();
 
@@ -307,6 +325,16 @@ function App() {
                           <Route path="/assets/create" element={<CreateAsset />} />
                           <Route path="/assets/depreciation" element={<DepreciationRun />} />
                           <Route path="/assets/maintenance" element={<MaintenanceDashboard />} />
+                          <Route path="/assets/coverage" element={<CoverageDashboard />} />
+                          <Route path="/assets/transfers" element={<TransferLog />} />
+                          <Route path="/assets/allocations" element={<AllocationsDashboard />} />
+                          <Route path="/assets/audit" element={<AuditDashboard />} />
+                          <Route path="/assets/audit/:id" element={<AuditSession />} />
+                          <Route path="/leases" element={<LeasesDashboard />} />
+                          <Route path="/leases/:id" element={<LeaseDetail />} />
+                          <Route path="/assets/cwip" element={<CwipDashboard />} />
+                          <Route path="/assets/cwip/:id" element={<CwipDetail />} />
+                          <Route path="/assets/disposals" element={<DisposalRequests />} />
                           <Route path="/assets/:id" element={<AssetDetail />} />
 
                           {/* Liabilities & Loans */}
@@ -314,7 +342,15 @@ function App() {
                           <Route path="/liabilities/list" element={<LiabilitiesList />} />
                           <Route path="/liabilities/create" element={<CreateLiability />} />
                           <Route path="/liabilities/emi-calendar" element={<EmiCalendar />} />
+                          <Route path="/liabilities/health" element={<NetWorthDashboard />} />
+                          <Route path="/liabilities/forecast" element={<ForecastDashboard />} />
+                          <Route path="/liabilities/covenants" element={<CovenantsList />} />
                           <Route path="/liabilities/:id" element={<LiabilityDetail />} />
+                          <Route path="/reports/asset-liability-mis" element={<AssetLiabilityMIS />} />
+                          <Route path="/reports/cfo-snapshot" element={<CfoSnapshot />} />
+                          <Route path="/vault" element={<DocumentVault />} />
+                          <Route path="/approvals" element={<Approvals />} />
+                          <Route path="/insights" element={<AssetInsights />} />
 
                           <Route path="/expenses" element={<Expenses />} />
                           <Route path="/compliance/gst" element={<GSTCompliance />} />

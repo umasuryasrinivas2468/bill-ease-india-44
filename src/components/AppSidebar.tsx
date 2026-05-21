@@ -48,6 +48,9 @@ import {
   ClipboardCheck,
   Plus,
   Wrench,
+  Shield,
+  HardHat,
+  ArrowDownToLine,
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import { useAuthorization } from "@/hooks/useAuthorization";
@@ -210,6 +213,13 @@ const SECTIONS: NavSection[] = [
       { title: "New Asset", url: "/assets/create", icon: Plus },
       { title: "Depreciation Run", url: "/assets/depreciation", icon: CalendarClock },
       { title: "Maintenance", url: "/assets/maintenance", icon: Wrench },
+      { title: "Warranty & Insurance", url: "/assets/coverage", icon: Shield },
+      { title: "Transfers", url: "/assets/transfers", icon: Move3d },
+      { title: "Allocations", url: "/assets/allocations", icon: UserRound },
+      { title: "Verification & Audit", url: "/assets/audit", icon: ClipboardCheck },
+      { title: "Leased Assets", url: "/leases", icon: Briefcase },
+      { title: "Capital WIP", url: "/assets/cwip", icon: HardHat },
+      { title: "Disposal Approvals", url: "/assets/disposals", icon: ArrowDownToLine },
     ],
   },
   {
@@ -221,6 +231,9 @@ const SECTIONS: NavSection[] = [
       { title: "All Liabilities", url: "/liabilities/list", icon: ListTree },
       { title: "New Liability", url: "/liabilities/create", icon: Plus },
       { title: "EMI Calendar", url: "/liabilities/emi-calendar", icon: CalendarDays },
+      { title: "Forecast", url: "/liabilities/forecast", icon: TrendingDown },
+      { title: "Covenants", url: "/liabilities/covenants", icon: ShieldCheck },
+      { title: "Net Worth", url: "/liabilities/health", icon: PieChart },
     ],
   },
   {
@@ -238,6 +251,11 @@ const SECTIONS: NavSection[] = [
       { title: "GST Reports", url: "/reports/gst-itc", icon: Percent },
       { title: "Inventory Reports", url: "/accounting/financial-statements?tab=inv-ageing", icon: Package },
       { title: "MIS Reports", url: "/accounting/financial-statements?tab=mis", icon: PieChart },
+      { title: "Asset/Liability MIS", url: "/reports/asset-liability-mis", icon: PieChart },
+      { title: "CFO Snapshot", url: "/reports/cfo-snapshot", icon: Brain },
+      { title: "AI Insights", url: "/insights", icon: Sparkles },
+      { title: "Document Vault", url: "/vault", icon: FileText },
+      { title: "Approvals", url: "/approvals", icon: ClipboardCheck },
       { title: "Aczen CFO Insights", url: "/aczen-cfo", icon: Brain },
     ],
   },

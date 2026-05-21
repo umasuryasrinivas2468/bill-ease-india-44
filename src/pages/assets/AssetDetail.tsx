@@ -14,9 +14,15 @@ import { Separator } from '@/components/ui/separator';
 import { ChevronLeft, AlertCircle, ArrowDownToLine, CheckCircle2, History, FileText, IndianRupee } from 'lucide-react';
 import {
   useFixedAsset, useAssetTransactions, useAssetDepreciationSchedule, useDisposeAsset,
+  useRequestDisposal,
 } from '@/hooks/useFixedAssets';
 import { usePostDepreciationPeriod, useRegenerateSchedule } from '@/hooks/useDepreciation';
 import MaintenanceTab from '@/components/assets/MaintenanceTab';
+import CoverageTab from '@/components/assets/CoverageTab';
+import TransferTab from '@/components/assets/TransferTab';
+import AllocationTab from '@/components/assets/AllocationTab';
+import RevaluationTab from '@/components/assets/RevaluationTab';
+import AssetQrCode from '@/components/assets/AssetQrCode';
 
 const inr = (n: number | null | undefined) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
@@ -31,6 +37,7 @@ const AssetDetail: React.FC = () => {
   const postPeriod = usePostDepreciationPeriod();
   const regenerate = useRegenerateSchedule();
   const dispose = useDisposeAsset();
+  const requestDispose = useRequestDisposal();
 
   const [disposalOpen, setDisposalOpen] = useState(false);
   const [disposal, setDisposal] = useState({
@@ -40,6 +47,13 @@ const AssetDetail: React.FC = () => {
     write_off: false,
     reason: '',
     notes: '',
+    // Module 9 additions
+    disposal_type: 'sale' as 'sale' | 'scrap' | 'donation' | 'trade_in' | 'write_off' | 'damage',
+    gst_rate: 18,
+    gst_amount: 0,
+    scrap_value: 0,
+    buyer_name: '',
+    via_approval: false,
   });
 
   const dueRows = useMemo(
@@ -53,17 +67,40 @@ const AssetDetail: React.FC = () => {
   const isDisposed = asset.status === 'disposed' || asset.status === 'written_off';
 
   const submitDisposal = () => {
-    dispose.mutate({
-      asset_id: asset.id,
-      disposal_date: disposal.disposal_date,
-      sale_proceeds: disposal.write_off ? 0 : disposal.sale_proceeds,
-      payment_mode: disposal.payment_mode,
-      write_off: disposal.write_off,
-      reason: disposal.reason,
-      notes: disposal.notes,
-    }, {
-      onSuccess: () => setDisposalOpen(false),
-    });
+    if (disposal.via_approval) {
+      requestDispose.mutate({
+        asset_id: asset.id,
+        disposal_type: disposal.write_off ? 'write_off' : disposal.disposal_type,
+        reason: disposal.reason || 'No reason provided',
+        proposed_disposal_date: disposal.disposal_date,
+        proposed_sale_proceeds: disposal.write_off ? 0 : disposal.sale_proceeds,
+        proposed_scrap_value: disposal.scrap_value,
+        proposed_gst_rate: disposal.gst_rate,
+        proposed_gst_amount: disposal.write_off ? 0 : disposal.gst_amount,
+        payment_mode: disposal.payment_mode,
+        buyer_name: disposal.buyer_name,
+        notes: disposal.notes,
+      }, {
+        onSuccess: () => setDisposalOpen(false),
+      });
+    } else {
+      dispose.mutate({
+        asset_id: asset.id,
+        disposal_date: disposal.disposal_date,
+        sale_proceeds: disposal.write_off ? 0 : disposal.sale_proceeds,
+        payment_mode: disposal.payment_mode,
+        write_off: disposal.write_off,
+        reason: disposal.reason,
+        notes: disposal.notes,
+        disposal_type: disposal.write_off ? 'write_off' : disposal.disposal_type,
+        gst_amount: disposal.write_off ? 0 : disposal.gst_amount,
+        gst_rate: disposal.gst_rate,
+        scrap_value: disposal.scrap_value,
+        buyer_name: disposal.buyer_name,
+      }, {
+        onSuccess: () => setDisposalOpen(false),
+      });
+    }
   };
 
   const profitLossPreview = useMemo(() => {
@@ -85,6 +122,7 @@ const AssetDetail: React.FC = () => {
           </div>
         </div>
         <div className="flex gap-2">
+          <AssetQrCode assetCode={asset.asset_code} assetName={asset.name} assetId={asset.id} />
           {!isDisposed && (
             <Button variant="outline" onClick={() => setDisposalOpen(true)}>
               <ArrowDownToLine className="h-4 w-4 mr-2" />Dispose / Write-off
@@ -119,6 +157,10 @@ const AssetDetail: React.FC = () => {
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="schedule">Depreciation schedule</TabsTrigger>
           <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
+          <TabsTrigger value="coverage">Coverage</TabsTrigger>
+          <TabsTrigger value="transfers">Transfers</TabsTrigger>
+          <TabsTrigger value="allocations">Allocations</TabsTrigger>
+          <TabsTrigger value="revaluation">Revaluation</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
@@ -202,6 +244,22 @@ const AssetDetail: React.FC = () => {
           <MaintenanceTab assetId={asset.id} assetName={asset.name} />
         </TabsContent>
 
+        <TabsContent value="coverage" className="pt-2">
+          <CoverageTab assetId={asset.id} assetName={asset.name} />
+        </TabsContent>
+
+        <TabsContent value="transfers" className="pt-2">
+          <TransferTab assetId={asset.id} assetName={asset.name} />
+        </TabsContent>
+
+        <TabsContent value="allocations" className="pt-2">
+          <AllocationTab assetId={asset.id} assetName={asset.name} />
+        </TabsContent>
+
+        <TabsContent value="revaluation" className="pt-2">
+          <RevaluationTab assetId={asset.id} assetName={asset.name} />
+        </TabsContent>
+
         <TabsContent value="history" className="pt-2">
           <Card>
             <CardContent className="p-0">
@@ -237,56 +295,119 @@ const AssetDetail: React.FC = () => {
 
       {/* Disposal dialog */}
       <Dialog open={disposalOpen} onOpenChange={setDisposalOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{disposal.write_off ? 'Write off asset' : 'Dispose asset'}</DialogTitle></DialogHeader>
           <div className="space-y-3 text-sm">
             <div className="flex items-center gap-2">
-              <input type="checkbox" id="wf" checked={disposal.write_off} onChange={(e) => setDisposal({ ...disposal, write_off: e.target.checked })} />
-              <Label htmlFor="wf" className="font-normal">Full write-off (no proceeds)</Label>
+              <input type="checkbox" id="wf" checked={disposal.write_off} onChange={(e) => setDisposal({ ...disposal, write_off: e.target.checked, gst_amount: e.target.checked ? 0 : disposal.gst_amount })} />
+              <Label htmlFor="wf" className="font-normal">Full write-off (no proceeds, no GST)</Label>
             </div>
-            <div>
-              <Label>Disposal date</Label>
-              <Input type="date" value={disposal.disposal_date} onChange={(e) => setDisposal({ ...disposal, disposal_date: e.target.value })} />
-            </div>
-            {!disposal.write_off && (
-              <>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Disposal date</Label>
+                <Input type="date" value={disposal.disposal_date} onChange={(e) => setDisposal({ ...disposal, disposal_date: e.target.value })} />
+              </div>
+              {!disposal.write_off && (
                 <div>
-                  <Label>Sale proceeds</Label>
-                  <Input type="number" min={0} step="0.01" value={disposal.sale_proceeds || ''} onChange={(e) => setDisposal({ ...disposal, sale_proceeds: Number(e.target.value) })} />
-                </div>
-                <div>
-                  <Label>Received via</Label>
-                  <Select value={disposal.payment_mode} onValueChange={(v) => setDisposal({ ...disposal, payment_mode: v as 'bank' | 'cash' })}>
+                  <Label>Disposal type</Label>
+                  <Select value={disposal.disposal_type} onValueChange={(v) => setDisposal({ ...disposal, disposal_type: v as any })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="bank">Bank</SelectItem>
-                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="sale">Sale</SelectItem>
+                      <SelectItem value="scrap">Scrap</SelectItem>
+                      <SelectItem value="donation">Donation</SelectItem>
+                      <SelectItem value="trade_in">Trade-in</SelectItem>
+                      <SelectItem value="damage">Damaged / lost</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+              )}
+            </div>
+
+            {!disposal.write_off && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Sale proceeds (excl. GST)</Label>
+                    <Input type="number" min={0} step="0.01" value={disposal.sale_proceeds || ''} onChange={(e) => setDisposal({ ...disposal, sale_proceeds: Number(e.target.value) })} />
+                  </div>
+                  <div>
+                    <Label>Received via</Label>
+                    <Select value={disposal.payment_mode} onValueChange={(v) => setDisposal({ ...disposal, payment_mode: v as 'bank' | 'cash' })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="bank">Bank</SelectItem>
+                        <SelectItem value="cash">Cash</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>GST rate (%)</Label>
+                    <Input type="number" min={0} step="0.01" value={disposal.gst_rate || ''} onChange={(e) => {
+                      const r = Number(e.target.value);
+                      setDisposal({ ...disposal, gst_rate: r, gst_amount: Math.round(disposal.sale_proceeds * r) / 100 });
+                    }} />
+                  </div>
+                  <div>
+                    <Label>GST amount</Label>
+                    <Input type="number" min={0} step="0.01" value={disposal.gst_amount || ''} onChange={(e) => setDisposal({ ...disposal, gst_amount: Number(e.target.value) })} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Buyer name</Label>
+                    <Input value={disposal.buyer_name} onChange={(e) => setDisposal({ ...disposal, buyer_name: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Scrap value recovered</Label>
+                    <Input type="number" min={0} step="0.01" value={disposal.scrap_value || ''} onChange={(e) => setDisposal({ ...disposal, scrap_value: Number(e.target.value) })} placeholder="Parts salvaged" />
+                  </div>
+                </div>
               </>
             )}
+
             <div>
               <Label>Reason</Label>
-              <Input value={disposal.reason} onChange={(e) => setDisposal({ ...disposal, reason: e.target.value })} placeholder="Sold to..., damaged, end of life..." />
+              <Input value={disposal.reason} onChange={(e) => setDisposal({ ...disposal, reason: e.target.value })} placeholder="End of life / sold to vendor / damaged in transit..." />
             </div>
             <div>
               <Label>Notes</Label>
               <Textarea rows={2} value={disposal.notes} onChange={(e) => setDisposal({ ...disposal, notes: e.target.value })} />
             </div>
+
+            <div className="flex items-center gap-2 border-t pt-2">
+              <input type="checkbox" id="approval" checked={disposal.via_approval} onChange={(e) => setDisposal({ ...disposal, via_approval: e.target.checked })} />
+              <Label htmlFor="approval" className="font-normal">
+                Submit for approval (no journal until approved)
+              </Label>
+            </div>
+
             <Separator />
             <div className="rounded-md bg-muted p-3 text-xs space-y-1">
               <div className="flex justify-between"><span>Current book value</span><span>{inr(asset.book_value)}</span></div>
-              <div className="flex justify-between"><span>{disposal.write_off ? 'Write-off amount' : 'Proceeds'}</span><span>{inr(disposal.write_off ? 0 : disposal.sale_proceeds)}</span></div>
+              <div className="flex justify-between"><span>{disposal.write_off ? 'Write-off amount' : 'Proceeds (excl. GST)'}</span><span>{inr(disposal.write_off ? 0 : disposal.sale_proceeds)}</span></div>
+              {!disposal.write_off && disposal.gst_amount > 0 && (
+                <div className="flex justify-between"><span>Output GST</span><span>{inr(disposal.gst_amount)}</span></div>
+              )}
               <div className={`flex justify-between font-semibold ${profitLossPreview >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                 <span>{profitLossPreview >= 0 ? 'Profit on disposal' : 'Loss on disposal'}</span>
                 <span>{inr(Math.abs(profitLossPreview))}</span>
               </div>
+              {disposal.via_approval && (
+                <div className="pt-1 text-amber-600 border-t mt-1">Submits as a pending request — no journal until an approver clicks Approve.</div>
+              )}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDisposalOpen(false)}>Cancel</Button>
-            <Button onClick={submitDisposal} disabled={dispose.isPending}>{dispose.isPending ? 'Posting…' : 'Confirm & post journal'}</Button>
+            <Button onClick={submitDisposal} disabled={dispose.isPending || requestDispose.isPending}>
+              {disposal.via_approval
+                ? (requestDispose.isPending ? 'Submitting…' : 'Submit for approval')
+                : (dispose.isPending ? 'Posting…' : 'Confirm & post journal')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

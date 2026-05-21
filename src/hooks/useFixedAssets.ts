@@ -13,8 +13,21 @@ import {
   convertBillToAsset,
   convertExpenseToAsset,
 } from '@/services/fixedAssetService';
-import { disposeFixedAsset, type DisposalInput } from '@/services/assetDisposalService';
+import {
+  disposeFixedAsset,
+  listDisposalRequests,
+  getDisposalRequest,
+  requestDisposal,
+  approveDisposal,
+  rejectDisposal,
+  cancelDisposalRequest,
+  type DisposalInput,
+} from '@/services/assetDisposalService';
 import type { CreateAssetInput, FixedAsset } from '@/types/fixedAssets';
+import type {
+  CreateDisposalRequestInput,
+  DisposalRequestStatus,
+} from '@/types/assetDisposal';
 
 const useUid = () => {
   const { user } = useUser();
@@ -157,5 +170,83 @@ export const useDisposeAsset = () => {
     onError: (err: any) => {
       toast({ title: 'Disposal failed', description: err?.message || String(err), variant: 'destructive' });
     },
+  });
+};
+
+// ── Disposal approval flow ──────────────────────────────────────────────────
+const invalidateDisposalRequests = (qc: ReturnType<typeof useQueryClient>) => {
+  qc.invalidateQueries({ queryKey: ['disposal-requests'] });
+  qc.invalidateQueries({ queryKey: ['disposal-request'] });
+  invalidateAssets(qc);
+};
+
+export const useDisposalRequests = (status?: DisposalRequestStatus) => {
+  const { uid, enabled } = useUid();
+  return useQuery({
+    queryKey: ['disposal-requests', uid, status || 'all'],
+    queryFn: () => listDisposalRequests(uid!, status),
+    enabled,
+  });
+};
+
+export const useDisposalRequest = (id: string | undefined) => {
+  const { uid, enabled } = useUid();
+  return useQuery({
+    queryKey: ['disposal-request', uid, id],
+    queryFn: () => getDisposalRequest(uid!, id!),
+    enabled: enabled && !!id,
+  });
+};
+
+export const useRequestDisposal = () => {
+  const { uid } = useUid();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (input: CreateDisposalRequestInput) => requestDisposal(uid!, input),
+    onSuccess: () => {
+      toast({ title: 'Disposal request submitted', description: 'Awaiting approval' });
+      invalidateDisposalRequests(qc);
+    },
+    onError: (err: any) => toast({ title: 'Request failed', description: err?.message, variant: 'destructive' }),
+  });
+};
+
+export const useApproveDisposal = () => {
+  const { uid } = useUid();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (id: string) => approveDisposal(uid!, id),
+    onSuccess: (res) => {
+      const verdict = res.profitLoss >= 0
+        ? `Profit ₹${res.profitLoss.toLocaleString('en-IN')}`
+        : `Loss ₹${Math.abs(res.profitLoss).toLocaleString('en-IN')}`;
+      toast({ title: 'Disposal approved & posted', description: verdict });
+      invalidateDisposalRequests(qc);
+    },
+    onError: (err: any) => toast({ title: 'Approval failed', description: err?.message, variant: 'destructive' }),
+  });
+};
+
+export const useRejectDisposal = () => {
+  const { uid } = useUid();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (args: { id: string; reason: string }) => rejectDisposal(uid!, args.id, args.reason),
+    onSuccess: () => { toast({ title: 'Disposal request rejected' }); invalidateDisposalRequests(qc); },
+    onError: (err: any) => toast({ title: 'Rejection failed', description: err?.message, variant: 'destructive' }),
+  });
+};
+
+export const useCancelDisposalRequest = () => {
+  const { uid } = useUid();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (id: string) => cancelDisposalRequest(uid!, id),
+    onSuccess: () => { toast({ title: 'Request cancelled' }); invalidateDisposalRequests(qc); },
+    onError: (err: any) => toast({ title: 'Cancel failed', description: err?.message, variant: 'destructive' }),
   });
 };
