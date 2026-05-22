@@ -51,6 +51,7 @@ import {
   Shield,
   HardHat,
   ArrowDownToLine,
+  Bell,
 } from "lucide-react";
 import { useClerk } from "@clerk/clerk-react";
 import { useAuthorization } from "@/hooks/useAuthorization";
@@ -211,7 +212,9 @@ const SECTIONS: NavSection[] = [
       { title: "Asset Dashboard", url: "/assets", icon: BarChart3 },
       { title: "Asset Register", url: "/assets/register", icon: ListTree },
       { title: "New Asset", url: "/assets/create", icon: Plus },
+      { title: "Capitalization Queue", url: "/assets/capitalize", icon: Receipt },
       { title: "Depreciation Run", url: "/assets/depreciation", icon: CalendarClock },
+      { title: "Depreciation Calendar", url: "/assets/depreciation-calendar", icon: CalendarDays },
       { title: "Maintenance", url: "/assets/maintenance", icon: Wrench },
       { title: "Warranty & Insurance", url: "/assets/coverage", icon: Shield },
       { title: "Transfers", url: "/assets/transfers", icon: Move3d },
@@ -234,6 +237,7 @@ const SECTIONS: NavSection[] = [
       { title: "Forecast", url: "/liabilities/forecast", icon: TrendingDown },
       { title: "Covenants", url: "/liabilities/covenants", icon: ShieldCheck },
       { title: "Net Worth", url: "/liabilities/health", icon: PieChart },
+      { title: "Automation Hub", url: "/automation", icon: Bell },
     ],
   },
   {

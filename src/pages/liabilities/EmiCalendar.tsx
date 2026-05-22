@@ -54,6 +54,63 @@ const EmiCalendar: React.FC = () => {
         <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">No upcoming EMIs in this window.</CardContent></Card>
       )}
 
+      {grouped.length > 0 && (() => {
+        const monthlyTotals = grouped.map(([month, items]) => {
+          const principal = items.reduce((s, e) => s + Number(e.principal_component || 0), 0);
+          const interest  = items.reduce((s, e) => s + Number(e.interest_component  || 0), 0);
+          return { month, principal, interest, total: principal + interest, count: items.length };
+        });
+        const maxTotal = Math.max(...monthlyTotals.map((m) => m.total), 1);
+        const totalPrincipal = monthlyTotals.reduce((s, m) => s + m.principal, 0);
+        const totalInterest  = monthlyTotals.reduce((s, m) => s + m.interest, 0);
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Timeline — Principal vs Interest</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-end gap-2 md:gap-3 h-40 overflow-x-auto pb-1">
+                {monthlyTotals.map((m) => {
+                  const totalPct      = (m.total / maxTotal) * 100;
+                  const principalPct  = m.total > 0 ? (m.principal / m.total) * 100 : 0;
+                  return (
+                    <div key={m.month} className="flex flex-col items-center min-w-[44px] flex-1">
+                      <div className="text-[10px] font-medium tabular-nums mb-1">
+                        {inr(m.total)}
+                      </div>
+                      <div
+                        className="w-full rounded-t-md overflow-hidden flex flex-col-reverse border border-border"
+                        style={{ height: `${Math.max(8, totalPct)}%`, minHeight: '8px' }}
+                        title={`${m.month}: P ${inr(m.principal)} + I ${inr(m.interest)}`}
+                      >
+                        <div className="bg-blue-500" style={{ height: `${principalPct}%` }} />
+                        <div className="bg-amber-400" style={{ height: `${100 - principalPct}%` }} />
+                      </div>
+                      <div className="text-[10px] text-muted-foreground mt-1 whitespace-nowrap">
+                        {monthLabel(m.month).slice(0, 3)} '{m.month.slice(2, 4)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex flex-wrap items-center gap-4 text-xs mt-4 pt-3 border-t">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-3 w-3 rounded-sm bg-blue-500" />
+                  Principal {inr(totalPrincipal)}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-3 w-3 rounded-sm bg-amber-400" />
+                  Interest {inr(totalInterest)}
+                </span>
+                <span className="text-muted-foreground ml-auto">
+                  Hover bars for month-level breakdown.
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {grouped.map(([month, items]) => {
         const monthTotal = items.reduce((s, e) => s + Number(e.total_emi), 0);
         return (

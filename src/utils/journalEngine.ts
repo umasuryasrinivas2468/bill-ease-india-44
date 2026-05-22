@@ -59,6 +59,7 @@ export type SourceType =
   | 'cwip_addition' | 'cwip_addition_reversal'
   | 'cwip_capitalization'
   | 'asset_revaluation' | 'asset_revaluation_reversal'
+  | 'inventory_to_asset'
   | 'loan_disbursement' | 'loan_disbursement_reversal'
   | 'loan_emi' | 'loan_emi_reversal'
   | 'loan_interest_accrual'

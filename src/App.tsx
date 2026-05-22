@@ -129,6 +129,9 @@ import LeaseDetail from "./pages/assets/LeaseDetail";
 import CwipDashboard from "./pages/assets/CwipDashboard";
 import CwipDetail from "./pages/assets/CwipDetail";
 import DisposalRequests from "./pages/assets/DisposalRequests";
+import CapitalizationQueue from "./pages/assets/CapitalizationQueue";
+import AutomationHub from "./pages/AutomationHub";
+import DepreciationCalendar from "./pages/assets/DepreciationCalendar";
 import LiabilitiesDashboard from "./pages/liabilities/LiabilitiesDashboard";
 import LiabilitiesList from "./pages/liabilities/LiabilitiesList";
 import CreateLiability from "./pages/liabilities/CreateLiability";
@@ -335,6 +338,9 @@ function App() {
                           <Route path="/assets/cwip" element={<CwipDashboard />} />
                           <Route path="/assets/cwip/:id" element={<CwipDetail />} />
                           <Route path="/assets/disposals" element={<DisposalRequests />} />
+                          <Route path="/assets/capitalize" element={<CapitalizationQueue />} />
+                          <Route path="/assets/depreciation-calendar" element={<DepreciationCalendar />} />
+                          <Route path="/automation" element={<AutomationHub />} />
                           <Route path="/assets/:id" element={<AssetDetail />} />
 
                           {/* Liabilities & Loans */}

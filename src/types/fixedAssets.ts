@@ -1,7 +1,7 @@
 // TypeScript shapes for the Fixed Assets module — mirror the SQL tables.
 
 export type DepreciationMethod = 'SLM' | 'WDV' | 'None';
-export type AssetSource = 'manual' | 'purchase_bill' | 'expense' | 'import';
+export type AssetSource = 'manual' | 'purchase_bill' | 'expense' | 'import' | 'inventory';
 export type AssetStatus = 'draft' | 'active' | 'disposed' | 'written_off' | 'transferred' | 'impaired';
 
 export interface FixedAssetCategory {
@@ -41,6 +41,12 @@ export interface FixedAsset {
   vendor_name?: string | null;
   source_type: AssetSource;
   source_id?: string | null;
+  source_bill_id?: string | null;
+  source_bill_line_id?: string | null;
+  reclassification_journal_id?: string | null;
+  source_inventory_item_id?: string | null;
+  source_inventory_qty?: number | null;
+  source_inventory_movement_id?: string | null;
   useful_life_years: number;
   depreciation_method: DepreciationMethod;
   depreciation_rate?: number | null;
@@ -142,6 +148,9 @@ export interface CreateAssetInput {
   serial_number?: string;
   source_type?: AssetSource;
   source_id?: string;
+  /** When capitalizing from a multi-line bill: bill id + per-line identifier for idempotency. */
+  source_bill_id?: string;
+  source_bill_line_id?: string;
   payment_mode?: 'credit' | 'cash' | 'bank'; // controls AP vs Bank in purchase journal
   notes?: string;
   /** If true, also post the purchase journal immediately. Defaults to true. */

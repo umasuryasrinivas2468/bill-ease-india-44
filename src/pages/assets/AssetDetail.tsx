@@ -43,7 +43,7 @@ const AssetDetail: React.FC = () => {
   const [disposal, setDisposal] = useState({
     sale_proceeds: 0,
     disposal_date: new Date().toISOString().slice(0, 10),
-    payment_mode: 'bank' as 'bank' | 'cash',
+    payment_mode: 'bank' as 'bank' | 'cash' | 'credit',
     write_off: false,
     reason: '',
     notes: '',
@@ -54,6 +54,10 @@ const AssetDetail: React.FC = () => {
     scrap_value: 0,
     buyer_name: '',
     via_approval: false,
+    // Module 22 — AR + GST split
+    buyer_gstin: '',
+    place_of_supply: '',
+    customer_id: '',
   });
 
   const dueRows = useMemo(
@@ -79,6 +83,9 @@ const AssetDetail: React.FC = () => {
         proposed_gst_amount: disposal.write_off ? 0 : disposal.gst_amount,
         payment_mode: disposal.payment_mode,
         buyer_name: disposal.buyer_name,
+        buyer_gstin: disposal.buyer_gstin || undefined,
+        place_of_supply: disposal.place_of_supply || undefined,
+        customer_id: disposal.customer_id || undefined,
         notes: disposal.notes,
       }, {
         onSuccess: () => setDisposalOpen(false),
@@ -97,6 +104,9 @@ const AssetDetail: React.FC = () => {
         gst_rate: disposal.gst_rate,
         scrap_value: disposal.scrap_value,
         buyer_name: disposal.buyer_name,
+        buyer_gstin: disposal.buyer_gstin || undefined,
+        place_of_supply: disposal.place_of_supply || undefined,
+        customer_id: disposal.customer_id || undefined,
       }, {
         onSuccess: () => setDisposalOpen(false),
       });
@@ -334,11 +344,12 @@ const AssetDetail: React.FC = () => {
                   </div>
                   <div>
                     <Label>Received via</Label>
-                    <Select value={disposal.payment_mode} onValueChange={(v) => setDisposal({ ...disposal, payment_mode: v as 'bank' | 'cash' })}>
+                    <Select value={disposal.payment_mode} onValueChange={(v) => setDisposal({ ...disposal, payment_mode: v as 'bank' | 'cash' | 'credit' })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="bank">Bank</SelectItem>
                         <SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="credit">Credit (AR — buyer pays later)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -366,6 +377,26 @@ const AssetDetail: React.FC = () => {
                     <Input type="number" min={0} step="0.01" value={disposal.scrap_value || ''} onChange={(e) => setDisposal({ ...disposal, scrap_value: Number(e.target.value) })} placeholder="Parts salvaged" />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Buyer GSTIN (optional)</Label>
+                    <Input
+                      value={disposal.buyer_gstin}
+                      onChange={(e) => setDisposal({ ...disposal, buyer_gstin: e.target.value.toUpperCase() })}
+                      placeholder="22AAAAA0000A1Z5"
+                      maxLength={15}
+                    />
+                    <div className="text-[10px] text-muted-foreground mt-0.5">Drives CGST+SGST vs IGST split.</div>
+                  </div>
+                  <div>
+                    <Label>Place of supply</Label>
+                    <Input
+                      value={disposal.place_of_supply}
+                      onChange={(e) => setDisposal({ ...disposal, place_of_supply: e.target.value })}
+                      placeholder="State name (used if no GSTIN)"
+                    />
+                  </div>
+                </div>
               </>
             )}
 
@@ -389,10 +420,36 @@ const AssetDetail: React.FC = () => {
             <div className="rounded-md bg-muted p-3 text-xs space-y-1">
               <div className="flex justify-between"><span>Current book value</span><span>{inr(asset.book_value)}</span></div>
               <div className="flex justify-between"><span>{disposal.write_off ? 'Write-off amount' : 'Proceeds (excl. GST)'}</span><span>{inr(disposal.write_off ? 0 : disposal.sale_proceeds)}</span></div>
-              {!disposal.write_off && disposal.gst_amount > 0 && (
-                <div className="flex justify-between"><span>Output GST</span><span>{inr(disposal.gst_amount)}</span></div>
+              {!disposal.write_off && disposal.gst_amount > 0 && (() => {
+                const gstinState = disposal.buyer_gstin && disposal.buyer_gstin.length >= 2 ? disposal.buyer_gstin.slice(0, 2) : null;
+                const knownIntra = gstinState ? null : disposal.place_of_supply ? null : true;
+                const intra = knownIntra;
+                const half = Math.round((disposal.gst_amount / 2) * 100) / 100;
+                return (
+                  <>
+                    <div className="flex justify-between text-[10px] text-muted-foreground border-t pt-1">
+                      <span>GST split</span>
+                      <span>
+                        {intra === false
+                          ? `IGST ${inr(disposal.gst_amount)}`
+                          : `CGST ${inr(half)} + SGST ${inr(disposal.gst_amount - half)}`}
+                      </span>
+                    </div>
+                    {!disposal.buyer_gstin && !disposal.place_of_supply && (
+                      <div className="text-[10px] text-amber-600">
+                        Add buyer GSTIN or place of supply for accurate split — defaulting to intra-state.
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+              {!disposal.write_off && disposal.payment_mode === 'credit' && (
+                <div className="flex justify-between text-[10px] text-muted-foreground border-t pt-1">
+                  <span>Settlement</span>
+                  <span>Posts to Accounts Receivable</span>
+                </div>
               )}
-              <div className={`flex justify-between font-semibold ${profitLossPreview >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              <div className={`flex justify-between font-semibold ${profitLossPreview >= 0 ? 'text-emerald-600' : 'text-red-600'} border-t pt-1`}>
                 <span>{profitLossPreview >= 0 ? 'Profit on disposal' : 'Loss on disposal'}</span>
                 <span>{inr(Math.abs(profitLossPreview))}</span>
               </div>

@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, Download } from 'lucide-react';
+import { Plus, Search, Download, LayoutGrid, ListTree, MapPin, User as UserIcon } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { useFixedAssets } from '@/hooks/useFixedAssets';
 
 const inr = (n: number | null | undefined) =>
@@ -18,6 +19,7 @@ const AssetRegister: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
 
   const categories = useMemo(() => {
     const s = new Set<string>();
@@ -70,6 +72,26 @@ const AssetRegister: React.FC = () => {
           <p className="text-sm text-muted-foreground">{filtered.length} of {assets.length} assets shown</p>
         </div>
         <div className="flex gap-2">
+          <div className="inline-flex rounded-md border bg-background">
+            <Button
+              size="sm"
+              variant={viewMode === 'table' ? 'default' : 'ghost'}
+              className="rounded-r-none"
+              onClick={() => setViewMode('table')}
+              title="Table view"
+            >
+              <ListTree className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant={viewMode === 'grid' ? 'default' : 'ghost'}
+              className="rounded-l-none"
+              onClick={() => setViewMode('grid')}
+              title="Card grid view"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+          </div>
           <Button variant="outline" onClick={downloadCsv}><Download className="h-4 w-4 mr-2" />Export CSV</Button>
           <Link to="/assets/create"><Button><Plus className="h-4 w-4 mr-2" />New asset</Button></Link>
         </div>
@@ -103,7 +125,7 @@ const AssetRegister: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? <div className="py-10 text-sm text-muted-foreground text-center">Loading…</div> : (
+          {isLoading ? <div className="py-10 text-sm text-muted-foreground text-center">Loading…</div> : viewMode === 'table' ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -149,6 +171,50 @@ const AssetRegister: React.FC = () => {
                 )}
               </TableBody>
             </Table>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {filtered.map((a) => {
+                const gross = Number(a.total_capitalised_value || 0);
+                const accum = Number(a.accumulated_depreciation || 0);
+                const pctDepreciated = gross > 0 ? Math.min(100, Math.round((accum / gross) * 100)) : 0;
+                return (
+                  <Link key={a.id} to={`/assets/${a.id}`} className="block group">
+                    <div className="rounded-lg border bg-card hover:border-primary/40 hover:shadow-sm transition p-4 h-full flex flex-col">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="font-mono text-[10px] text-muted-foreground">{a.asset_code}</div>
+                        <Badge variant={a.status === 'active' ? 'default' : a.status === 'disposed' ? 'secondary' : 'outline'} className="capitalize text-[10px]">
+                          {a.status.replace('_', ' ')}
+                        </Badge>
+                      </div>
+                      <div className="font-medium text-sm leading-tight mb-1 line-clamp-2 group-hover:text-primary">{a.name}</div>
+                      <div className="text-[11px] text-muted-foreground mb-3">{a.category_name || 'Uncategorised'} · {a.depreciation_method}</div>
+
+                      <div className="mt-auto space-y-1.5">
+                        <div className="flex justify-between text-[10px] text-muted-foreground">
+                          <span>Depreciated</span>
+                          <span>{pctDepreciated}%</span>
+                        </div>
+                        <Progress value={pctDepreciated} className="h-1.5" />
+                        <div className="flex justify-between items-baseline pt-1.5">
+                          <span className="text-[10px] text-muted-foreground">Book value</span>
+                          <span className="font-semibold tabular-nums">{inr(a.book_value)}</span>
+                        </div>
+                        {(a.location || a.custodian) && (
+                          <div className="flex items-center gap-3 text-[10px] text-muted-foreground pt-1 border-t">
+                            {a.location && (
+                              <span className="flex items-center gap-1 truncate"><MapPin className="h-2.5 w-2.5 flex-shrink-0" />{a.location}</span>
+                            )}
+                            {a.custodian && (
+                              <span className="flex items-center gap-1 truncate"><UserIcon className="h-2.5 w-2.5 flex-shrink-0" />{a.custodian}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
           )}
           {!isLoading && filtered.length === 0 && (
             <div className="text-center py-10 text-sm text-muted-foreground">No assets match the current filters.</div>

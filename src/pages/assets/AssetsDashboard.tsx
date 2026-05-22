@@ -8,6 +8,7 @@ import {
   IndianRupee, TrendingDown, Boxes, AlertTriangle, ArrowRight, Plus, CalendarClock, Receipt,
 } from 'lucide-react';
 import { useFixedAssets } from '@/hooks/useFixedAssets';
+import { useUncapitalizedBills } from '@/hooks/useAssetCapitalization';
 
 const inr = (n: number | null | undefined) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
@@ -33,6 +34,7 @@ const KpiCard: React.FC<{ icon: React.ReactNode; label: string; value: string; s
 
 const AssetsDashboard: React.FC = () => {
   const { data: assets = [], isLoading } = useFixedAssets();
+  const { data: uncapitalized = [] } = useUncapitalizedBills();
 
   const kpi = useMemo(() => {
     const active = assets.filter((a) => a.status === 'active' || a.status === 'impaired');
@@ -75,6 +77,30 @@ const AssetsDashboard: React.FC = () => {
           <Link to="/assets/create"><Button><Plus className="h-4 w-4 mr-2" />New asset</Button></Link>
         </div>
       </div>
+
+      {uncapitalized.length > 0 && (
+        <Card className="border-amber-200 bg-amber-50/60">
+          <CardContent className="pt-4 pb-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Receipt className="h-5 w-5 text-amber-600" />
+              <div>
+                <div className="text-sm font-medium">
+                  {uncapitalized.length} purchase bill{uncapitalized.length === 1 ? '' : 's'} awaiting capitalization
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Total asset value pending entry into the register:{' '}
+                  {inr(uncapitalized.reduce((s, b) => s + Number(b.asset_amount || 0), 0))}
+                </div>
+              </div>
+            </div>
+            <Link to="/assets/capitalize">
+              <Button size="sm" variant="outline">
+                Review queue <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard icon={<Boxes className="h-5 w-5" />} label="Active assets" value={String(kpi.count)} sub={`${kpi.disposed} disposed`} />

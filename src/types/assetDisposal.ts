@@ -15,7 +15,7 @@ export type DisposalRequestStatus =
   | 'completed'
   | 'cancelled';
 
-export type DisposalPaymentMode = 'bank' | 'cash';
+export type DisposalPaymentMode = 'bank' | 'cash' | 'credit';
 
 export interface AssetDisposalRequest {
   id: string;
@@ -28,9 +28,16 @@ export interface AssetDisposalRequest {
   proposed_scrap_value: number;
   proposed_gst_rate?: number | null;
   proposed_gst_amount: number;
+  proposed_cgst_amount?: number | null;
+  proposed_sgst_amount?: number | null;
+  proposed_igst_amount?: number | null;
+  proposed_intra_state?: boolean | null;
   payment_mode: DisposalPaymentMode;
   buyer_name?: string | null;
   buyer_gstin?: string | null;
+  buyer_state?: string | null;
+  place_of_supply?: string | null;
+  customer_id?: string | null;
   status: DisposalRequestStatus;
   requested_by: string;
   requested_on: string;
@@ -63,6 +70,9 @@ export interface CreateDisposalRequestInput {
   payment_mode?: DisposalPaymentMode;
   buyer_name?: string;
   buyer_gstin?: string;
+  buyer_state?: string;
+  place_of_supply?: string;
+  customer_id?: string;
   document_url?: string;
   notes?: string;
 }

@@ -210,6 +210,8 @@ export const createFixedAsset = async (
     vendor_name: input.vendor_name || null,
     source_type: input.source_type || 'manual',
     source_id: input.source_id || null,
+    source_bill_id: input.source_bill_id || null,
+    source_bill_line_id: input.source_bill_line_id || null,
     useful_life_years: usefulLife,
     depreciation_method: method,
     depreciation_rate: depreciationRate,
