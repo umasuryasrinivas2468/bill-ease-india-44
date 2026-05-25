@@ -26,7 +26,9 @@ import type {
   EmployeeAllocationSummary,
   OverdueAllocation,
   ReturnAllocationInput,
+  ReturnAllocationResult,
 } from '@/types/assetAllocation';
+import { disposeFixedAsset, postAssetImpairment } from '@/services/assetDisposalService';
 
 const daysBetween = (fromIso: string, toIso: string): number => {
   const a = new Date(fromIso + 'T00:00:00Z').getTime();
@@ -211,10 +213,24 @@ export const createAllocation = async (
 };
 
 // ── Return ──────────────────────────────────────────────────────────────────
+//
+// Accounting wiring:
+//   * condition_on_return = 'lost'    → full write-off via disposeFixedAsset
+//                                       (Dr Accum Dep + Dr Loss / Cr Asset).
+//   * condition_on_return = 'damaged' AND damage_value > 0
+//                                     → partial impairment (Dr Loss / Cr Accum Dep)
+//                                       — asset stays in service, status flips
+//                                       to 'impaired' if it was 'active'.
+//   * condition_on_return = 'damaged' without a damage_value
+//                                     → metadata only, no journal (caller hasn't
+//                                       quantified the loss yet).
+//   * Anything else (good/fair/new)   → metadata only, no journal.
+//
+// The resulting journal_id (if any) is stamped onto the allocation row.
 export const returnAllocation = async (
   userId: string,
   input: ReturnAllocationInput,
-): Promise<AssetAllocation> => {
+): Promise<ReturnAllocationResult> => {
   const uid = normalizeUserId(userId);
   const existing = await getAllocation(uid, input.allocation_id);
   if (!existing) throw new Error('Allocation not found.');
@@ -285,7 +301,69 @@ export const returnAllocation = async (
     actor: uid,
   });
 
-  return updated;
+  // ── Post the accounting journal for damage / loss ──
+  let journalId: string | null = null;
+  let journalKind: ReturnAllocationResult['journal_kind'] = null;
+  let journalAmount = 0;
+
+  try {
+    if (input.condition_on_return === 'lost') {
+      const result = await disposeFixedAsset(uid, {
+        asset_id: updated.asset_id,
+        disposal_date: input.returned_on,
+        sale_proceeds: 0,
+        write_off: true,
+        disposal_type: 'write_off',
+        reason: `Lost during allocation to ${updated.employee_name}`,
+        notes: input.damage_notes || input.notes || undefined,
+      });
+      journalId = result.journalId;
+      journalKind = 'write_off';
+      journalAmount = Math.abs(result.profitLoss);
+    } else if (input.condition_on_return === 'damaged' && (input.damage_value ?? 0) > 0) {
+      const result = await postAssetImpairment(uid, {
+        asset_id: updated.asset_id,
+        impairment_date: input.returned_on,
+        amount: Number(input.damage_value),
+        reason: `Damage on return from ${updated.employee_name}`,
+        source_id: updated.id,
+        source_label: 'allocation',
+      });
+      journalId = result.journalId;
+      journalKind = 'impairment';
+      journalAmount = result.amount;
+    }
+  } catch (e) {
+    // Re-throw with a clearer prefix so the UI can show what failed without
+    // losing the underlying message (e.g. 'Impairment exceeds book value').
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(`Allocation return recorded but journal failed: ${msg}`);
+  }
+
+  // Stamp the posted journal id back onto the allocation
+  if (journalId) {
+    const { data: stamped, error: stampErr } = await supabase
+      .from('asset_allocations')
+      .update({ journal_id: journalId })
+      .eq('user_id', uid)
+      .eq('id', updated.id)
+      .select('*')
+      .single();
+    if (stampErr) throw stampErr;
+    return {
+      allocation: stamped as AssetAllocation,
+      journal_id: journalId,
+      journal_kind: journalKind,
+      journal_amount: journalAmount,
+    };
+  }
+
+  return {
+    allocation: updated,
+    journal_id: null,
+    journal_kind: null,
+    journal_amount: 0,
+  };
 };
 
 // Mark active+past-due as 'overdue' (idempotent — can be called on app load).

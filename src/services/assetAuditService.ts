@@ -16,6 +16,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { normalizeUserId } from '@/lib/userUtils';
+import { disposeFixedAsset } from '@/services/assetDisposalService';
 import type {
   AssetAuditFinding,
   AssetAuditFindingEnriched,
@@ -309,6 +310,141 @@ export const getMismatchReport = async (
     .order('status');
   if (error) throw error;
   return { session, findings: (data || []) as AssetAuditFindingEnriched[] };
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// Resolution: write off a 'missing' finding.
+//
+// Posts the standard asset write-off journal (Dr Accum Dep + Dr Loss
+// on Asset Sale / Cr Fixed Asset) via disposeFixedAsset(write_off:true),
+// then stamps the finding with the resulting journal id so the audit page
+// shows the resolution. Idempotent on the asset id (the disposal helper
+// refuses a second write-off on the same asset).
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface WriteOffFindingResult {
+  finding: AssetAuditFinding;
+  journalId: string;
+  amount: number;        // NBV written off
+}
+
+export const writeOffMissingFinding = async (
+  userId: string,
+  findingId: string,
+  options?: { reason?: string; write_off_date?: string },
+): Promise<WriteOffFindingResult> => {
+  const uid = normalizeUserId(userId);
+  const today = options?.write_off_date || new Date().toISOString().slice(0, 10);
+
+  // Load the finding + its session for narration context
+  const { data: findingRow, error: fErr } = await supabase
+    .from('asset_audit_findings')
+    .select('*')
+    .eq('user_id', uid)
+    .eq('id', findingId)
+    .maybeSingle();
+  if (fErr) throw fErr;
+  if (!findingRow) throw new Error('Finding not found.');
+  const finding = findingRow as AssetAuditFinding;
+
+  if (finding.status !== 'missing') {
+    throw new Error(`Only 'missing' findings can be written off (this one is '${finding.status}').`);
+  }
+  if (finding.resolution_action === 'written_off' && finding.resolution_ref_id) {
+    throw new Error('This finding has already been written off.');
+  }
+
+  // Resolve session for a richer narration
+  const { data: sessionRow } = await supabase
+    .from('asset_audit_sessions')
+    .select('session_code, title')
+    .eq('user_id', uid)
+    .eq('id', finding.session_id)
+    .maybeSingle();
+  const sessionCode = (sessionRow as any)?.session_code || '—';
+
+  // Snapshot NBV before disposal for the result
+  const { data: assetRow } = await supabase
+    .from('fixed_assets')
+    .select('book_value, status')
+    .eq('user_id', uid)
+    .eq('id', finding.asset_id)
+    .maybeSingle();
+  const nbv = Number((assetRow as any)?.book_value || 0);
+
+  const disposal = await disposeFixedAsset(uid, {
+    asset_id: finding.asset_id,
+    disposal_date: today,
+    sale_proceeds: 0,
+    write_off: true,
+    disposal_type: 'write_off',
+    reason: options?.reason || `Audit verification: asset not located in session ${sessionCode}`,
+  });
+
+  // Stamp the finding with the resolution journal id
+  const { data: stamped, error: sErr } = await supabase
+    .from('asset_audit_findings')
+    .update({
+      resolution_action: 'written_off',
+      resolution_ref_id: disposal.journalId,
+    })
+    .eq('user_id', uid)
+    .eq('id', findingId)
+    .select('*')
+    .single();
+  if (sErr) throw sErr;
+
+  return {
+    finding: stamped as AssetAuditFinding,
+    journalId: disposal.journalId,
+    amount: nbv,
+  };
+};
+
+// Bulk: write off every still-unresolved 'missing' finding in a session.
+export interface BulkWriteOffResult {
+  written_off: number;
+  total_nbv: number;
+  errors: Array<{ finding_id: string; asset_id: string; message: string }>;
+}
+
+export const writeOffAllMissingInSession = async (
+  userId: string,
+  sessionId: string,
+  options?: { write_off_date?: string },
+): Promise<BulkWriteOffResult> => {
+  const uid = normalizeUserId(userId);
+  const { data, error } = await supabase
+    .from('asset_audit_findings')
+    .select('id, asset_id, resolution_action')
+    .eq('user_id', uid)
+    .eq('session_id', sessionId)
+    .eq('status', 'missing');
+  if (error) throw error;
+
+  const targets = (data || []).filter(
+    (r: any) => r.resolution_action !== 'written_off',
+  ) as Array<{ id: string; asset_id: string }>;
+
+  let written = 0;
+  let total = 0;
+  const errors: BulkWriteOffResult['errors'] = [];
+
+  for (const t of targets) {
+    try {
+      const res = await writeOffMissingFinding(uid, t.id, options);
+      written += 1;
+      total += res.amount;
+    } catch (e) {
+      errors.push({
+        finding_id: t.id,
+        asset_id: t.asset_id,
+        message: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
+  return { written_off: written, total_nbv: total, errors };
 };
 
 // ── QR-scan helper: find a finding by asset_code (or asset id) within a session

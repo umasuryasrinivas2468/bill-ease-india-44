@@ -92,18 +92,27 @@ export const useCreateAllocation = () => {
   });
 };
 
+const inr = (n: number) =>
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(n) || 0);
+
 export const useReturnAllocation = () => {
   const { uid } = useUid();
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
     mutationFn: (input: ReturnAllocationInput) => returnAllocation(uid!, input),
-    onSuccess: (a) => {
+    onSuccess: (res) => {
+      const { allocation, journal_kind, journal_amount } = res;
       const title =
-        a.status === 'lost' ? 'Marked lost' :
-        a.status === 'damaged' ? 'Returned (damaged)' :
+        allocation.status === 'lost' ? 'Marked lost' :
+        allocation.status === 'damaged' ? 'Returned (damaged)' :
         'Asset returned';
-      toast({ title }); invalidate(qc);
+      const description =
+        journal_kind === 'write_off' ? `Write-off journal posted — ${inr(journal_amount)} removed from books`
+        : journal_kind === 'impairment' ? `Impairment journal posted — ${inr(journal_amount)} loss recognised`
+        : undefined;
+      toast({ title, description });
+      invalidate(qc);
     },
     onError: (e: any) => toast({ title: 'Return failed', description: e?.message, variant: 'destructive' }),
   });

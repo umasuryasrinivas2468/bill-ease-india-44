@@ -20,7 +20,8 @@ import {
   listWarrantyExpiryAlerts,
   listPolicyExpiryAlerts,
 } from './assetCoverageService';
-import { listUpcomingEmis, listCovenants } from './liabilityExtensionsService';
+import { listUpcomingEmis } from './liabilityService';
+import { listCovenants } from './liabilityExtensionsService';
 
 // ── Public shapes ──────────────────────────────────────────────────────────
 export type AlertCategory =

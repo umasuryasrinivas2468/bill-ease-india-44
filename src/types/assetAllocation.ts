@@ -30,9 +30,20 @@ export interface AssetAllocation {
   cost_center_id?: string | null;
   branch_id?: string | null;
   notes?: string | null;
+  /** Set when a return-time impairment or write-off journal was posted. */
+  journal_id?: string | null;
   created_at: string;
   updated_at: string;
   created_by?: string | null;
+}
+
+export interface ReturnAllocationResult {
+  allocation: AssetAllocation;
+  journal_id: string | null;
+  /** Which side of the books was posted — null when no journal was needed. */
+  journal_kind: 'impairment' | 'write_off' | null;
+  /** Rupee impact of the posted journal (impairment amount or NBV written off). */
+  journal_amount: number;
 }
 
 export interface EmployeeAllocationSummary {

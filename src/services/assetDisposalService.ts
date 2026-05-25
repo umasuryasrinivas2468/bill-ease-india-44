@@ -568,3 +568,135 @@ export const cancelDisposalRequest = async (
   if (error) throw error;
   return data as AssetDisposalRequest;
 };
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// Partial impairment (no asset disposal — asset stays in service).
+//
+// Posts:
+//   Dr Loss on Asset Impairment   (Expense)
+//   Cr Accumulated Depreciation   (asset's accum_dep_account_id)
+//
+// Used when an allocation return reports damage with a declared damage_value,
+// or any other event that recognises a loss against an in-service asset.
+// Full write-offs (lost / missing) go through disposeFixedAsset with
+// write_off:true instead — that path zeros the book value and removes the
+// asset at gross.
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface ImpairmentInput {
+  asset_id: string;
+  impairment_date: string;
+  amount: number;          // > 0; must not exceed current book value
+  reason: string;
+  /** Source row id (allocation_id / finding_id / etc.) — used for idempotency. */
+  source_id: string;
+  /** Source label — also part of the idempotency key so different sources can each post once. */
+  source_label?: string;
+}
+
+export interface ImpairmentResult {
+  asset: FixedAsset;
+  journalId: string;
+  amount: number;
+}
+
+export const postAssetImpairment = async (
+  userId: string,
+  input: ImpairmentInput,
+): Promise<ImpairmentResult> => {
+  const uid = normalizeUserId(userId);
+  const amount = round2(input.amount);
+  if (amount <= 0) throw new Error('Impairment amount must be positive.');
+
+  const { data: assetRow, error: aErr } = await supabase
+    .from('fixed_assets')
+    .select('*')
+    .eq('user_id', uid)
+    .eq('id', input.asset_id)
+    .maybeSingle();
+  if (aErr) throw aErr;
+  if (!assetRow) throw new Error('Asset not found.');
+  const asset = assetRow as FixedAsset;
+  if (asset.status === 'disposed' || asset.status === 'written_off') {
+    throw new Error('Cannot impair a disposed / written-off asset.');
+  }
+  if (!asset.accum_dep_account_id) {
+    throw new Error('Asset is missing accumulated depreciation account — cannot post impairment.');
+  }
+
+  const bookValue = round2(asset.book_value);
+  if (amount > bookValue + 0.01) {
+    throw new Error(`Impairment ₹${amount} exceeds book value ₹${bookValue}.`);
+  }
+
+  const lossAcc = await getOrCreateAccount(uid, 'Loss on Asset Impairment', 'Expense');
+
+  const journalId = await postJournal({
+    user_id: uid,
+    date: input.impairment_date,
+    narration: `Asset impairment: ${asset.asset_code} — ${input.reason}`,
+    source_type: 'asset_impairment',
+    source_id: asset.id,
+    idempotency_key: `asset_impairment:${input.source_label || 'manual'}:${input.source_id}`,
+    lines: [
+      {
+        account_id: lossAcc,
+        debit: amount,
+        credit: 0,
+        line_narration: `Impairment loss on ${asset.asset_code}`,
+      },
+      {
+        account_id: asset.accum_dep_account_id,
+        debit: 0,
+        credit: amount,
+        line_narration: `Impairment write-down on ${asset.asset_code}`,
+      },
+    ],
+  });
+
+  const newAccumDep = round2(asset.accumulated_depreciation + amount);
+  const newBookValue = round2(bookValue - amount);
+  const { data: updated, error: uErr } = await supabase
+    .from('fixed_assets')
+    .update({
+      accumulated_depreciation: newAccumDep,
+      book_value: newBookValue,
+      status: asset.status === 'active' ? 'impaired' : asset.status,
+    })
+    .eq('id', asset.id)
+    .select('*')
+    .single();
+  if (uErr) throw uErr;
+
+  await supabase.from('asset_transactions').insert({
+    user_id: uid,
+    asset_id: asset.id,
+    transaction_type: 'impairment',
+    transaction_date: input.impairment_date,
+    amount,
+    journal_id: journalId,
+    notes: input.reason,
+    created_by: uid,
+  });
+
+  await supabase.from('asset_audit_log').insert({
+    user_id: uid,
+    asset_id: asset.id,
+    action: 'impaired',
+    before_state: {
+      accumulated_depreciation: asset.accumulated_depreciation,
+      book_value: asset.book_value,
+      status: asset.status,
+    } as Record<string, unknown>,
+    after_state: {
+      accumulated_depreciation: newAccumDep,
+      book_value: newBookValue,
+      status: asset.status === 'active' ? 'impaired' : asset.status,
+      journal_id: journalId,
+    } as Record<string, unknown>,
+    actor: uid,
+  });
+
+  return { asset: updated as FixedAsset, journalId, amount };
+};

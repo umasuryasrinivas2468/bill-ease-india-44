@@ -27,7 +27,8 @@
       "Bash(findstr /i \"asset\")",
       "Bash(findstr /i \"liab\")",
       "Bash(echo \"EXIT=$?\")",
-      "Bash(echo \"===EXIT $?\")"
+      "Bash(echo \"===EXIT $?\")",
+      "Bash(git stash *)"
     ]
   }
 }

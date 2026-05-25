@@ -9,13 +9,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ChevronLeft, Search, CheckCircle2, AlertTriangle, X, Camera } from 'lucide-react';
+import { ChevronLeft, Search, CheckCircle2, AlertTriangle, X, Camera, Trash2 } from 'lucide-react';
 import {
   useAuditSession,
   useAuditFindings,
   useRecordFinding,
   useCloseAuditSession,
   useCancelAuditSession,
+  useWriteOffMissingFinding,
+  useWriteOffAllMissingInSession,
 } from '@/hooks/useAssetAudit';
 import type {
   AssetAuditFindingEnriched,
@@ -32,6 +34,9 @@ const AuditSession: React.FC = () => {
   const recordFinding = useRecordFinding();
   const closeSession = useCloseAuditSession();
   const cancelSession = useCancelAuditSession();
+  const writeOffOne = useWriteOffMissingFinding();
+  const writeOffAll = useWriteOffAllMissingInSession();
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
 
   const [filter, setFilter] = useState<AuditFindingStatus | 'all'>('all');
   const [search, setSearch] = useState('');
@@ -65,6 +70,15 @@ const AuditSession: React.FC = () => {
   const pendingCount = findings.filter((f) => f.status === 'pending').length;
   const issueCount = session.assets_missing + session.assets_mismatched;
   const isLive = session.status === 'in_progress';
+
+  // Missing findings that haven't been written off yet — the ones that
+  // still need an accounting resolution.
+  const unresolvedMissing = findings.filter(
+    (f) => f.status === 'missing' && f.resolution_action !== 'written_off',
+  );
+  const unresolvedNbv = unresolvedMissing.reduce((s, f) => s + Number(f.book_value || 0), 0);
+  const inr = (n: number) =>
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(n) || 0);
 
   const openRecord = (f: AssetAuditFindingEnriched, defaultStatus: AuditFindingStatus = 'verified') => {
     setRecordOpen(f);
@@ -139,6 +153,33 @@ const AuditSession: React.FC = () => {
               <strong>{issueCount}</strong> issue{issueCount > 1 ? 's' : ''} found —{' '}
               {session.assets_missing} missing, {session.assets_mismatched} mismatched.
             </span>
+          </CardContent>
+        </Card>
+      )}
+
+      {unresolvedMissing.length > 0 && (
+        <Card className="border-red-500/40 bg-red-50/60 dark:bg-red-950/20">
+          <CardContent className="pt-4 pb-4 flex items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <Trash2 className="h-5 w-5 text-red-600 mt-0.5" />
+              <div>
+                <div className="text-sm font-medium">
+                  {unresolvedMissing.length} missing asset{unresolvedMissing.length === 1 ? '' : 's'} pending write-off
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Net book value still on the books: <strong>{inr(unresolvedNbv)}</strong>. Writing off posts
+                  Dr Accumulated Depreciation + Dr Loss / Cr Fixed Asset per asset.
+                </div>
+              </div>
+            </div>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setBulkConfirmOpen(true)}
+              disabled={writeOffAll.isPending}
+            >
+              {writeOffAll.isPending ? 'Posting…' : 'Write off all'}
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -248,6 +289,20 @@ const AuditSession: React.FC = () => {
                           <X className="h-4 w-4 text-red-600" />
                         </Button>
                       </>
+                    )}
+                    {f.status === 'missing' && f.resolution_action !== 'written_off' && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => writeOffOne.mutate({ findingId: f.id })}
+                        disabled={writeOffOne.isPending}
+                        title={`Write off ${inr(Number(f.book_value || 0))} NBV`}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    )}
+                    {f.resolution_action === 'written_off' && (
+                      <Badge variant="outline" className="text-[10px]">written off</Badge>
                     )}
                   </TableCell>
                 </TableRow>
@@ -378,6 +433,44 @@ const AuditSession: React.FC = () => {
             <Button variant="outline" onClick={() => setRecordOpen(null)}>Cancel</Button>
             <Button onClick={submit} disabled={recordFinding.isPending}>
               {recordFinding.isPending ? 'Saving…' : 'Record finding'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk write-off confirmation */}
+      <Dialog open={bulkConfirmOpen} onOpenChange={setBulkConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Write off {unresolvedMissing.length} missing asset{unresolvedMissing.length === 1 ? '' : 's'}?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p>
+              A write-off journal will be posted for each missing asset:
+            </p>
+            <pre className="rounded-md bg-muted p-3 text-xs leading-relaxed">
+{`Dr  Accumulated Depreciation     ← release accumulated dep
+Dr  Loss on Asset Sale            ← remaining NBV
+       Cr  Fixed Asset             ← gross block`}
+            </pre>
+            <div className="rounded-md border border-red-500/40 bg-red-50 dark:bg-red-950/20 p-3 text-xs">
+              Total NBV to be expensed: <strong>{inr(unresolvedNbv)}</strong>. This cannot be undone
+              automatically — reversal must be posted manually if assets are later found.
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkConfirmOpen(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={writeOffAll.isPending}
+              onClick={() => {
+                writeOffAll.mutate(
+                  { sessionId: session.id },
+                  { onSuccess: () => setBulkConfirmOpen(false) },
+                );
+              }}
+            >
+              {writeOffAll.isPending ? 'Posting…' : 'Post write-offs'}
             </Button>
           </DialogFooter>
         </DialogContent>

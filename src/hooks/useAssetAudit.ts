@@ -12,6 +12,8 @@ import {
   cancelAuditSession,
   getMismatchReport,
   findFindingByAssetCode,
+  writeOffMissingFinding,
+  writeOffAllMissingInSession,
 } from '@/services/assetAuditService';
 import type {
   CreateAuditSessionInput,
@@ -26,11 +28,18 @@ const useUid = () => {
   };
 };
 
+const inr = (n: number) =>
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(n) || 0);
+
 const invalidate = (qc: ReturnType<typeof useQueryClient>) => {
   qc.invalidateQueries({ queryKey: ['audit-sessions'] });
   qc.invalidateQueries({ queryKey: ['audit-session'] });
   qc.invalidateQueries({ queryKey: ['audit-findings'] });
   qc.invalidateQueries({ queryKey: ['audit-mismatch'] });
+  // Write-offs touch the asset register + ledger
+  qc.invalidateQueries({ queryKey: ['fixed-assets'] });
+  qc.invalidateQueries({ queryKey: ['fixed-asset'] });
+  qc.invalidateQueries({ queryKey: ['asset-transactions'] });
 };
 
 export const useAuditSessions = () => {
@@ -133,5 +142,51 @@ export const useFindFindingByAssetCode = () => {
   return useMutation({
     mutationFn: (args: { sessionId: string; code: string }) =>
       findFindingByAssetCode(uid!, args.sessionId, args.code),
+  });
+};
+
+export const useWriteOffMissingFinding = () => {
+  const { uid } = useUid();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (args: { findingId: string; reason?: string; write_off_date?: string }) =>
+      writeOffMissingFinding(uid!, args.findingId, {
+        reason: args.reason,
+        write_off_date: args.write_off_date,
+      }),
+    onSuccess: (res) => {
+      toast({
+        title: 'Asset written off',
+        description: `Write-off journal posted — ${inr(res.amount)} removed from books`,
+      });
+      invalidate(qc);
+    },
+    onError: (e: any) => toast({ title: 'Write-off failed', description: e?.message, variant: 'destructive' }),
+  });
+};
+
+export const useWriteOffAllMissingInSession = () => {
+  const { uid } = useUid();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (args: { sessionId: string; write_off_date?: string }) =>
+      writeOffAllMissingInSession(uid!, args.sessionId, { write_off_date: args.write_off_date }),
+    onSuccess: (res) => {
+      const noun = res.written_off === 1 ? 'asset' : 'assets';
+      const tone = res.errors.length === 0 ? 'default' : ('destructive' as const);
+      toast({
+        title: `${res.written_off} ${noun} written off`,
+        description:
+          res.errors.length === 0
+            ? `Total NBV removed: ${inr(res.total_nbv)}`
+            : `${inr(res.total_nbv)} written off — ${res.errors.length} failed: ${res.errors[0]?.message || 'see console'}`,
+        variant: tone,
+      });
+      if (res.errors.length > 0) console.warn('writeOffAllMissingInSession errors:', res.errors);
+      invalidate(qc);
+    },
+    onError: (e: any) => toast({ title: 'Bulk write-off failed', description: e?.message, variant: 'destructive' }),
   });
 };
