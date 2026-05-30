@@ -28,7 +28,9 @@
       "Bash(findstr /i \"liab\")",
       "Bash(echo \"EXIT=$?\")",
       "Bash(echo \"===EXIT $?\")",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(grep -l \"account_group\" \"C:\\\\Users\\\\54712\\\\Downloads\\\\bill-ease-india-44-12\\\\supabase\\\\migrations\\\\\\\\\"*.sql)",
+      "Bash(npx --prefix \"C:\\\\Users\\\\54712\\\\Downloads\\\\bill-ease-india-44-12\" tsc --noEmit -p \"C:\\\\Users\\\\54712\\\\Downloads\\\\bill-ease-india-44-12\\\\tsconfig.json\")"
     ]
   }
 }

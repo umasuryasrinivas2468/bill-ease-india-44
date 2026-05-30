@@ -9,6 +9,9 @@ verify_jwt = false
 [functions.ai-tax-advisor]
 verify_jwt = false
 
+[functions.ai-financial-review]
+verify_jwt = false
+
 [functions.inventory-insights]
 verify_jwt = false
 

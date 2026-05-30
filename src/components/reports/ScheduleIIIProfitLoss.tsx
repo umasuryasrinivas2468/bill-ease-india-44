@@ -42,30 +42,31 @@ const ScheduleIIIProfitLoss: React.FC<Props> = ({
         <CardContent>
           <div className="text-center py-12 text-muted-foreground">
             <Calculator className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No data available. Please fetch financial data first from the Setup tab.</p>
+            <p>Computing Schedule III P&amp;L from your posted journal entries…</p>
+            <p className="text-xs mt-2">If this stays empty, you don't have any posted entries for the selected FY yet.</p>
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  const totalRevenue      = financialData.totalRevenue;
-  const costOfMaterials   = financialData.costOfMaterialsConsumed;
-  // Changes in inventories (placeholder — 0 unless inventory module feeds this)
-  const inventoryChanges  = 0;
-  const employeeBenefit   = financialData.employeeBenefitExpense;
-  const financeCosts      = financialData.financialCosts;
-  const depreciation      = financialData.depreciationExpense;
-  const otherExpenses     = financialData.otherExpenses;
-  const totalExpenses     = financialData.totalExpenses;
+  const totalRevenue       = financialData.totalRevenue;
+  const costOfMaterials    = financialData.costOfMaterialsConsumed;
+  const purchaseStockTrade = financialData.purchaseOfStockInTrade;
+  const inventoryChanges   = financialData.changesInInventories;
+  const employeeBenefit    = financialData.employeeBenefitExpense;
+  const financeCosts       = financialData.financialCosts;
+  const depreciation       = financialData.depreciationExpense;
+  const otherExpenses      = financialData.otherExpenses;
+  const totalExpenses      = financialData.totalExpenses;
 
-  const profitBeforeExc   = totalRevenue - totalExpenses;
-  const exceptionalItems  = 0;
-  const profitBeforeTax   = profitBeforeExc - exceptionalItems;
-  const currentTax        = financialData.taxExpense * 0.9;
-  const deferredTax       = financialData.taxExpense * 0.1;
-  const totalTax          = financialData.taxExpense;
-  const profitAfterTax    = financialData.profitAfterTax;
+  const profitBeforeExc    = totalRevenue - totalExpenses;
+  const exceptionalItems   = 0;
+  const profitBeforeTax    = financialData.profitBeforeTax;
+  const totalTax           = financialData.taxExpense;
+  const currentTax         = totalTax * 0.9;
+  const deferredTax        = totalTax * 0.1;
+  const profitAfterTax     = financialData.profitAfterTax;
 
   // EPS (basic — assuming ₹10 face value share capital / 10 = shares)
   const shares            = (financialData.shareCapital || 10000) / 10;
@@ -80,7 +81,7 @@ const ScheduleIIIProfitLoss: React.FC<Props> = ({
     // ── Expenses ─────────────────────────────────────────────────────────────
     { label: 'IV.  Expenses',                                       currentPeriod: null,      previousPeriod: null, bold: true, section: true },
     { label: '(a)  Cost of Materials Consumed',        noteNo: '3', currentPeriod: costOfMaterials,   previousPeriod: null, indent: 1 },
-    { label: '(b)  Purchases of Stock-in-Trade',       noteNo: '4', currentPeriod: 0,                 previousPeriod: null, indent: 1 },
+    { label: '(b)  Purchases of Stock-in-Trade',       noteNo: '4', currentPeriod: purchaseStockTrade, previousPeriod: null, indent: 1 },
     { label: '(c)  Changes in Inventories of FG / WIP / Stock-in-Trade', noteNo: '5', currentPeriod: inventoryChanges, previousPeriod: null, indent: 1 },
     { label: '(d)  Employee Benefit Expense',          noteNo: '6', currentPeriod: employeeBenefit,   previousPeriod: null, indent: 1 },
     { label: '(e)  Finance Costs',                     noteNo: '7', currentPeriod: financeCosts,      previousPeriod: null, indent: 1 },

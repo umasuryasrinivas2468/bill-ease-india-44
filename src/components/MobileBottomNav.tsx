@@ -79,25 +79,27 @@ export function MobileBottomNav() {
   return (
     <>
       {/* Bottom Navigation Bar - Mobile Only */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border">
-        <div className="flex items-center justify-around h-16 px-2">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t border-border pb-safe">
+        <div className="flex items-stretch justify-around h-16 px-1 sm:px-2">
           {mainNavItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
-            
+
             return (
               <button
                 key={item.path}
                 onClick={() => handleNavClick(item.path)}
+                aria-label={item.label}
+                aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors',
+                  'flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 h-full transition-colors active:scale-95',
                   active
                     ? 'text-primary'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
-                <Icon className="h-5 w-5" />
-                <span className="text-xs font-medium">{item.label}</span>
+                <Icon className="h-5 w-5 shrink-0" />
+                <span className="text-[11px] leading-tight font-medium truncate max-w-full">{item.label}</span>
               </button>
             );
           })}
@@ -106,13 +108,14 @@ export function MobileBottomNav() {
           <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
             <DrawerTrigger asChild>
               <button
+                aria-label="More"
                 className={cn(
-                  'flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors',
+                  'flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 h-full transition-colors active:scale-95',
                   'text-muted-foreground hover:text-foreground'
                 )}
               >
-                <MoreHorizontal className="h-5 w-5" />
-                <span className="text-xs font-medium">More</span>
+                <MoreHorizontal className="h-5 w-5 shrink-0" />
+                <span className="text-[11px] leading-tight font-medium truncate max-w-full">More</span>
               </button>
             </DrawerTrigger>
             <DrawerContent>
@@ -165,8 +168,8 @@ export function MobileBottomNav() {
         </div>
       </nav>
       
-      {/* Bottom Spacer - Prevents content from being hidden behind bottom nav */}
-      <div className="md:hidden h-16" />
+      {/* Bottom Spacer - Prevents content from being hidden behind bottom nav (also reserves safe-area) */}
+      <div className="md:hidden h-16 pb-safe" aria-hidden="true" />
       
       {/* Mobile Search Dialog */}
       <MobileSearch open={searchOpen} onOpenChange={setSearchOpen} />

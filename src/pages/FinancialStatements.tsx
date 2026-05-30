@@ -16,13 +16,37 @@ import {
   FileText, Download, Building2, Calculator, BookOpen, FileSpreadsheet, Loader2,
   ScrollText, ClipboardList, Scale, Wallet, Receipt, ArrowLeftRight, BarChart3,
   TrendingUp, TrendingDown, Activity, Package, ArrowUpDown, Bot, Sparkles,
-  IndianRupee, PieChart, Boxes, MoveHorizontal, Minus,
+  IndianRupee, PieChart, Boxes, MoveHorizontal, Minus, FileCheck, FileJson, Users, Heart, ShieldCheck,
 } from 'lucide-react';
 import ITCReport from '@/components/reports/ITCReport';
 import RCMLiabilityReport from '@/components/reports/RCMLiabilityReport';
 import GSTSummaryReport from '@/components/reports/GSTSummaryReport';
 import ScheduleIIIBalanceSheet from '@/components/reports/ScheduleIIIBalanceSheet';
 import ScheduleIIIProfitLoss from '@/components/reports/ScheduleIIIProfitLoss';
+import ScheduleIIIComplianceCheck from '@/components/reports/ScheduleIIIComplianceCheck';
+import CashFlowStatementSch3 from '@/components/reports/CashFlowStatement';
+import ScheduleIIIDrilldown from '@/components/reports/ScheduleIIIDrilldown';
+import PeriodLockManager from '@/components/reports/PeriodLockManager';
+import NotesToAccountsComponent from '@/components/reports/NotesToAccounts';
+import FinancialRatiosDashboard from '@/components/reports/FinancialRatiosDashboard';
+import FYCloseButton from '@/components/reports/FYCloseButton';
+import AIFinancialReview from '@/components/reports/AIFinancialReview';
+import ConsolidatedStatements from '@/components/reports/ConsolidatedStatements';
+import SOCIEStatement from '@/components/reports/SOCIEStatement';
+import IndASStatements from '@/components/reports/IndASStatements';
+import RelatedPartyManager from '@/components/reports/RelatedPartyManager';
+import SegmentReporting from '@/components/reports/SegmentReporting';
+import CSRDashboard from '@/components/reports/CSRDashboard';
+import CSRSettings from '@/components/reports/CSRSettings';
+import TDSReconciliationView from '@/components/reports/TDSReconciliation';
+import StatutoryComplianceDashboard from '@/components/reports/StatutoryComplianceDashboard';
+import UnifiedFinancialEngine from '@/components/reports/UnifiedFinancialEngine';
+import { exportFinancialStatementsExcel } from '@/utils/financialStatementsExcel';
+import { generateAndDownloadAOC4XBRL } from '@/utils/xbrlGenerator';
+import { generateAuditWorkingPapersPDF } from '@/utils/auditWorkingPapersPDF';
+import {
+  fetchCashFlowStatement, fetchFinancialRatios, fetchNotesToAccounts,
+} from '@/services/financialStatementsService';
 import { useEnhancedBusinessData } from '@/hooks/useEnhancedBusinessData';
 import {
   fetchFinancialData,
@@ -95,6 +119,11 @@ const FS_TAB_VALUES = new Set([
   'mis', 'detailed-pnl', 'ratios', 'cashflow', 'inv-ageing', 'stock', 'setup',
   'pnl', 'sch3-pnl', 'balance', 'trial-balance', 'income-expenditure',
   'receipts-payments', 'journal-audit', 'itc-report', 'rcm-report', 'gst-summary',
+  // Phase 10-25 additions
+  'sch3-cfs', 'notes', 'ratios-sch3', 'period-lock', 'fy-close', 'ai-review',
+  'consol', 'socie', 'ind-as', 'rpt', 'segments', 'csr', 'tds-recon', 'compliance-hub',
+  // Phase 26
+  'engine',
 ]);
 
 const FinancialStatements = () => {
@@ -115,6 +144,75 @@ const FinancialStatements = () => {
 
   const [financialYear, setFinancialYear] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [drilldownOpen, setDrilldownOpen] = useState(false);
+  const [drilldownLine, setDrilldownLine] = useState<string | null>(null);
+  const [excelBusy, setExcelBusy] = useState(false);
+  const [xbrlBusy, setXbrlBusy] = useState(false);
+  const [auditPdfBusy, setAuditPdfBusy] = useState(false);
+
+  const handleDownloadXBRL = async () => {
+    if (!user?.id) return;
+    setXbrlBusy(true);
+    try {
+      // Use the user's active reporting division (Division I = GAAP / Division II = Ind AS)
+      const { getReportingDivision } = await import('@/services/financialStatementsService');
+      const division = await getReportingDivision(user.id);
+      const result = await generateAndDownloadAOC4XBRL(
+        user.id, financialYear || fyOptions[0], companyDetails.companyName, division
+      );
+      if (result.success) toast.success(`AOC-4 XBRL (${division.replace('_', ' ')}) downloaded — ${result.factCount} tagged facts`);
+      else                toast.error(result.error ?? 'XBRL generation failed');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'XBRL generation failed');
+    } finally { setXbrlBusy(false); }
+  };
+
+  const handleDownloadAuditPDF = async () => {
+    if (!user?.id || !financialData) {
+      toast.error('Fetch financial data first');
+      return;
+    }
+    setAuditPdfBusy(true);
+    try {
+      await generateAuditWorkingPapersPDF({
+        userId: user.id,
+        fiscalYear: financialYear || fyOptions[0],
+        company: companyDetails,
+        financialData,
+      });
+      toast.success('Audit Working Papers PDF downloaded');
+    } catch (e: any) {
+      console.error(e);
+      toast.error('Failed to generate Audit PDF');
+    } finally { setAuditPdfBusy(false); }
+  };
+
+  const handleExportExcel = async () => {
+    if (!user?.id || !financialData) {
+      toast.error('Fetch financial data first');
+      return;
+    }
+    setExcelBusy(true);
+    try {
+      const [cfs, ratios, notes] = await Promise.all([
+        fetchCashFlowStatement(user.id, financialYear || fyOptions[0]),
+        fetchFinancialRatios(user.id, financialYear || fyOptions[0]),
+        fetchNotesToAccounts(user.id, financialYear || fyOptions[0]),
+      ]);
+      exportFinancialStatementsExcel({
+        fy: financialYear || fyOptions[0],
+        company: companyDetails,
+        financialData,
+        cashFlow: cfs,
+        ratios,
+        notes,
+      });
+      toast.success('Excel workbook downloaded');
+    } catch (e: any) {
+      console.error(e);
+      toast.error('Failed to generate Excel');
+    } finally { setExcelBusy(false); }
+  };
   const [financialData, setFinancialData] = useState<FinancialData | null>(null);
   const [incomeExpenditureData, setIncomeExpenditureData] = useState<IncomeExpenditureData | null>(null);
   const [receiptsPaymentsData, setReceiptsPaymentsData] = useState<ReceiptsPaymentsData | null>(null);
@@ -388,6 +486,71 @@ const FinancialStatements = () => {
     }
   }, [businessInfo]);
 
+  // Diagnostic: count of posted JEs in selected FY, count of COA accounts tagged with sch3 code,
+  // and the FY containing the most recent posted journal entry (used as smart default).
+  const { data: dataDiagnostics } = useQuery({
+    queryKey: ['fs-diagnostics', userId, financialYear],
+    queryFn: async () => {
+      if (!userId) return null;
+      const fyStart = financialYear ? `${financialYear.split('-')[0]}-04-01` : null;
+      const fyEnd   = financialYear ? `${parseInt(financialYear.split('-')[0], 10) + 1}-03-31` : null;
+      const [postedInFy, taggedAccounts, allAccounts, mostRecent] = await Promise.all([
+        fyStart && fyEnd
+          ? supabase.from('journals').select('id', { count: 'exact', head: true })
+              .eq('user_id', userId).eq('status', 'posted')
+              .gte('journal_date', fyStart).lte('journal_date', fyEnd)
+          : Promise.resolve({ count: 0 } as any),
+        supabase.from('accounts').select('id', { count: 'exact', head: true })
+          .eq('user_id', userId).eq('is_active', true).not('schedule_iii_line_code', 'is', null),
+        supabase.from('accounts').select('id', { count: 'exact', head: true })
+          .eq('user_id', userId).eq('is_active', true),
+        supabase.from('journals').select('journal_date')
+          .eq('user_id', userId).eq('status', 'posted')
+          .order('journal_date', { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      return {
+        postedInFy: postedInFy.count ?? 0,
+        taggedAccounts: taggedAccounts.count ?? 0,
+        totalAccounts: allAccounts.count ?? 0,
+        latestJournalDate: (mostRecent.data as any)?.journal_date ?? null,
+      };
+    },
+    enabled: !!userId,
+  });
+
+  // Default the FY selector to the FY containing the user's most recent posted journal
+  // (so users with historical data don't see ₹0 because the calendar rolled into a new FY).
+  useEffect(() => {
+    if (financialYear || fyOptions.length === 0) return;
+    const latest = dataDiagnostics?.latestJournalDate;
+    if (latest) {
+      const d = new Date(latest);
+      const year = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
+      const candidate = `${year}-${String((year + 1) % 100).padStart(2, '0')}`;
+      if (fyOptions.includes(candidate)) { setFinancialYear(candidate); return; }
+    }
+    setFinancialYear(fyOptions[0]);
+  }, [financialYear, fyOptions, dataDiagnostics?.latestJournalDate]);
+
+  // Auto-fetch Schedule III financial data whenever the user / FY changes
+  // (avoids the "go to Setup → click Fetch" friction — Sch III P&L, Balance Sheet, P&L all need this)
+  useEffect(() => {
+    if (!userId || !financialYear) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const data = await fetchFinancialData(userId, financialYear);
+        if (!cancelled) setFinancialData(data);
+      } catch (err) {
+        console.error('[FinancialStatements] auto-fetch failed:', err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userId, financialYear]);
+
   // ── MIS AI Analysis ─────────────────────────────────────────────────────
   const handleMisAiAnalysis = async () => {
     if (!thisMonthData || !lastMonthData) return;
@@ -473,7 +636,7 @@ Provide actionable insights in bullet points. Keep it concise.`;
   // ── Render ──────────────────────────────────────────────────────────────
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
             <BarChart3 className="h-5 w-5 text-primary" />
@@ -483,11 +646,52 @@ Provide actionable insights in bullet points. Keep it concise.`;
             <p className="text-muted-foreground text-xs mt-0.5">CA-grade reports, MIS dashboard, ratios & analytics</p>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          <Label className="text-xs text-muted-foreground">FY:</Label>
+          <Select value={financialYear} onValueChange={setFinancialYear}>
+            <SelectTrigger className="h-8 w-32 text-xs"><SelectValue placeholder="Select FY" /></SelectTrigger>
+            <SelectContent>{fyOptions.map(fy => <SelectItem key={fy} value={fy}>FY {fy}</SelectItem>)}</SelectContent>
+          </Select>
+          {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+        </div>
       </div>
+
+      {/* Diagnostic banner — only shown when something looks off so the user knows why ₹0 */}
+      {dataDiagnostics && (() => {
+        const d = dataDiagnostics;
+        const issues: string[] = [];
+        if (d.totalAccounts > 0 && d.taggedAccounts < d.totalAccounts) {
+          issues.push(`${d.totalAccounts - d.taggedAccounts} of ${d.totalAccounts} chart-of-accounts rows are missing a Schedule III tag — those balances won't appear on Sch III statements.`);
+        }
+        if (d.postedInFy === 0 && d.latestJournalDate) {
+          issues.push(`You have no posted journal entries in FY ${financialYear}. Your latest posted entry is dated ${d.latestJournalDate} — switch FY from the selector above.`);
+        }
+        if (d.postedInFy === 0 && !d.latestJournalDate) {
+          issues.push(`No posted journal entries found at all. Post entries (via AP bills, AR invoices, or manual JE) before statements will populate.`);
+        }
+        if (issues.length === 0) return null;
+        return (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 px-4 py-3 text-sm">
+            <div className="font-semibold text-amber-900 dark:text-amber-200 mb-1">Why some reports look empty:</div>
+            <ul className="list-disc pl-5 space-y-0.5 text-amber-800 dark:text-amber-300 text-xs">
+              {issues.map((msg, i) => <li key={i}>{msg}</li>)}
+            </ul>
+            <div className="mt-2 flex gap-2">
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={async () => {
+                if (!userId) return;
+                const { data, error } = await supabase.rpc('backfill_schedule_iii_classifications', { p_user_id: userId });
+                if (error) toast.error('Backfill failed: ' + error.message);
+                else toast.success(`Tagged ${data ?? 0} accounts. Reloading…`);
+              }}>Auto-tag my COA</Button>
+            </div>
+          </div>
+        );
+      })()}
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <div className="overflow-x-auto">
           <TabsList className="inline-flex h-10 p-1 gap-1 w-auto min-w-full">
+            <TabsTrigger value="engine" className="gap-1.5 text-xs"><Sparkles className="h-3.5 w-3.5" /> Unified Engine</TabsTrigger>
             <TabsTrigger value="mis" className="gap-1.5 text-xs"><Activity className="h-3.5 w-3.5" /> MIS Report</TabsTrigger>
             <TabsTrigger value="detailed-pnl" className="gap-1.5 text-xs"><Calculator className="h-3.5 w-3.5" /> Detailed P&L</TabsTrigger>
             <TabsTrigger value="ratios" className="gap-1.5 text-xs"><PieChart className="h-3.5 w-3.5" /> Ratios</TabsTrigger>
@@ -498,6 +702,20 @@ Provide actionable insights in bullet points. Keep it concise.`;
             <TabsTrigger value="pnl" className="gap-1.5 text-xs"><Calculator className="h-3.5 w-3.5" /> P&L</TabsTrigger>
             <TabsTrigger value="sch3-pnl" className="gap-1.5 text-xs"><Calculator className="h-3.5 w-3.5" /> Sch III</TabsTrigger>
             <TabsTrigger value="balance" className="gap-1.5 text-xs"><BookOpen className="h-3.5 w-3.5" /> Balance</TabsTrigger>
+            <TabsTrigger value="sch3-cfs" className="gap-1.5 text-xs"><IndianRupee className="h-3.5 w-3.5" /> Sch III CFS</TabsTrigger>
+            <TabsTrigger value="notes" className="gap-1.5 text-xs"><BookOpen className="h-3.5 w-3.5" /> Notes</TabsTrigger>
+            <TabsTrigger value="ratios-sch3" className="gap-1.5 text-xs"><PieChart className="h-3.5 w-3.5" /> Ratios</TabsTrigger>
+            <TabsTrigger value="period-lock" className="gap-1.5 text-xs"><ClipboardList className="h-3.5 w-3.5" /> Period Lock</TabsTrigger>
+            <TabsTrigger value="fy-close" className="gap-1.5 text-xs"><Calculator className="h-3.5 w-3.5" /> FY Close</TabsTrigger>
+            <TabsTrigger value="ai-review" className="gap-1.5 text-xs"><Bot className="h-3.5 w-3.5" /> AI Review</TabsTrigger>
+            <TabsTrigger value="consol" className="gap-1.5 text-xs"><Building2 className="h-3.5 w-3.5" /> Consolidation</TabsTrigger>
+            <TabsTrigger value="socie" className="gap-1.5 text-xs"><Wallet className="h-3.5 w-3.5" /> SOCIE</TabsTrigger>
+            <TabsTrigger value="ind-as" className="gap-1.5 text-xs"><Calculator className="h-3.5 w-3.5" /> Ind AS</TabsTrigger>
+            <TabsTrigger value="rpt" className="gap-1.5 text-xs"><Users className="h-3.5 w-3.5" /> RPT</TabsTrigger>
+            <TabsTrigger value="segments" className="gap-1.5 text-xs"><BarChart3 className="h-3.5 w-3.5" /> Segments</TabsTrigger>
+            <TabsTrigger value="csr" className="gap-1.5 text-xs"><Heart className="h-3.5 w-3.5" /> CSR</TabsTrigger>
+            <TabsTrigger value="tds-recon" className="gap-1.5 text-xs"><Receipt className="h-3.5 w-3.5" /> TDS Recon</TabsTrigger>
+            <TabsTrigger value="compliance-hub" className="gap-1.5 text-xs"><ShieldCheck className="h-3.5 w-3.5" /> Compliance Hub</TabsTrigger>
             <TabsTrigger value="trial-balance" className="gap-1.5 text-xs"><Scale className="h-3.5 w-3.5" /> Trial Bal</TabsTrigger>
             <TabsTrigger value="income-expenditure" className="gap-1.5 text-xs"><ScrollText className="h-3.5 w-3.5" /> I&E</TabsTrigger>
             <TabsTrigger value="receipts-payments" className="gap-1.5 text-xs"><Wallet className="h-3.5 w-3.5" /> R&P</TabsTrigger>
@@ -1162,21 +1380,148 @@ Provide actionable insights in bullet points. Keep it concise.`;
                       </tbody>
                     </table>
                   </div>
-                  <Button onClick={handleGeneratePDF}><Download className="mr-2 h-4 w-4" /> Download Financial Statements PDF</Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={handleGeneratePDF}><Download className="mr-2 h-4 w-4" /> Download PDF</Button>
+                    <Button variant="outline" onClick={handleExportExcel} disabled={excelBusy}>
+                      {excelBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
+                      Download Excel Workbook
+                    </Button>
+                    <Button variant="outline" onClick={handleDownloadAuditPDF} disabled={auditPdfBusy}>
+                      {auditPdfBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCheck className="mr-2 h-4 w-4" />}
+                      Audit Working Papers PDF
+                    </Button>
+                    <Button variant="outline" onClick={handleDownloadXBRL} disabled={xbrlBusy}>
+                      {xbrlBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileJson className="mr-2 h-4 w-4" />}
+                      AOC-4 XBRL (MCA Filing)
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <div className="text-center py-12 text-muted-foreground"><Calculator className="h-12 w-12 mx-auto mb-4 opacity-50" /><p>No data available. Go to Setup tab and fetch data first.</p></div>
+                <div className="text-center py-12 text-muted-foreground"><Calculator className="h-12 w-12 mx-auto mb-4 opacity-50" /><p>Loading P&amp;L from your posted journal entries…</p><p className="text-xs mt-2">If this stays empty, no entries are posted for FY {financialYear || fyOptions[0]} yet.</p></div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="sch3-pnl" className="space-y-4">
+          <ScheduleIIIComplianceCheck />
           <ScheduleIIIProfitLoss financialData={financialData} companyDetails={companyDetails} financialYear={financialYear || fyOptions[0]} formatCurrency={formatCurrency} />
         </TabsContent>
 
         <TabsContent value="balance" className="space-y-4">
+          <ScheduleIIIComplianceCheck />
           <ScheduleIIIBalanceSheet financialData={financialData} companyDetails={companyDetails} financialYear={financialYear || fyOptions[0]} formatCurrency={formatCurrency} />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Schedule III Line Drilldown</CardTitle>
+              <CardDescription>Click any line below to see the underlying journal entries.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                {[
+                  { code: 'BS.CA.3', label: 'Trade Receivables' },
+                  { code: 'BS.CL.2', label: 'Trade Payables' },
+                  { code: 'BS.CA.4', label: 'Cash & Bank' },
+                  { code: 'BS.CA.2', label: 'Inventories' },
+                  { code: 'BS.NCA.1', label: 'Tangible Assets' },
+                  { code: 'BS.NCL.1', label: 'Long-term Borrowings' },
+                  { code: 'BS.CL.1', label: 'Short-term Borrowings' },
+                  { code: 'BS.E.1', label: 'Share Capital' },
+                  { code: 'BS.E.2', label: 'Reserves & Surplus' },
+                ].map(l => (
+                  <Button key={l.code} variant="outline" size="sm" className="justify-start"
+                          onClick={() => { setDrilldownLine(l.code); setDrilldownOpen(true); }}>
+                    <span className="font-mono text-[10px] mr-2 text-muted-foreground">{l.code}</span>
+                    {l.label}
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="sch3-cfs" className="space-y-4">
+          <ScheduleIIIComplianceCheck />
+          <CashFlowStatementSch3 financialYear={financialYear || fyOptions[0]} companyName={companyDetails.companyName} />
+        </TabsContent>
+
+        <TabsContent value="notes" className="space-y-4">
+          <NotesToAccountsComponent financialYear={financialYear || fyOptions[0]} companyName={companyDetails.companyName} />
+        </TabsContent>
+
+        <TabsContent value="ratios-sch3" className="space-y-4">
+          <FinancialRatiosDashboard financialYear={financialYear || fyOptions[0]} />
+        </TabsContent>
+
+        <TabsContent value="period-lock" className="space-y-4">
+          <PeriodLockManager />
+        </TabsContent>
+
+        <TabsContent value="ai-review" className="space-y-4">
+          <AIFinancialReview financialYear={financialYear || fyOptions[0]} />
+        </TabsContent>
+
+        <TabsContent value="consol" className="space-y-4">
+          <ConsolidatedStatements />
+        </TabsContent>
+
+        <TabsContent value="socie" className="space-y-4">
+          <SOCIEStatement financialYear={financialYear || fyOptions[0]} companyName={companyDetails.companyName} />
+        </TabsContent>
+
+        <TabsContent value="ind-as" className="space-y-4">
+          <IndASStatements financialYear={financialYear || fyOptions[0]} companyName={companyDetails.companyName} />
+        </TabsContent>
+
+        <TabsContent value="rpt" className="space-y-4">
+          <RelatedPartyManager financialYear={financialYear || fyOptions[0]} />
+        </TabsContent>
+
+        <TabsContent value="segments" className="space-y-4">
+          <SegmentReporting financialYear={financialYear || fyOptions[0]} />
+        </TabsContent>
+
+        <TabsContent value="csr" className="space-y-4">
+          <CSRSettings />
+          <CSRDashboard financialYear={financialYear || fyOptions[0]} companyName={companyDetails.companyName} />
+        </TabsContent>
+
+        <TabsContent value="tds-recon" className="space-y-4">
+          <TDSReconciliationView financialYear={financialYear || fyOptions[0]} assesseePan={companyDetails.pan} />
+        </TabsContent>
+
+        <TabsContent value="compliance-hub" className="space-y-4">
+          <StatutoryComplianceDashboard financialYear={financialYear || fyOptions[0]} />
+        </TabsContent>
+
+        <TabsContent value="engine" className="space-y-4">
+          <UnifiedFinancialEngine financialYear={financialYear || fyOptions[0]} />
+        </TabsContent>
+
+        <TabsContent value="fy-close" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Financial Year Closing</CardTitle>
+              <CardDescription>
+                Posts the year-end closing journal (Income / Expense → Reserves &amp; Surplus) and locks the period.
+                Use after all transactions for FY {financialYear || fyOptions[0]} are posted.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1">
+                <p className="font-medium">What this does</p>
+                <ul className="list-disc list-inside text-muted-foreground space-y-0.5 text-xs">
+                  <li>Computes per-account net Income &amp; Expense for FY {financialYear || fyOptions[0]}</li>
+                  <li>Posts one balanced journal closing those balances to Reserves &amp; Surplus (BS.E.2)</li>
+                  <li>Locks the period through FY-end so journals can't be backdated</li>
+                  <li>Refreshes Notes to Accounts with closing-period figures</li>
+                  <li>Idempotent — running twice returns the existing close, doesn't double-post</li>
+                </ul>
+              </div>
+              <FYCloseButton financialYear={financialYear || fyOptions[0]} />
+            </CardContent>
+          </Card>
+          <PeriodLockManager />
         </TabsContent>
 
         {/* Trial Balance */}
@@ -1330,6 +1675,14 @@ Provide actionable insights in bullet points. Keep it concise.`;
         <TabsContent value="rcm-report"><RCMLiabilityReport /></TabsContent>
         <TabsContent value="gst-summary"><GSTSummaryReport /></TabsContent>
       </Tabs>
+
+      <ScheduleIIIDrilldown
+        open={drilldownOpen}
+        onOpenChange={(o) => { setDrilldownOpen(o); if (!o) setDrilldownLine(null); }}
+        lineCode={drilldownLine}
+        periodStart={financialYear ? `${parseInt(financialYear.split('-')[0])}-04-01` : undefined}
+        periodEnd={financialYear ? `${parseInt(financialYear.split('-')[0]) + 1}-03-31` : undefined}
+      />
     </div>
   );
 };

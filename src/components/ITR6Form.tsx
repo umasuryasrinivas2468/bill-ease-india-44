@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -28,6 +28,7 @@ import { generateITR6Json, downloadITR6Json } from '@/utils/itr6Generator';
 import { useEnhancedBusinessData } from '@/hooks/useEnhancedBusinessData';
 import { useInvoices } from '@/hooks/useInvoices';
 import { useExpenses } from '@/hooks/useExpenses';
+import { fetchFinancialData, FinancialData } from '@/services/financialStatementsService';
 import { toast } from 'sonner';
 
 const ITR_PORTAL_URL = 'https://eportal.incometax.gov.in/iec/foservices/#/login';
@@ -73,6 +74,7 @@ export default function ITR6Form() {
   const [advanceTax, setAdvanceTax] = useState<AdvanceTaxPayment[]>([]);
   const [selfAssessmentTax, setSelfAssessmentTax] = useState<SelfAssessmentTaxPayment[]>([]);
   const [tdsDetails, setTdsDetails] = useState<TDSDetail[]>([]);
+  const [glFinancialData, setGlFinancialData] = useState<FinancialData | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -108,14 +110,68 @@ export default function ITR6Form() {
   const watchStartupFlag = form.watch('startupDPIITFlag');
   const watchMsmeFlag = form.watch('msmeRegistered');
   const watchAuditFlag = form.watch('auditApplicable');
+  const watchAssessmentYear = form.watch('assessmentYear');
 
-  // Calculate financial data from invoices and expenses
+  // Derive FY from Assessment Year (AY 2026-27 → FY 2025-26)
+  const fiscalYearFromAY = (ay: string): string | null => {
+    const ayStart = parseInt(ay, 10);
+    if (Number.isNaN(ayStart)) return null;
+    const fyStart = ayStart - 1;
+    return `${fyStart}-${(fyStart + 1).toString().slice(-2)}`;
+  };
+
+  // Fetch Schedule III GL-driven data whenever AY changes — replaces the
+  // legacy invoice/expense aggregation with ledger-first numbers.
+  useEffect(() => {
+    if (!user?.id || !watchAssessmentYear) return;
+    const fy = fiscalYearFromAY(watchAssessmentYear);
+    if (!fy) return;
+    fetchFinancialData(user.id, fy).then(setGlFinancialData).catch(err => {
+      console.warn('[ITR6Form] GL data fetch failed, falling back to invoice/expense aggregation:', err);
+      setGlFinancialData(null);
+    });
+  }, [user?.id, watchAssessmentYear]);
+
+  // GL-driven (Phase 17) with invoice/expense fallback if GL data unavailable
   const calculateFinancialData = () => {
+    if (glFinancialData) {
+      const fd = glFinancialData;
+      // GST: split from invoices since GL doesn't separate output GST by IGST/CGST in this shape
+      const cgst = invoices?.reduce((sum, inv) => sum + ((inv.gst_amount || 0) / 2), 0) || 0;
+      const sgst = cgst;
+      return {
+        totalRevenue:        fd.totalRevenue,
+        totalExpenses:       fd.totalExpenses,
+        grossProfit:         fd.totalRevenue - (fd.costOfMaterialsConsumed + fd.purchaseOfStockInTrade + fd.changesInInventories),
+        netProfit:           fd.profitAfterTax,
+        totalAssets:         fd.totalAssets,
+        totalLiabilities:    fd.totalEquityAndLiabilities - (fd.shareCapital + fd.reservesAndSurplus),
+        shareCapital:        fd.shareCapital,
+        reservesAndSurplus:  fd.reservesAndSurplus,
+        currentAssets:       fd.tradeReceivables + fd.cashAndBank + fd.inventories + fd.shortTermLoansAndAdvances + fd.otherCurrentAssets,
+        currentLiabilities:  fd.tradePayables + fd.otherCurrentLiabilities + fd.shortTermBorrowings + fd.shortTermProvisions,
+        fixedAssets:         fd.tangibleAssets + fd.intangibleAssets + fd.capitalWorkInProgress,
+        cgst,
+        sgst,
+        igst:                0,
+        expenseBreakdown: {
+          salaries:     fd.employeeBenefitExpense,
+          rent:         0,
+          utilities:    0,
+          professional: 0,
+          travel:       0,
+          depreciation: fd.depreciationExpense,
+          other:        fd.otherExpenses + fd.financialCosts,
+        },
+      };
+    }
+
+    // Fallback: legacy invoice/expense aggregation (e.g. before any journals posted)
     const totalRevenue = invoices?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0;
     const totalExpensesAmt = expenses?.reduce((sum, exp) => sum + (exp.total_amount || 0), 0) || 0;
     const cgst = invoices?.reduce((sum, inv) => sum + ((inv.gst_amount || 0) / 2), 0) || 0;
     const sgst = cgst;
-    
+
     return {
       totalRevenue,
       totalExpenses: totalExpensesAmt,

@@ -1,0 +1,93 @@
+﻿[36mvite v5.4.10 [32mbuilding for production...[36m[39m
+transforming...
+node.exe : Browserslist: browsers data (caniuse-lite) is 19 months old. Please run:
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Browserslist: b...ld. Please run::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[32m✓[39m 4476 modules transformed.
+rendering chunks...
+[1m[33m[plugin:vite:reporter][39m[22m [33m[plugin vite:reporter] 
+(!) C:/Users/54712/Downloads/bill-ease-india-44-12/node_modules/@supabase/supabase-js/dist/module/index.js is dynamically imported by 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/LicenseGenerator.tsx but also statically imported by 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/lib/supabaseClient.ts, C:/Users/54712/Downloads/bill-ease-india-44-12/src/pages/PayLink.tsx, dynamic import will not 
+move module into another chunk.
+[39m
+[1m[33m[plugin:vite:reporter][39m[22m [33m[plugin vite:reporter] 
+(!) C:/Users/54712/Downloads/bill-ease-india-44-12/src/utils/autoJournalEntry.ts is dynamically imported by 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/pages/SalesOrders.tsx but also statically imported by 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/AICommandBar.tsx, C:/Users/54712/Downloads/bill-ease-india-44-12/src/hooks/useInvoices.ts, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/hooks/usePaymentHub.ts, C:/Users/54712/Downloads/bill-ease-india-44-12/src/hooks/useVendorAdvances.ts, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/hooks/useVendorBillPayments.ts, C:/Users/54712/Downloads/bill-ease-india-44-12/src/pages/APIntake.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/pages/CashMemo.tsx, C:/Users/54712/Downloads/bill-ease-india-44-12/src/pages/CreateInvoice.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/pages/PaymentReceived.tsx, C:/Users/54712/Downloads/bill-ease-india-44-12/src/pages/Payments.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/pages/PurchaseBills.tsx, C:/Users/54712/Downloads/bill-ease-india-44-12/src/pages/PurchaseOrders.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/pages/QuotationsInfo.tsx, C:/Users/54712/Downloads/bill-ease-india-44-12/src/pages/SalesOrders.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/services/inventoryAutomationService.ts, dynamic import will not move module into another chunk.
+[39m
+[1m[33m[plugin:vite:reporter][39m[22m [33m[plugin vite:reporter] 
+(!) C:/Users/54712/Downloads/bill-ease-india-44-12/node_modules/jspdf/dist/jspdf.es.min.js is dynamically imported by 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/LicenseGenerator.tsx but also statically imported by 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/CSRDashboard.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/CashFlowStatement.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/IndASStatements.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/NotesToAccounts.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/SOCIEStatement.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/ScheduleIIIBalanceSheet.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/ScheduleIIIProfitLoss.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/pages/ComplianceCalendar.tsx, C:/Users/54712/Downloads/bill-ease-india-44-12/src/pages/accounting/ProfitLoss.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/pages/accounting/ProjectProfitLoss.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/services/performanceReportService.ts, C:/Users/54712/Downloads/bill-ease-india-44-12/src/utils/annualReportPDF.ts, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/utils/auditWorkingPapersPDF.ts, C:/Users/54712/Downloads/bill-ease-india-44-12/src/utils/deliveryChallanPDF.ts, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/utils/financialStatementsPDF.ts, C:/Users/54712/Downloads/bill-ease-india-44-12/src/utils/form16aPDF.ts, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/utils/incomeExpenditurePDF.ts, C:/Users/54712/Downloads/bill-ease-india-44-12/src/utils/orderPDF.ts, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/utils/receiptsPaymentsPDF.ts, C:/Users/54712/Downloads/bill-ease-india-44-12/src/utils/tdsPDF.ts, dynamic import will 
+not move module into another chunk.
+[39m
+[1m[33m[plugin:vite:reporter][39m[22m [33m[plugin vite:reporter] 
+(!) C:/Users/54712/Downloads/bill-ease-india-44-12/src/services/financialStatementsService.ts is dynamically imported by 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/pages/FinancialStatements.tsx but also statically imported by 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/ITR6Form.tsx, C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/AIFinancialReview.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/CSRDashboard.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/CSRSettings.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/CashFlowStatement.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/ConsolidatedStatements.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/FYCloseButton.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/FinancialRatiosDashboard.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/IndASStatements.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/NotesToAccounts.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/PeriodLockManager.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/RelatedPartyManager.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/SOCIEStatement.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/ScheduleIIIDrilldown.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/SegmentReporting.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/StatutoryComplianceDashboard.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/reports/TDSReconciliation.tsx, 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/pages/FinancialStatements.tsx, C:/Users/54712/Downloads/bill-ease-india-44-12/src/utils/auditWorkingPapersPDF.ts, 
+dynamic import will not move module into another chunk.
+[39m
+[1m[33m[plugin:vite:reporter][39m[22m [33m[plugin vite:reporter] 
+(!) C:/Users/54712/Downloads/bill-ease-india-44-12/node_modules/qrcode/lib/browser.js is dynamically imported by 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/LicenseGenerator.tsx but also statically imported by 
+C:/Users/54712/Downloads/bill-ease-india-44-12/src/components/assets/AssetQrCode.tsx, dynamic import will not move module into another chunk.
+[39m
+computing gzip size...
+[2mdist/[22m[32mindex.html                          [39m[1m[2m    3.00 kB[22m[1m[22m[2m │ gzip:     1.19 kB[22m
+[2mdist/[22m[32massets/pdf.worker.min-FHbmGBN0.mjs  [39m[1m[2m1,244.25 kB[22m[1m[22m
+[2mdist/[22m[35massets/index-DtkwZipY.css           [39m[1m[2m  169.02 kB[22m[1m[22m[2m │ gzip:    26.30 kB[22m
+[2mdist/[22m[36massets/browser-BCccm85m.js          [39m[1m[2m    0.30 kB[22m[1m[22m[2m │ gzip:     0.25 kB[22m
+[2mdist/[22m[36massets/journalPosting-D6IVq6uM.js   [39m[1m[2m    0.67 kB[22m[1m[22m[2m │ gzip:     0.37 kB[22m
+[2mdist/[22m[36massets/purify.es-BFmuJLeH.js        [39m[1m[2m   21.93 kB[22m[1m[22m[2m │ gzip:     8.62 kB[22m
+[2mdist/[22m[36massets/index.es-DbqLl52T.js         [39m[1m[2m  150.53 kB[22m[1m[22m[2m │ gzip:    51.48 kB[22m
+[2mdist/[22m[36massets/html2canvas.esm-CBrSDip1.js  [39m[1m[2m  201.42 kB[22m[1m[22m[2m │ gzip:    48.03 kB[22m
+[2mdist/[22m[36massets/index-ix0-wEXI.js            [39m[1m[33m5,450.72 kB[39m[22m[2m │ gzip: 1,424.78 kB[22m
+[33m
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 21.02s[39m

@@ -88,12 +88,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <AppSidebar />
 
         <SidebarInset className="flex-1 w-full overflow-x-hidden bg-transparent">
-          <header className="z-10 px-4 pt-4 md:px-6 md:pt-5">
+          <header className="z-10 px-3 pt-3 sm:px-4 sm:pt-4 md:px-6 md:pt-5 pt-safe">
               <div className="md:hidden flex items-center justify-between gap-2 px-1 py-2">
-                <div className="min-w-0 flex-1 overflow-x-auto">
+                <div className="min-w-0 flex-1 overflow-x-auto no-scrollbar">
                   {renderTopNav('sm')}
                 </div>
-                <div className="flex flex-shrink-0 items-center gap-2">
+                <div className="flex flex-shrink-0 items-center gap-1.5 sm:gap-2">
                   <NotificationCenter compact />
                   <SupportAssistantTrigger className="h-10 w-10 rounded-[14px]" />
                   <Button

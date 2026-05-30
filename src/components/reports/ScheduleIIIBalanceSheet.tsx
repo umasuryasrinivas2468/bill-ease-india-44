@@ -40,53 +40,55 @@ const ScheduleIIIBalanceSheet: React.FC<ScheduleIIIBalanceSheetProps> = ({
         <CardContent>
           <div className="text-center py-12 text-muted-foreground">
             <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No data available. Please fetch financial data first.</p>
+            <p>Computing Schedule III Balance Sheet from your posted journal entries…</p>
+            <p className="text-xs mt-2">If this stays empty, you don't have any posted entries as of the selected FY yet.</p>
           </div>
         </CardContent>
       </Card>
     );
   }
 
+  const fd = financialData;
   const equityRows: BSRow[] = [
     { label: 'I. EQUITY AND LIABILITIES', currentPeriod: null, previousPeriod: null, bold: true, section: true },
     { label: '(1) Shareholder\'s funds', currentPeriod: null, previousPeriod: null, bold: true },
-    { label: '(a) Share capital', currentPeriod: financialData.shareCapital, previousPeriod: null, indent: 2 },
-    { label: '(b) Reserves and surplus', currentPeriod: financialData.reservesAndSurplus, previousPeriod: null, indent: 2 },
-    { label: '(c) Money received against share warrants', currentPeriod: 0, previousPeriod: null, indent: 2 },
-    { label: '(2) Share application money pending allotment', currentPeriod: 0, previousPeriod: null, bold: true },
+    { label: '(a) Share capital',                            noteNo: '2',  currentPeriod: fd.shareCapital,            previousPeriod: null, indent: 2 },
+    { label: '(b) Reserves and surplus',                     noteNo: '3',  currentPeriod: fd.reservesAndSurplus,      previousPeriod: null, indent: 2 },
+    { label: '(c) Money received against share warrants',                  currentPeriod: 0,                          previousPeriod: null, indent: 2 },
+    { label: '(2) Share application money pending allotment',              currentPeriod: 0,                          previousPeriod: null, bold: true },
     { label: '(3) Non-current liabilities', currentPeriod: null, previousPeriod: null, bold: true },
-    { label: '(a) Long-term borrowings', currentPeriod: financialData.longTermBorrowings, previousPeriod: null, indent: 2 },
-    { label: '(b) Deferred tax liabilities (Net)', currentPeriod: 0, previousPeriod: null, indent: 2 },
-    { label: '(c) Other long term liabilities', currentPeriod: 0, previousPeriod: null, indent: 2 },
-    { label: '(d) Long-term provisions', currentPeriod: 0, previousPeriod: null, indent: 2 },
+    { label: '(a) Long-term borrowings',                     noteNo: '4',  currentPeriod: fd.longTermBorrowings,      previousPeriod: null, indent: 2 },
+    { label: '(b) Deferred tax liabilities (Net)',           noteNo: '5',  currentPeriod: fd.deferredTaxLiabilities,  previousPeriod: null, indent: 2 },
+    { label: '(c) Other long-term liabilities',              noteNo: '6',  currentPeriod: 0,                          previousPeriod: null, indent: 2 },
+    { label: '(d) Long-term provisions',                     noteNo: '7',  currentPeriod: fd.longTermProvisions,      previousPeriod: null, indent: 2 },
     { label: '(4) Current liabilities', currentPeriod: null, previousPeriod: null, bold: true },
-    { label: '(a) Short-term borrowings', currentPeriod: financialData.shortTermBorrowings, previousPeriod: null, indent: 2 },
-    { label: '(b) Trade payables', currentPeriod: financialData.tradePayables, previousPeriod: null, indent: 2 },
-    { label: '(c) Other current liabilities', currentPeriod: financialData.otherCurrentLiabilities, previousPeriod: null, indent: 2 },
-    { label: '(d) Short-term provisions', currentPeriod: 0, previousPeriod: null, indent: 2 },
-    { label: 'Total', currentPeriod: financialData.totalEquityAndLiabilities, previousPeriod: null, bold: true, section: true },
+    { label: '(a) Short-term borrowings',                    noteNo: '8',  currentPeriod: fd.shortTermBorrowings,     previousPeriod: null, indent: 2 },
+    { label: '(b) Trade payables',                           noteNo: '9',  currentPeriod: fd.tradePayables,           previousPeriod: null, indent: 2 },
+    { label: '(c) Other current liabilities',                noteNo: '10', currentPeriod: fd.otherCurrentLiabilities, previousPeriod: null, indent: 2 },
+    { label: '(d) Short-term provisions',                    noteNo: '11', currentPeriod: fd.shortTermProvisions,     previousPeriod: null, indent: 2 },
+    { label: 'Total', currentPeriod: fd.totalEquityAndLiabilities, previousPeriod: null, bold: true, section: true },
   ];
 
   const assetRows: BSRow[] = [
     { label: 'II. ASSETS', currentPeriod: null, previousPeriod: null, bold: true, section: true },
     { label: 'Non-current assets', currentPeriod: null, previousPeriod: null, bold: true },
     { label: '(1) (a) Fixed assets', currentPeriod: null, previousPeriod: null, indent: 1 },
-    { label: '(i) Tangible assets', currentPeriod: financialData.fixedAssets, previousPeriod: null, indent: 3 },
-    { label: '(ii) Intangible assets', currentPeriod: 0, previousPeriod: null, indent: 3 },
-    { label: '(iii) Capital work-in progress', currentPeriod: 0, previousPeriod: null, indent: 3 },
-    { label: '(iv) Intangible assets under development', currentPeriod: 0, previousPeriod: null, indent: 3 },
-    { label: '(b) Non-current investments', currentPeriod: financialData.nonCurrentInvestments, previousPeriod: null, indent: 1 },
-    { label: '(c) Deferred tax assets (Net)', currentPeriod: 0, previousPeriod: null, indent: 1 },
-    { label: '(d) Long-term loans and advances', currentPeriod: 0, previousPeriod: null, indent: 1 },
-    { label: '(e) Other non-current assets', currentPeriod: 0, previousPeriod: null, indent: 1 },
+    { label: '(i) Tangible assets',                          noteNo: '12', currentPeriod: fd.tangibleAssets,          previousPeriod: null, indent: 3 },
+    { label: '(ii) Intangible assets',                       noteNo: '12', currentPeriod: fd.intangibleAssets,        previousPeriod: null, indent: 3 },
+    { label: '(iii) Capital work-in-progress',               noteNo: '12', currentPeriod: fd.capitalWorkInProgress,   previousPeriod: null, indent: 3 },
+    { label: '(iv) Intangible assets under development',                   currentPeriod: 0,                          previousPeriod: null, indent: 3 },
+    { label: '(b) Non-current investments',                  noteNo: '13', currentPeriod: fd.nonCurrentInvestments,   previousPeriod: null, indent: 1 },
+    { label: '(c) Deferred tax assets (Net)',                noteNo: '14', currentPeriod: fd.deferredTaxAssets,       previousPeriod: null, indent: 1 },
+    { label: '(d) Long-term loans and advances',             noteNo: '15', currentPeriod: fd.longTermLoansAndAdvances,previousPeriod: null, indent: 1 },
+    { label: '(e) Other non-current assets',                 noteNo: '16', currentPeriod: 0,                          previousPeriod: null, indent: 1 },
     { label: 'Current assets', currentPeriod: null, previousPeriod: null, bold: true },
-    { label: '(a) Current investments', currentPeriod: 0, previousPeriod: null, indent: 1 },
-    { label: '(b) Inventories', currentPeriod: 0, previousPeriod: null, indent: 1 },
-    { label: '(c) Trade receivables', currentPeriod: financialData.tradeReceivables, previousPeriod: null, indent: 1 },
-    { label: '(d) Cash and cash equivalents', currentPeriod: financialData.cashAndBank, previousPeriod: null, indent: 1 },
-    { label: '(e) Short-term loans and advances', currentPeriod: 0, previousPeriod: null, indent: 1 },
-    { label: '(f) Other current assets', currentPeriod: financialData.otherCurrentAssets, previousPeriod: null, indent: 1 },
-    { label: 'Total', currentPeriod: financialData.totalAssets, previousPeriod: null, bold: true, section: true },
+    { label: '(a) Current investments',                      noteNo: '17', currentPeriod: 0,                          previousPeriod: null, indent: 1 },
+    { label: '(b) Inventories',                              noteNo: '18', currentPeriod: fd.inventories,             previousPeriod: null, indent: 1 },
+    { label: '(c) Trade receivables',                        noteNo: '19', currentPeriod: fd.tradeReceivables,        previousPeriod: null, indent: 1 },
+    { label: '(d) Cash and cash equivalents',                noteNo: '20', currentPeriod: fd.cashAndBank,             previousPeriod: null, indent: 1 },
+    { label: '(e) Short-term loans and advances',            noteNo: '21', currentPeriod: fd.shortTermLoansAndAdvances, previousPeriod: null, indent: 1 },
+    { label: '(f) Other current assets',                     noteNo: '22', currentPeriod: fd.otherCurrentAssets,      previousPeriod: null, indent: 1 },
+    { label: 'Total', currentPeriod: fd.totalAssets, previousPeriod: null, bold: true, section: true },
   ];
 
   const allRows = [...equityRows, { label: '', currentPeriod: null, previousPeriod: null }, ...assetRows];
