@@ -30,7 +30,8 @@
       "Bash(echo \"===EXIT $?\")",
       "Bash(git stash *)",
       "Bash(grep -l \"account_group\" \"C:\\\\Users\\\\54712\\\\Downloads\\\\bill-ease-india-44-12\\\\supabase\\\\migrations\\\\\\\\\"*.sql)",
-      "Bash(npx --prefix \"C:\\\\Users\\\\54712\\\\Downloads\\\\bill-ease-india-44-12\" tsc --noEmit -p \"C:\\\\Users\\\\54712\\\\Downloads\\\\bill-ease-india-44-12\\\\tsconfig.json\")"
+      "Bash(npx --prefix \"C:\\\\Users\\\\54712\\\\Downloads\\\\bill-ease-india-44-12\" tsc --noEmit -p \"C:\\\\Users\\\\54712\\\\Downloads\\\\bill-ease-india-44-12\\\\tsconfig.json\")",
+      "Bash(grep -B1 -A 12 \"^CREATE TABLE.{0,30}clients\" C:/Users/54712/Downloads/bill-ease-india-44-12/supabase/migrations/20260509000001_ar_complete_system.sql)"
     ]
   }
 }

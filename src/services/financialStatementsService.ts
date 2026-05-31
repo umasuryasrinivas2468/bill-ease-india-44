@@ -2032,3 +2032,164 @@ export const routeExpense = async (
   if (error) { console.error('[fss] route expense:', error); throw error; }
   return data as ExpenseRoutingResult;
 };
+
+// ════════════════════════════════════════════════════════════════════════════
+// PHASE 28 — Journal-First Foundation (GL drilldown, sub-ledger, live dashboard,
+//            GSTR-2B reconciliation, validation engine)
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface GeneralLedgerLine {
+  journal_id: string;
+  journal_number: string;
+  journal_date: string;
+  narration: string;
+  debit: number;
+  credit: number;
+  source_type: string | null;
+  source_id: string | null;
+  vendor_id: string | null;
+  customer_id: string | null;
+}
+
+export interface GeneralLedger {
+  account_id: string;
+  account_code: string;
+  account_name: string;
+  account_type: 'Asset' | 'Liability' | 'Equity' | 'Income' | 'Expense';
+  from_date: string;
+  to_date: string;
+  opening_balance: number;
+  period_debit: number;
+  period_credit: number;
+  closing_balance: number;
+  lines: GeneralLedgerLine[];
+}
+
+export const fetchGeneralLedger = async (
+  userId: string, accountId: string, fromDate: string, toDate: string,
+): Promise<GeneralLedger | null> => {
+  const { data, error } = await supabase.rpc('get_general_ledger', {
+    p_user_id: userId, p_account_id: accountId, p_from_date: fromDate, p_to_date: toDate,
+  });
+  if (error) { console.error('[fss] general ledger:', error); return null; }
+  return data as GeneralLedger;
+};
+
+export interface PartySubLedgerAging {
+  current: number;
+  d1_30: number;
+  d31_60: number;
+  d61_90: number;
+  d90_plus: number;
+}
+
+export interface PartySubLedger {
+  party_type: 'vendor' | 'customer';
+  party_id: string;
+  party_name: string;
+  subledger_id: string | null;
+  from_date: string;
+  to_date: string;
+  opening_balance: number;
+  period_debit: number;
+  period_credit: number;
+  closing_balance: number;
+  aging: Partial<PartySubLedgerAging>;
+  lines: GeneralLedgerLine[];
+}
+
+export const fetchPartySubLedger = async (
+  userId: string, partyType: 'vendor' | 'customer', partyId: string,
+  fromDate: string, toDate: string,
+): Promise<PartySubLedger | null> => {
+  const { data, error } = await supabase.rpc('get_party_subledger', {
+    p_user_id: userId, p_party_type: partyType, p_party_id: partyId,
+    p_from_date: fromDate, p_to_date: toDate,
+  });
+  if (error) { console.error('[fss] party subledger:', error); return null; }
+  return data as PartySubLedger;
+};
+
+export interface LiveJournalDashboard {
+  fiscal_year: string;
+  source: 'journals_only';
+  revenue: number;
+  expenses: number;
+  net_profit: number;
+  cash_balance: number;
+  ar_balance: number;
+  ap_balance: number;
+  inventory_value: number;
+  output_gst: number;
+  input_gst: number;
+  net_gst_liability: number;
+  computed_at: string;
+}
+
+export const fetchLiveJournalDashboard = async (
+  userId: string, fiscalYear: string,
+): Promise<LiveJournalDashboard | null> => {
+  const { data, error } = await supabase.rpc('get_live_journal_dashboard', {
+    p_user_id: userId, p_fiscal_year: fiscalYear,
+  });
+  if (error) { console.error('[fss] live dashboard:', error); return null; }
+  return data as LiveJournalDashboard;
+};
+
+export interface Gstr2bSupplier {
+  supplier: string;
+  gstin: string;
+  invoice_count: number;
+  taxable_value: number;
+  gst_books: number;
+  itc_eligible: number;
+  itc_blocked: number;
+  itc_claimed: number;
+  itc_pending: number;
+  match_status: 'matched' | 'unmatched' | 'blocked';
+}
+
+export interface Gstr2bReconciliation {
+  period: string;
+  books_total: number;
+  portal_total: number;
+  variance: number;
+  match_pct: number | null;
+  suppliers: Gstr2bSupplier[];
+  computed_at: string;
+}
+
+export const fetchGstr2bReconciliation = async (
+  userId: string, period?: string,
+): Promise<Gstr2bReconciliation | null> => {
+  const { data, error } = await supabase.rpc('get_gstr2b_reconciliation', {
+    p_user_id: userId, p_period: period ?? null,
+  });
+  if (error) { console.error('[fss] gstr2b recon:', error); return null; }
+  return data as Gstr2bReconciliation;
+};
+
+export interface ValidationCheck {
+  check: 'trial_balance' | 'journal_balance' | 'ar_subledger_control'
+       | 'ap_subledger_control' | 'inventory_match';
+  label: string;
+  passed: boolean | null;
+  details: Record<string, unknown>;
+}
+
+export interface BooksValidation {
+  fiscal_year: string;
+  all_passed: boolean;
+  checks: ValidationCheck[];
+  computed_at: string;
+}
+
+export const validateBooks = async (
+  userId: string, fiscalYear: string,
+): Promise<BooksValidation | null> => {
+  const { data, error } = await supabase.rpc('validate_books', {
+    p_user_id: userId, p_fiscal_year: fiscalYear,
+  });
+  if (error) { console.error('[fss] validate books:', error); return null; }
+  return data as BooksValidation;
+};

@@ -41,6 +41,7 @@ import CSRSettings from '@/components/reports/CSRSettings';
 import TDSReconciliationView from '@/components/reports/TDSReconciliation';
 import StatutoryComplianceDashboard from '@/components/reports/StatutoryComplianceDashboard';
 import UnifiedFinancialEngine from '@/components/reports/UnifiedFinancialEngine';
+import JournalFirstFoundation from '@/components/reports/JournalFirstFoundation';
 import { exportFinancialStatementsExcel } from '@/utils/financialStatementsExcel';
 import { generateAndDownloadAOC4XBRL } from '@/utils/xbrlGenerator';
 import { generateAuditWorkingPapersPDF } from '@/utils/auditWorkingPapersPDF';
@@ -122,8 +123,8 @@ const FS_TAB_VALUES = new Set([
   // Phase 10-25 additions
   'sch3-cfs', 'notes', 'ratios-sch3', 'period-lock', 'fy-close', 'ai-review',
   'consol', 'socie', 'ind-as', 'rpt', 'segments', 'csr', 'tds-recon', 'compliance-hub',
-  // Phase 26
-  'engine',
+  // Phase 26 & 28
+  'engine', 'journal-first',
 ]);
 
 const FinancialStatements = () => {
@@ -692,6 +693,7 @@ Provide actionable insights in bullet points. Keep it concise.`;
         <div className="overflow-x-auto">
           <TabsList className="inline-flex h-10 p-1 gap-1 w-auto min-w-full">
             <TabsTrigger value="engine" className="gap-1.5 text-xs"><Sparkles className="h-3.5 w-3.5" /> Unified Engine</TabsTrigger>
+            <TabsTrigger value="journal-first" className="gap-1.5 text-xs"><BookOpen className="h-3.5 w-3.5" /> Journal-First</TabsTrigger>
             <TabsTrigger value="mis" className="gap-1.5 text-xs"><Activity className="h-3.5 w-3.5" /> MIS Report</TabsTrigger>
             <TabsTrigger value="detailed-pnl" className="gap-1.5 text-xs"><Calculator className="h-3.5 w-3.5" /> Detailed P&L</TabsTrigger>
             <TabsTrigger value="ratios" className="gap-1.5 text-xs"><PieChart className="h-3.5 w-3.5" /> Ratios</TabsTrigger>
@@ -1492,6 +1494,10 @@ Provide actionable insights in bullet points. Keep it concise.`;
 
         <TabsContent value="compliance-hub" className="space-y-4">
           <StatutoryComplianceDashboard financialYear={financialYear || fyOptions[0]} />
+        </TabsContent>
+
+        <TabsContent value="journal-first" className="space-y-4">
+          <JournalFirstFoundation financialYear={financialYear || fyOptions[0]} />
         </TabsContent>
 
         <TabsContent value="engine" className="space-y-4">
