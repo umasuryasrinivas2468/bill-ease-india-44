@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,18 +29,21 @@ const fmtINR = (n: number | null | undefined): string => {
   return n < 0 ? `(₹${abs})` : `₹${abs}`;
 };
 
-const KPI: React.FC<{ label: string; value: string; tone?: string; icon?: React.ElementType }> = ({
-  label, value, tone, icon: Icon,
-}) => (
-  <Card>
-    <CardContent className="pt-6">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-        {Icon && <Icon className="h-3.5 w-3.5" />} {label}
-      </div>
-      <p className={cn('text-2xl font-bold', tone)}>{value}</p>
-    </CardContent>
-  </Card>
-);
+const KPI: React.FC<{ label: string; value: string; tone?: string; icon?: React.ElementType; href?: string }> = ({
+  label, value, tone, icon: Icon, href,
+}) => {
+  const inner = (
+    <Card className={href ? 'transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md cursor-pointer' : undefined}>
+      <CardContent className="pt-6">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+          {Icon && <Icon className="h-3.5 w-3.5" />} {label}
+        </div>
+        <p className={cn('text-2xl font-bold', tone)}>{value}</p>
+      </CardContent>
+    </Card>
+  );
+  return href ? <Link to={href} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg">{inner}</Link> : inner;
+};
 
 const JournalFirstFoundation: React.FC<Props> = ({ financialYear }) => {
   const { user } = useUser();
@@ -138,16 +142,18 @@ const JournalFirstFoundation: React.FC<Props> = ({ financialYear }) => {
           ) : (
             <>
               <div className="grid gap-3 md:grid-cols-4">
-                <KPI label="Revenue" value={fmtINR(live.revenue)} icon={TrendingUp} tone="text-emerald-700 dark:text-emerald-400" />
-                <KPI label="Expenses" value={fmtINR(live.expenses)} icon={ArrowDownRight} tone="text-rose-700 dark:text-rose-400" />
+                <KPI label="Revenue" value={fmtINR(live.revenue)} icon={TrendingUp} tone="text-emerald-700 dark:text-emerald-400" href="/invoices" />
+                <KPI label="Expenses" value={fmtINR(live.expenses)} icon={ArrowDownRight} tone="text-rose-700 dark:text-rose-400" href="/expenses" />
                 <KPI label="Net Profit" value={fmtINR(live.net_profit)} icon={ArrowUpRight}
-                     tone={live.net_profit >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'} />
-                <KPI label="Cash & Bank" value={fmtINR(live.cash_balance)} />
-                <KPI label="Accounts Receivable" value={fmtINR(live.ar_balance)} />
-                <KPI label="Accounts Payable" value={fmtINR(live.ap_balance)} />
-                <KPI label="Inventory Value" value={fmtINR(live.inventory_value)} />
+                     tone={live.net_profit >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}
+                     href="/accounting/profit-loss" />
+                <KPI label="Cash & Bank" value={fmtINR(live.cash_balance)} href="/banking" />
+                <KPI label="Accounts Receivable" value={fmtINR(live.ar_balance)} href="/ar-dashboard" />
+                <KPI label="Accounts Payable" value={fmtINR(live.ap_balance)} href="/ap-dashboard" />
+                <KPI label="Inventory Value" value={fmtINR(live.inventory_value)} href="/inventory/dashboard" />
                 <KPI label="Net GST Liability" value={fmtINR(live.net_gst_liability)}
-                     tone={live.net_gst_liability >= 0 ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'} />
+                     tone={live.net_gst_liability >= 0 ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'}
+                     href="/compliance/gst" />
               </div>
 
               <Card className="bg-muted/40">

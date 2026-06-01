@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
-  Brain, AlertCircle, IndianRupee, TrendingDown, Sun, Send,
+  Brain, AlertCircle, IndianRupee, TrendingDown, Sun, Send, Users, Package,
 } from 'lucide-react';
 import { useInvoices } from '@/hooks/useInvoices';
 import { useExpenses } from '@/hooks/useExpenses';
@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { normalizeUserId } from '@/lib/userUtils';
 import { formatINR } from '@/lib/gst';
+import { fetchCustomerCreditScores, fetchInventoryHoldingRisk } from '@/services/financialStatementsService';
 
 // AI Premium Layer (#26 – #30) — bundled into one Aczen CFO surface so the
 // founder gets pulse insights, recovery suggestions, cost-cut tips, cash
@@ -31,6 +32,20 @@ const AczenCFOLayer: React.FC = () => {
   const { data: expenses = [] } = useExpenses();
   const qc = useQueryClient();
   const { toast } = useToast();
+
+  // M10 — Customer credit/health scores (journal-derived).
+  const { data: creditScores } = useQuery({
+    queryKey: ['cfo-credit-scores', uid],
+    queryFn: () => uid ? fetchCustomerCreditScores(uid) : Promise.resolve(null),
+    enabled: !!uid,
+  });
+
+  // M11 — Inventory holding risk (slow/dead stock).
+  const { data: invRisk } = useQuery({
+    queryKey: ['cfo-inv-risk', uid],
+    queryFn: () => uid ? fetchInventoryHoldingRisk(uid) : Promise.resolve(null),
+    enabled: !!uid,
+  });
 
   // ── #30 Founder Daily Pulse ──────────────────────────────────────────
   const pulse = useMemo(() => {
@@ -188,6 +203,88 @@ const AczenCFOLayer: React.FC = () => {
             <Stat label="Net cash (MTD)" value={formatINR(pulse.cashEstimate)} highlight={pulse.cashEstimate > 0} />
             <Stat label="Overdue invoices" value={`${pulse.overdueCount}`} warn={pulse.overdueCount > 0} />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* M10 — Customer Credit Risk (lowest 5 scores) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-rose-600" /> Customer Credit Risk
+          </CardTitle>
+          <CardDescription>
+            Lowest-scoring customers by overdue %, time-since-payment and revenue concentration. Journal-derived.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!creditScores?.customers?.length ? (
+            <p className="text-sm text-muted-foreground">No customer activity yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {creditScores.customers.slice(0, 5).map(c => {
+                const tone = c.score < 30 ? 'bg-red-50 border-red-200 text-red-800'
+                          : c.score < 60 ? 'bg-amber-50 border-amber-200 text-amber-800'
+                          : 'bg-emerald-50 border-emerald-200 text-emerald-800';
+                return (
+                  <div key={c.party_id} className={`flex items-center justify-between border rounded-md px-3 py-2 text-sm ${tone}`}>
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{c.party_name ?? '—'}</div>
+                      <div className="text-xs opacity-80">
+                        Outstanding {formatINR(c.outstanding)}
+                        {c.overdue_pct > 0 ? ` · ${c.overdue_pct.toFixed(0)}% overdue` : ''}
+                        {c.days_since_last_payment != null ? ` · ${c.days_since_last_payment}d since last payment` : ''}
+                      </div>
+                    </div>
+                    <div className="text-lg font-bold ml-3 shrink-0">{c.score.toFixed(0)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* M11 — Inventory Holding Risk */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5 text-amber-600" /> Inventory Holding Risk
+          </CardTitle>
+          <CardDescription>
+            Slow (&gt; 90 days no movement) and dead (&gt; 180 days) stock — cash sitting on the shelf.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!invRisk ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : invRisk.summary.item_count === 0 ? (
+            <p className="text-sm text-muted-foreground">No inventory tracked.</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                <Stat label="Slow items" value={`${invRisk.summary.slow_count}`} warn={invRisk.summary.slow_count > 0} />
+                <Stat label="Dead items" value={`${invRisk.summary.dead_count}`} warn={invRisk.summary.dead_count > 0} />
+                <Stat label="Value at risk" value={formatINR(invRisk.summary.value_at_risk)} warn={invRisk.summary.value_at_risk > 0} />
+                <Stat label="Dead stock value" value={formatINR(invRisk.summary.dead_value)} warn={invRisk.summary.dead_value > 0} />
+              </div>
+              {invRisk.items.length > 0 && (
+                <div className="space-y-1">
+                  {invRisk.items.slice(0, 5).map(it => (
+                    <div key={it.item_id} className="flex items-center justify-between text-sm border rounded px-3 py-2">
+                      <div className="min-w-0">
+                        <span className="font-medium truncate">{it.item_name ?? it.sku ?? it.item_id}</span>
+                        <span className="text-xs text-muted-foreground ml-2">{it.days_since_movement}d idle</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={it.status === 'dead' ? 'destructive' : 'secondary'} className="text-[10px]">{it.status}</Badge>
+                        <span className="font-semibold">{formatINR(it.net_value)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
 

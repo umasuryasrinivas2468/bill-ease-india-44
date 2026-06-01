@@ -67,6 +67,36 @@ export type SourceType =
 
 export type TaxType = 'cgst' | 'sgst' | 'igst' | 'cess' | 'rcm_input' | 'rcm_output' | 'itc' | 'output_gst' | 'tds' | 'tcs';
 
+export interface GstSplit { cgst?: number; sgst?: number; igst?: number; cess?: number; }
+
+/**
+ * Auto-derive a CGST/SGST/IGST split from the GST amount and an interstate
+ * flag. Callers SHOULD pass `gst_split` explicitly when invoice line items
+ * compute a more precise split (e.g. mixed-rate bills), but when they don't
+ * we still emit per-component journal lines tagged `cgst|sgst|igst` so
+ * GSTR-1 / GSTR-3B reconciliations work cleanly.
+ *
+ * Returns `null` when there is no GST OR the caller has not given us enough
+ * signal to derive a split — that's the legacy single-line fallback case.
+ */
+export const deriveGstSplit = (
+  gstAmount: number,
+  explicit?: GstSplit | null,
+  isInterstate?: boolean | null,
+): GstSplit | null => {
+  if (explicit && (explicit.cgst || explicit.sgst || explicit.igst || explicit.cess)) return explicit;
+  if (!gstAmount || gstAmount <= 0) return null;
+  if (isInterstate === true) {
+    return { igst: gstAmount };
+  }
+  if (isInterstate === false) {
+    const half = Math.round((gstAmount / 2) * 100) / 100;
+    // Use diff for the second leg so the two halves always sum to gstAmount.
+    return { cgst: half, sgst: Math.round((gstAmount - half) * 100) / 100 };
+  }
+  return null;
+};
+
 export interface JournalLineInput {
   account_id: string;
   debit?: number;
@@ -368,13 +398,19 @@ export const postJournal = async (input: PostJournalInput): Promise<string> => {
   let lastErr: any;
   for (let attempt = 0; attempt < 3; attempt++) {
     const journalNumber = await nextJournalNumber(uid, input.date);
+    // Default idempotency_key to source_type:source_id so retries can't create
+    // duplicate journals when the caller didn't supply an explicit key.
+    const derivedIdempotencyKey =
+      input.idempotency_key
+      ?? (input.source_id ? `${input.source_type}:${input.source_id}` : null);
+
     const { data, error } = await supabase.rpc('post_journal', {
       p_user_id:         uid,
       p_journal_date:    input.date,
       p_narration:       input.narration,
       p_source_type:     input.source_type,
       p_source_id:       input.source_id ?? null,
-      p_idempotency_key: input.idempotency_key ?? null,
+      p_idempotency_key: derivedIdempotencyKey,
       p_lines:           input.lines.map(l => ({
         account_id:     l.account_id,
         debit:          l.debit  || 0,
@@ -390,7 +426,10 @@ export const postJournal = async (input: PostJournalInput): Promise<string> => {
       })),
       p_journal_number:  journalNumber,
       p_status:          input.status   ?? 'posted',
-      p_posted_by:       input.posted_by ?? null,
+      // Default posted_by to the tenant user_id so journals are never
+      // attributed to NULL. Multi-actor workspaces (CA portal) should
+      // override per-call with the actual signed-in user's id.
+      p_posted_by:       input.posted_by ?? uid,
       p_notes:           input.notes    ?? null,
     });
     if (!error) return data as string;
@@ -438,8 +477,10 @@ export interface PostBillArgs {
   cost_center_id?: string;
   project_id?: string;
   branch_id?: string;
-  // Optional GST split. If absent, falls back to a single ITC line.
-  gst_split?: { cgst?: number; sgst?: number; igst?: number; cess?: number };
+  // Optional GST split. If absent and `is_interstate` is provided, the engine
+  // auto-derives (igst | cgst+sgst); otherwise a single ITC line is booked.
+  gst_split?: GstSplit;
+  is_interstate?: boolean;
 }
 
 /**
@@ -493,34 +534,45 @@ export const postPurchaseBill = async (
     lines.push({ account_id: purchaseId, debit: purchaseAmt, line_narration: `Purchase expense — ${bill.bill_number}`, ...tags });
   }
 
-  // GST handling.
+  // GST handling. For RCM bills the input-side GST is tagged `rcm_input` so
+  // GSTR-3B can show both legs (rcm_input ↔ rcm_output) of the self-invoice.
+  const inputTaxTag = (default_: 'itc' | 'cgst' | 'sgst' | 'igst' | 'cess') =>
+    isRcm ? 'rcm_input' : default_;
+
   if (bill.gst_amount > 0) {
     if (itcEligible) {
-      // Either split or single ITC line.
-      const split = bill.gst_split;
+      // Either split (explicit or auto-derived from POS) or single ITC line.
+      const split = deriveGstSplit(bill.gst_amount, bill.gst_split, bill.is_interstate);
       if (split && (split.cgst || split.sgst || split.igst || split.cess)) {
         if (split.cgst) {
           const id = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.CGST_INPUT.name, 'Asset');
-          lines.push({ account_id: id, debit: split.cgst, line_narration: `CGST input — ${bill.bill_number}`, tax_type: 'cgst', ...tags });
+          lines.push({ account_id: id, debit: split.cgst, line_narration: `${isRcm ? 'RCM ' : ''}CGST input — ${bill.bill_number}`, tax_type: inputTaxTag('cgst'), ...tags });
         }
         if (split.sgst) {
           const id = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.SGST_INPUT.name, 'Asset');
-          lines.push({ account_id: id, debit: split.sgst, line_narration: `SGST input — ${bill.bill_number}`, tax_type: 'sgst', ...tags });
+          lines.push({ account_id: id, debit: split.sgst, line_narration: `${isRcm ? 'RCM ' : ''}SGST input — ${bill.bill_number}`, tax_type: inputTaxTag('sgst'), ...tags });
         }
         if (split.igst) {
           const id = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.IGST_INPUT.name, 'Asset');
-          lines.push({ account_id: id, debit: split.igst, line_narration: `IGST input — ${bill.bill_number}`, tax_type: 'igst', ...tags });
+          lines.push({ account_id: id, debit: split.igst, line_narration: `${isRcm ? 'RCM ' : ''}IGST input — ${bill.bill_number}`, tax_type: inputTaxTag('igst'), ...tags });
         }
         if (split.cess) {
           const id = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.CESS_INPUT.name, 'Asset');
-          lines.push({ account_id: id, debit: split.cess, line_narration: `Cess input — ${bill.bill_number}`, tax_type: 'cess', ...tags });
+          lines.push({ account_id: id, debit: split.cess, line_narration: `${isRcm ? 'RCM ' : ''}Cess input — ${bill.bill_number}`, tax_type: inputTaxTag('cess'), ...tags });
         }
       } else {
         const itcId = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.ITC.name, 'Asset');
-        lines.push({ account_id: itcId, debit: bill.gst_amount, line_narration: `Input GST — ${bill.bill_number}`, tax_type: 'itc', ...tags });
+        lines.push({ account_id: itcId, debit: bill.gst_amount, line_narration: `${isRcm ? 'RCM ' : ''}Input GST — ${bill.bill_number}`, tax_type: inputTaxTag('itc'), ...tags });
       }
+    } else if (isRcm) {
+      // RCM but ITC blocked: emit a memo Dr "RCM Expense (Blocked ITC)" tagged
+      // rcm_input so GSTR-3B still sees both legs; the balancing Cr is the
+      // RCM Liability already posted below. The Dr is to an Expense bucket
+      // (not Asset) because the credit can never be claimed.
+      const blockedId = await getOrCreateAccount(uid, 'RCM Input (Blocked)', 'Expense');
+      lines.push({ account_id: blockedId, debit: bill.gst_amount, line_narration: `RCM GST — ITC blocked — ${bill.bill_number}`, tax_type: 'rcm_input', ...tags });
     } else {
-      // ITC ineligible — capitalize the GST into purchase/inventory cost.
+      // Non-RCM, ITC ineligible — capitalize the GST into purchase/inventory cost.
       const blockedAccount = inventoryId ?? purchaseId;
       if (blockedAccount) {
         lines.push({ account_id: blockedAccount, debit: bill.gst_amount, line_narration: `GST capitalized (ITC ineligible) — ${bill.bill_number}`, ...tags });
@@ -530,7 +582,8 @@ export const postPurchaseBill = async (
 
   if (isRcm) {
     // RCM: AP only carries the taxable value (vendor doesn't charge GST);
-    // the GST becomes a self-assessed RCM liability.
+    // the GST becomes a self-assessed RCM liability. The matching Dr was
+    // posted above (rcm_input tag) so GSTR-3B sees both legs.
     const rcmLiabId = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.RCM_LIABILITY.name, 'Liability');
     lines.push({ account_id: rcmLiabId, credit: bill.gst_amount, line_narration: `RCM GST liability — ${bill.bill_number}`, tax_type: 'rcm_output', ...tags });
     lines.push({ account_id: apId,      credit: bill.amount,     line_narration: `Payable to ${bill.vendor_name} — ${bill.bill_number}`, ...tags });
@@ -777,13 +830,15 @@ export interface PostInvoiceArgs {
   cost_center_id?: string;
   project_id?: string;
   branch_id?: string;
-  // Optional GST split. If absent, falls back to a single "Output GST" line.
-  gst_split?: { cgst?: number; sgst?: number; igst?: number; cess?: number };
+  // Optional GST split. If absent and `is_interstate` is provided, the engine
+  // auto-derives (igst | cgst+sgst); otherwise a single "Output GST" line.
+  gst_split?: GstSplit;
+  is_interstate?: boolean;
 }
 
 /**
  * Sales invoice → Dr AR, Cr Sales + Cr Output GST (split per CGST/SGST/IGST/Cess
- * when `gst_split` is provided).
+ * when `gst_split` is provided or auto-derived from `is_interstate`).
  */
 export const postInvoice = async (userId: string, invoice: PostInvoiceArgs): Promise<string> => {
   const uid = normalizeUserId(userId);
@@ -795,7 +850,7 @@ export const postInvoice = async (userId: string, invoice: PostInvoiceArgs): Pro
     { account_id: salesId, credit: invoice.amount,       line_narration: `Sales — ${invoice.invoice_number}`, ...tags },
   ];
   if (invoice.gst_amount > 0) {
-    const split = invoice.gst_split;
+    const split = deriveGstSplit(invoice.gst_amount, invoice.gst_split, invoice.is_interstate);
     if (split && (split.cgst || split.sgst || split.igst || split.cess)) {
       if (split.cgst) {
         const id = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.CGST_OUTPUT.name, 'Liability');
@@ -839,7 +894,8 @@ export interface PostCreditNoteArgs {
   cost_center_id?: string;
   project_id?: string;
   branch_id?: string;
-  gst_split?: { cgst?: number; sgst?: number; igst?: number; cess?: number };
+  gst_split?: GstSplit;
+  is_interstate?: boolean;
 }
 
 /**
@@ -860,7 +916,7 @@ export const postCreditNote = async (userId: string, cn: PostCreditNoteArgs): Pr
   ];
 
   if (cn.gst_amount > 0) {
-    const split = cn.gst_split;
+    const split = deriveGstSplit(cn.gst_amount, cn.gst_split, cn.is_interstate);
     if (split && (split.cgst || split.sgst || split.igst || split.cess)) {
       if (split.cgst) {
         const id = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.CGST_OUTPUT.name, 'Liability');

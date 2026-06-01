@@ -1,5 +1,30 @@
 import { supabase } from '@/lib/supabase';
 import { normalizeUserId } from '@/lib/userUtils';
+import { postJournal, STANDARD_ACCOUNTS } from '@/utils/journalEngine';
+
+const getOrCreateInventoryAccount = async (uid: string): Promise<string> => {
+  const { data } = await supabase
+    .from('accounts')
+    .select('id')
+    .eq('user_id', uid)
+    .eq('account_name', STANDARD_ACCOUNTS.INVENTORY.name)
+    .eq('is_active', true)
+    .maybeSingle();
+  if (data?.id) return data.id;
+  const { data: created, error } = await supabase
+    .from('accounts')
+    .insert({
+      user_id: uid,
+      account_name: STANDARD_ACCOUNTS.INVENTORY.name,
+      account_type: 'Asset',
+      account_code: '1200',
+      is_active: true,
+    })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return created!.id;
+};
 
 // ════════════════════════════════════════════════════════════════════════════
 // Warehouse Transfer orchestration.
@@ -254,6 +279,49 @@ export const approveWarehouseTransfer = async (
       value_in: valueOut,
       notes: `Transfer IN from ${(header as any).from_warehouse_name || 'source'} — ${it.product_name}`,
     });
+  }
+
+  // Memo journal: Dr Inventory (dest leg) + Cr Inventory (source leg).
+  // Same account both sides — net asset is unchanged — but the dual-leg gives
+  // the GL drill-through a source_type='inventory_adjustment' record for the
+  // transfer, and tags each leg with the warehouse name in the line narration
+  // (and the branch_id once warehouses are mapped to branches/cost centers).
+  // For cross-GSTIN deemed-supply (input.is_interstate=true + same_gstin=false)
+  // a future Output IGST leg can be added here.
+  const totalValue = (items as any[]).reduce(
+    (s, it) => s + Number((Number(it.unit_cost) * Number(it.quantity)).toFixed(2)),
+    0,
+  );
+  if (totalValue > 0) {
+    try {
+      const inventoryAcc = await getOrCreateInventoryAccount(uid);
+      await postJournal({
+        user_id: uid,
+        date: (header as any).transfer_date,
+        narration: `Warehouse Transfer ${(header as any).transfer_number} — ${(header as any).from_warehouse_name ?? 'source'} → ${(header as any).to_warehouse_name ?? 'destination'}`,
+        source_type: 'inventory_adjustment',
+        source_id: (header as any).id,
+        posted_by: opts.approvedBy ?? null,
+        lines: [
+          {
+            account_id: inventoryAcc,
+            credit: totalValue,
+            line_narration: `Inventory out — ${(header as any).from_warehouse_name ?? 'source'}`,
+            department: (header as any).from_warehouse_name ?? null,
+          },
+          {
+            account_id: inventoryAcc,
+            debit: totalValue,
+            line_narration: `Inventory in — ${(header as any).to_warehouse_name ?? 'destination'}`,
+            department: (header as any).to_warehouse_name ?? null,
+          },
+        ],
+      });
+    } catch (e) {
+      // Don't block the transfer approval if memo posting fails; movements
+      // are still recorded and the inventory rollup will reconcile.
+      console.error('Warehouse transfer memo journal failed:', e);
+    }
   }
 
   const { data: updated } = await supabase

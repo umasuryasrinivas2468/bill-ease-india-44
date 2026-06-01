@@ -192,9 +192,11 @@ export default function PaymentReceived() {
       for (const alloc of allocations) {
         try {
           await postPaymentReceivedJournal(userId, {
+            payment_id: alloc.invoice_id,
             invoice_number: alloc.invoice_number || 'Unknown',
             date: invoiceForm.payment_date,
             client_name: invoiceForm.customer_name,
+            customer_id: invoiceForm.customer_id || undefined,
             amount: alloc.allocated,
             payment_mode: invoiceForm.payment_mode === 'cash' ? 'cash' : undefined,
           });

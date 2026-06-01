@@ -263,6 +263,57 @@ export const disposeFixedAsset = async (
     }
   }
 
+  // CGST Sec 18(6) ITC reversal on disposal of capital goods.
+  // When the asset was originally purchased with ITC claimed (itc_eligible=true),
+  // the higher of:
+  //   (a) original ITC reduced by 5% per quarter of usage (max 5 years), OR
+  //   (b) tax on the transaction value of the disposal
+  // must be added to the output tax liability. Output GST on sale is already
+  // booked above; here we only post the *additional* reversal if (a) > (b).
+  // Posted as Dr "ITC Reversal — Sec 18(6)" (Expense) / Cr "Output GST" so the
+  // disposal journal stays balanced and the GST return shows the extra liability.
+  let itcReversalAdditional = 0;
+  if (
+    !input.write_off &&
+    asset.itc_eligible &&
+    (asset.gst_amount || 0) > 0 &&
+    asset.purchase_date
+  ) {
+    const originalItc = round2(asset.gst_amount);
+    const purchase = new Date(asset.purchase_date);
+    const disposal = new Date();
+    // Quarters used: count each started calendar quarter as one (CGST Rules' interpretation).
+    const monthsDiff =
+      (disposal.getFullYear() - purchase.getFullYear()) * 12 +
+      (disposal.getMonth() - purchase.getMonth()) +
+      (disposal.getDate() >= purchase.getDate() ? 0 : -1);
+    const quartersUsed = Math.max(0, Math.ceil((monthsDiff + 1) / 3));
+    // 5% per quarter; capped at 20 quarters (5 years), after which no reversal.
+    const reductionPct = Math.min(quartersUsed * 0.05, 1.0);
+    const reducedItc = Math.max(0, round2(originalItc * (1 - reductionPct)));
+    const taxOnSale = round2(gstAmount);
+    const sec18_6_required = Math.max(reducedItc, taxOnSale);
+    itcReversalAdditional = round2(Math.max(0, sec18_6_required - taxOnSale));
+
+    if (itcReversalAdditional > 0) {
+      const reversalExpense = await getOrCreateAccount(uid, 'ITC Reversal — Sec 18(6)', 'Expense');
+      const outputGstAcc = await getOrCreateAccount(uid, STANDARD_ACCOUNTS.OUTPUT_GST.name, 'Liability');
+      lines.push({
+        account_id: reversalExpense,
+        debit: itcReversalAdditional,
+        credit: 0,
+        line_narration: `Sec 18(6) ITC reversal on ${asset.asset_code} — reduced ITC ₹${reducedItc.toFixed(2)} > tax on sale ₹${taxOnSale.toFixed(2)}`,
+      });
+      lines.push({
+        account_id: outputGstAcc,
+        debit: 0,
+        credit: itcReversalAdditional,
+        line_narration: `Sec 18(6) additional GST liability on disposal of ${asset.asset_code}`,
+        tax_type: 'output_gst',
+      });
+    }
+  }
+
   // Plug with Profit / Loss account
   if (profitLoss > 0) {
     const profitAcc = await getOrCreateAccount(uid, 'Profit on Asset Sale', 'Income');

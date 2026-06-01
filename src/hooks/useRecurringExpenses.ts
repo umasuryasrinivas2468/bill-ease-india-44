@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { normalizeUserId, isValidUserId } from '@/lib/userUtils';
 import { RecurringExpense, CreateRecurringExpenseData } from '@/types/expenses';
 import { addDays, addWeeks, addMonths, addQuarters, addYears, format } from 'date-fns';
+import { postExpenseToLedger } from '@/utils/journalPosting';
 
 // Calculate the next due date based on frequency
 export function calcNextDueDate(currentDue: string, frequency: RecurringExpense['frequency']): string {
@@ -145,23 +146,50 @@ export const useGenerateRecurringExpenses = () => {
         }
 
         // Insert actual expense
-        await supabase.from('expenses').insert({
-          user_id: normalizedUserId,
-          vendor_name: rec.vendor_name,
-          vendor_id: rec.vendor_id || null,
-          expense_date: rec.next_due_date,
-          category_id: rec.category_id || null,
-          category_name: rec.category_name,
-          description: rec.description || rec.name,
-          amount: rec.amount,
-          tax_amount: rec.tax_amount,
-          total_amount: rec.total_amount,
-          payment_mode: rec.payment_mode,
-          reference_number: rec.reference_number || null,
-          notes: `Auto-generated from recurring: ${rec.name}`,
-          status: 'pending',
-          posted_to_ledger: false,
-        });
+        const { data: expRow, error: insErr } = await supabase
+          .from('expenses')
+          .insert({
+            user_id: normalizedUserId,
+            vendor_name: rec.vendor_name,
+            vendor_id: rec.vendor_id || null,
+            expense_date: rec.next_due_date,
+            category_id: rec.category_id || null,
+            category_name: rec.category_name,
+            description: rec.description || rec.name,
+            amount: rec.amount,
+            tax_amount: rec.tax_amount,
+            total_amount: rec.total_amount,
+            payment_mode: rec.payment_mode,
+            reference_number: rec.reference_number || null,
+            notes: `Auto-generated from recurring: ${rec.name}`,
+            status: 'pending',
+            posted_to_ledger: false,
+          })
+          .select('id')
+          .single();
+        if (insErr) throw insErr;
+
+        // Auto-post to ledger so AP / GL / dashboards reflect the recurring expense.
+        // Failures here are logged but do not abort the batch — the row stays
+        // with posted_to_ledger=false and the user can re-post manually.
+        try {
+          await postExpenseToLedger(normalizedUserId, {
+            id: expRow.id,
+            expense_date: rec.next_due_date,
+            vendor_name: rec.vendor_name,
+            vendor_id: rec.vendor_id || undefined,
+            category_name: rec.category_name,
+            amount: Number(rec.amount || 0),
+            tax_amount: Number(rec.tax_amount || 0),
+            payment_mode: rec.payment_mode,
+            description: rec.description || rec.name,
+            cost_center_id: (rec as any).cost_center_id || undefined,
+            project_id: (rec as any).project_id || undefined,
+            branch_id: (rec as any).branch_id || undefined,
+          });
+        } catch (postErr) {
+          console.error('Auto-posting recurring expense failed:', rec.name, postErr);
+        }
 
         // Advance next_due_date
         const nextDue = calcNextDueDate(rec.next_due_date, rec.frequency);

@@ -2,10 +2,18 @@ import React, { useMemo, useState } from 'react';
 import { useInvoices, Invoice } from '@/hooks/useInvoices';
 import InvoiceViewer from '@/components/InvoiceViewer';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@clerk/clerk-react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { fetchWorkingCapitalDays } from '@/services/financialStatementsService';
+
+const fmtINR = (n: number | null | undefined) =>
+  n == null ? '—' : `₹${Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+const fmtDays = (n: number | null | undefined) =>
+  n == null ? '—' : `${n.toFixed(1)} days`;
 
 // Inline toast component rendered inside the dialog
 const InlineToast: React.FC<{
@@ -50,6 +58,13 @@ const WorkingCapital: React.FC = () => {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [appliedMap, setAppliedMap] = useState<Record<string, boolean>>({});
   const { user } = useUser();
+
+  // Journal-derived Working Capital metrics
+  const { data: wc } = useQuery({
+    queryKey: ['working-capital-days', user?.id],
+    queryFn: () => user?.id ? fetchWorkingCapitalDays(user.id) : Promise.resolve(null),
+    enabled: !!user?.id,
+  });
 
   // Inline toast state (shown inside dialog)
   const [inlineToast, setInlineToast] = useState<{
@@ -156,6 +171,50 @@ const WorkingCapital: React.FC = () => {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Working Capital</h1>
         <p className="text-sm text-muted-foreground">Apply for trade invoice financing on pending invoices</p>
+      </div>
+
+      {/* Working Capital Days — journal-derived */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <Card><CardContent className="p-4">
+          <div className="text-xs uppercase text-muted-foreground flex items-center justify-between">
+            <span>DSO</span>
+            <Badge variant="outline" className="text-[9px]">SSOT</Badge>
+          </div>
+          <div className="text-2xl font-bold">{fmtDays(wc?.dso_days)}</div>
+          <div className="text-[11px] text-muted-foreground mt-0.5">Days Sales Outstanding</div>
+        </CardContent></Card>
+        <Card><CardContent className="p-4">
+          <div className="text-xs uppercase text-muted-foreground">DPO</div>
+          <div className="text-2xl font-bold">{fmtDays(wc?.dpo_days)}</div>
+          <div className="text-[11px] text-muted-foreground mt-0.5">Days Payable Outstanding</div>
+        </CardContent></Card>
+        <Card><CardContent className="p-4">
+          <div className="text-xs uppercase text-muted-foreground">DIO</div>
+          <div className="text-2xl font-bold">{fmtDays(wc?.dio_days)}</div>
+          <div className="text-[11px] text-muted-foreground mt-0.5">Days Inventory Outstanding</div>
+        </CardContent></Card>
+        <Card><CardContent className="p-4">
+          <div className="text-xs uppercase text-muted-foreground">CCC</div>
+          <div className={`text-2xl font-bold ${(wc?.ccc_days ?? 0) > 60 ? 'text-amber-700' : 'text-emerald-700'}`}>{fmtDays(wc?.ccc_days)}</div>
+          <div className="text-[11px] text-muted-foreground mt-0.5">Cash Conversion Cycle = DSO + DIO − DPO</div>
+        </CardContent></Card>
+        <Card><CardContent className="p-4">
+          <div className="text-xs uppercase text-muted-foreground">AR</div>
+          <div className="text-xl font-semibold">{fmtINR(wc?.ar_balance)}</div>
+        </CardContent></Card>
+        <Card><CardContent className="p-4">
+          <div className="text-xs uppercase text-muted-foreground">AP</div>
+          <div className="text-xl font-semibold">{fmtINR(wc?.ap_balance)}</div>
+        </CardContent></Card>
+        <Card><CardContent className="p-4">
+          <div className="text-xs uppercase text-muted-foreground">Inventory</div>
+          <div className="text-xl font-semibold">{fmtINR(wc?.inventory_value)}</div>
+        </CardContent></Card>
+        <Card><CardContent className="p-4">
+          <div className="text-xs uppercase text-muted-foreground">Working Capital</div>
+          <div className={`text-xl font-semibold ${(wc?.working_capital ?? 0) >= 0 ? '' : 'text-rose-700'}`}>{fmtINR(wc?.working_capital)}</div>
+          <div className="text-[11px] text-muted-foreground mt-0.5">AR + Inventory − AP</div>
+        </CardContent></Card>
       </div>
 
       <div className="grid grid-cols-12 gap-6">

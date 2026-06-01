@@ -331,6 +331,7 @@ export const processSalesInventory = async (
     document_number: string;
     date: string;
     party_name?: string | null;
+    customer_id?: string | null;
     items: any[];
     source_type?: string;
   },
@@ -360,9 +361,11 @@ export const processSalesInventory = async (
 
   if (options.postCogs !== false && cogsAmount > 0) {
     await postCogsJournal(uid, {
+      cogs_id: sale.id,
       document_number: sale.document_number,
       date: sale.date,
       party_name: sale.party_name || 'Customer',
+      customer_id: sale.customer_id ?? undefined,
       cogs_amount: cogsAmount,
     });
   }

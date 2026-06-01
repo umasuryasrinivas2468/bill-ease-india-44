@@ -76,7 +76,7 @@ export const createAssetTransfer = async (
   // reflect reality at transfer time.
   const { data: asset, error: assetErr } = await supabase
     .from('fixed_assets')
-    .select('id, asset_code, name, book_value, asset_account_id, branch_id, location, custodian, cost_center_id, department')
+    .select('id, asset_code, name, book_value, total_capitalised_value, accumulated_depreciation, asset_account_id, accum_dep_account_id, branch_id, location, custodian, cost_center_id, department')
     .eq('user_id', uid)
     .eq('id', input.asset_id)
     .maybeSingle();
@@ -229,25 +229,55 @@ const postTransferMemoJournal = async (
   transfer: AssetTransfer,
 ): Promise<string> => {
   const uid = normalizeUserId(userId);
-  const amount = round2(Number(asset.book_value || 0));
-  const lines: JournalLineInput[] = [
-    {
+  // Move asset at GROSS (total_capitalised_value), not at book_value, so the
+  // GL keeps the asset and its accumulated depreciation in sync per cost
+  // center. AccumDep is moved separately as a contra-asset (Dr old CC, Cr new
+  // CC) — that way future depreciation runs on the new CC don't create a
+  // split AccumDep balance across two cost centers.
+  const grossAmount = round2(Number(asset.total_capitalised_value ?? asset.book_value ?? 0));
+  const accumAmount = round2(Number(asset.accumulated_depreciation ?? 0));
+
+  const lines: JournalLineInput[] = [];
+
+  if (grossAmount > 0) {
+    lines.push({
       account_id: asset.asset_account_id,
-      debit: amount,
+      debit: grossAmount,
       credit: 0,
       line_narration: `Asset retagged — to ${transfer.to_cost_center_id || transfer.to_branch_id || transfer.to_location || 'new tag'}`,
       cost_center_id: transfer.to_cost_center_id || null,
       branch_id: transfer.to_branch_id || null,
-    },
-    {
+    });
+    lines.push({
       account_id: asset.asset_account_id,
       debit: 0,
-      credit: amount,
+      credit: grossAmount,
       line_narration: `Asset retagged — from ${transfer.from_cost_center_id || transfer.from_branch_id || transfer.from_location || 'prior tag'}`,
       cost_center_id: transfer.from_cost_center_id || null,
       branch_id: transfer.from_branch_id || null,
-    },
-  ];
+    });
+  }
+
+  // AccumDep contra retag. Skipped if asset has no recorded depreciation OR
+  // no linked accum_dep account (very early-life assets).
+  if (accumAmount > 0 && asset.accum_dep_account_id) {
+    lines.push({
+      account_id: asset.accum_dep_account_id,
+      debit: accumAmount,
+      credit: 0,
+      line_narration: `Accumulated depreciation released — from ${transfer.from_cost_center_id || transfer.from_branch_id || 'prior tag'}`,
+      cost_center_id: transfer.from_cost_center_id || null,
+      branch_id: transfer.from_branch_id || null,
+    });
+    lines.push({
+      account_id: asset.accum_dep_account_id,
+      debit: 0,
+      credit: accumAmount,
+      line_narration: `Accumulated depreciation assigned — to ${transfer.to_cost_center_id || transfer.to_branch_id || 'new tag'}`,
+      cost_center_id: transfer.to_cost_center_id || null,
+      branch_id: transfer.to_branch_id || null,
+    });
+  }
 
   return postJournal({
     user_id: uid,

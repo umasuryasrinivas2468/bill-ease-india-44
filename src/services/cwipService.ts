@@ -377,6 +377,10 @@ export const capitalizeCwip = async (
       igst_amount: 0,
       itc_eligible: true,
       total_capitalised_value: capitalizedAmount,
+      // purchase_date drives the depreciation schedule's first-month proration
+      // (see depreciationService:71). It MUST be the capitalization date, not
+      // the original CWIP-entry date — otherwise depreciation would start
+      // before the asset was placed in service.
       purchase_date: input.capitalized_on,
       capitalised_on: input.capitalized_on,
       source_type: 'manual',

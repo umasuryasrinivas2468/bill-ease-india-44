@@ -168,6 +168,8 @@ const Dashboard = () => {
         : `${dashboardData?.totalInvoices || 0} invoices`,
       positive: true,
       icon: TrendingUp,
+      href: '/invoices',
+      tooltip: 'Open the Invoices list — every revenue rupee drills back to its source invoice and journal.',
     },
     {
       title: 'Expenses',
@@ -175,6 +177,8 @@ const Dashboard = () => {
       delta: `${expenseStats?.totalExpenses || 0} entries`,
       positive: false,
       icon: IndianRupee,
+      href: '/expenses',
+      tooltip: 'Open the Expenses register.',
     },
     {
       title: 'Profit',
@@ -182,6 +186,8 @@ const Dashboard = () => {
       delta: profit >= 0 ? 'Healthy margin' : 'Needs attention',
       positive: profit >= 0,
       icon: ArrowUpRight,
+      href: '/accounting/profit-loss',
+      tooltip: 'Open the journal-derived P&L report.',
     },
     {
       title: 'Cash Balance',
@@ -189,6 +195,8 @@ const Dashboard = () => {
       delta: `${formatCompactCurrency(pendingAmount)} pending`,
       positive: cashBalance >= 0,
       icon: Wallet,
+      href: '/banking',
+      tooltip: 'Open Banking — bank, cash and reconciliations.',
     },
   ];
 
@@ -309,33 +317,39 @@ const Dashboard = () => {
 
             <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {metrics.map((metric) => (
-                <Card
+                <Link
                   key={metric.title}
-                  className="overflow-hidden rounded-[22px] border-2 border-border/70 bg-card shadow-[0_18px_40px_-24px_hsl(var(--foreground)/0.14)]"
+                  to={metric.href}
+                  title={metric.tooltip}
+                  className="block group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-[22px]"
                 >
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-3">
-                        <p className="text-sm font-medium text-muted-foreground">{metric.title}</p>
-                        <div className="text-3xl font-semibold tracking-tight">{metric.value}</div>
-                        <div
-                          className={cn(
-                            'inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium',
-                            metric.positive
-                              ? 'bg-primary/10 text-primary'
-                              : 'bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))]'
-                          )}
-                        >
-                          {metric.positive ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
-                          {metric.delta}
+                  <Card
+                    className="overflow-hidden rounded-[22px] border-2 border-border/70 bg-card shadow-[0_18px_40px_-24px_hsl(var(--foreground)/0.14)] transition-all duration-150 group-hover:-translate-y-0.5 group-hover:border-primary/40 group-hover:shadow-[0_22px_46px_-22px_hsl(var(--foreground)/0.22)] cursor-pointer"
+                  >
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-3">
+                          <p className="text-sm font-medium text-muted-foreground group-hover:text-primary transition-colors">{metric.title}</p>
+                          <div className="text-3xl font-semibold tracking-tight">{metric.value}</div>
+                          <div
+                            className={cn(
+                              'inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium',
+                              metric.positive
+                                ? 'bg-primary/10 text-primary'
+                                : 'bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))]'
+                            )}
+                          >
+                            {metric.positive ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
+                            {metric.delta}
+                          </div>
+                        </div>
+                        <div className="flex h-14 w-14 items-center justify-center rounded-[18px] border-2 border-border/70 bg-primary/10 text-primary shadow-sm">
+                          <metric.icon className="h-5 w-5" />
                         </div>
                       </div>
-                      <div className="flex h-14 w-14 items-center justify-center rounded-[18px] border-2 border-border/70 bg-primary/10 text-primary shadow-sm">
-                        <metric.icon className="h-5 w-5" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </Link>
               ))}
             </div>
 

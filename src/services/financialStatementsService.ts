@@ -2171,7 +2171,7 @@ export const fetchGstr2bReconciliation = async (
 
 export interface ValidationCheck {
   check: 'trial_balance' | 'journal_balance' | 'ar_subledger_control'
-       | 'ap_subledger_control' | 'inventory_match';
+       | 'ap_subledger_control' | 'inventory_match' | 'control_account_orphans';
   label: string;
   passed: boolean | null;
   details: Record<string, unknown>;
@@ -2187,9 +2187,483 @@ export interface BooksValidation {
 export const validateBooks = async (
   userId: string, fiscalYear: string,
 ): Promise<BooksValidation | null> => {
-  const { data, error } = await supabase.rpc('validate_books', {
+  // Prefer the orphan-aware wrapper (Phase 30). Falls back to base validator
+  // if the wrapper isn't deployed yet.
+  const { data, error } = await supabase.rpc('validate_books_with_orphans', {
     p_user_id: userId, p_fiscal_year: fiscalYear,
   });
-  if (error) { console.error('[fss] validate books:', error); return null; }
-  return data as BooksValidation;
+  if (!error && data) return data as BooksValidation;
+  const { data: baseData, error: baseErr } = await supabase.rpc('validate_books', {
+    p_user_id: userId, p_fiscal_year: fiscalYear,
+  });
+  if (baseErr) { console.error('[fss] validate books:', baseErr); return null; }
+  return baseData as BooksValidation;
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// PHASE 29 — Manual Journals, GSTR-2A, 3-way reconciliation, Sub-Ledger
+// directory, ITC Intelligence
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface ManualJournalLineInput {
+  account_id: string;
+  debit?: number;
+  credit?: number;
+  line_narration?: string;
+  vendor_id?: string | null;
+  customer_id?: string | null;
+  cost_center_id?: string | null;
+  project_id?: string | null;
+  branch_id?: string | null;
+  department?: string | null;
+  tax_type?: string | null;
+}
+
+export interface ManualJournalInput {
+  journalNumber?: string | null;
+  journalDate: string;
+  postingDate?: string | null;
+  voucherType?: string | null;
+  referenceNumber?: string | null;
+  narration: string;
+  costCenterId?: string | null;
+  branchId?: string | null;
+  projectId?: string | null;
+  notes?: string | null;
+  lines: ManualJournalLineInput[];
+  status?: 'posted' | 'draft';
+}
+
+export const postManualJournal = async (
+  userId: string, input: ManualJournalInput, postedBy?: string,
+): Promise<string> => {
+  const { data, error } = await supabase.rpc('post_manual_journal', {
+    p_user_id: userId,
+    p_journal_number: input.journalNumber ?? null,
+    p_journal_date: input.journalDate,
+    p_posting_date: input.postingDate ?? input.journalDate,
+    p_voucher_type: input.voucherType ?? 'Journal',
+    p_reference_no: input.referenceNumber ?? null,
+    p_narration: input.narration ?? '',
+    p_cost_center_id: input.costCenterId ?? null,
+    p_branch_id: input.branchId ?? null,
+    p_project_id: input.projectId ?? null,
+    p_notes: input.notes ?? null,
+    p_lines: input.lines,
+    p_status: input.status ?? 'posted',
+    p_posted_by: postedBy ?? null,
+  });
+  if (error) throw error;
+  return data as string;
+};
+
+export interface JournalListItem {
+  id: string;
+  journal_number: string;
+  journal_date: string;
+  posting_date: string | null;
+  voucher_type: string | null;
+  reference_number: string | null;
+  narration: string;
+  status: string;
+  is_reversed: boolean;
+  source_type: string | null;
+  source_id: string | null;
+  total_debit: number;
+  total_credit: number;
+  line_count: number;
+  attachment_count: number;
+  created_at: string;
+}
+
+export interface JournalsListResult {
+  from_date: string;
+  to_date: string;
+  count: number;
+  journals: JournalListItem[];
+}
+
+export const fetchJournalsList = async (
+  userId: string, fromDate: string, toDate: string,
+  voucherType?: string | null, search?: string | null, limit: number = 200,
+): Promise<JournalsListResult | null> => {
+  const { data, error } = await supabase.rpc('get_journals_list', {
+    p_user_id: userId, p_from_date: fromDate, p_to_date: toDate,
+    p_voucher: voucherType ?? null, p_search: search ?? null, p_limit: limit,
+  });
+  if (error) { console.error('[fss] journals list:', error); return null; }
+  return data as JournalsListResult;
+};
+
+export interface SubLedgerParty {
+  party_type: 'vendor' | 'customer';
+  party_id: string;
+  party_name: string;
+  gstin: string | null;
+  primary_ledger_id: string | null;
+  primary_code: string | null;
+  primary_name: string | null;
+  subledger_id: string | null;
+  subledger_code: string | null;
+  subledger_name: string | null;
+  balance: number;
+}
+
+export interface SubLedgerDirectory {
+  vendors: SubLedgerParty[];
+  customers: SubLedgerParty[];
+  control_options: Record<string, Array<{ id: string; account_code: string; account_name: string; account_type: string }>>;
+}
+
+export const fetchSubLedgerDirectory = async (userId: string): Promise<SubLedgerDirectory | null> => {
+  const { data, error } = await supabase.rpc('get_subledger_directory', { p_user_id: userId });
+  if (error) { console.error('[fss] subledger directory:', error); return null; }
+  return data as SubLedgerDirectory;
+};
+
+export const setPartyPrimaryLedger = async (
+  userId: string, partyType: 'vendor' | 'customer', partyId: string, accountId: string,
+): Promise<void> => {
+  const { error } = await supabase.rpc('set_party_primary_ledger', {
+    p_user_id: userId, p_party_type: partyType, p_party_id: partyId, p_account_id: accountId,
+  });
+  if (error) throw error;
+};
+
+export interface Gstr2aInvoice {
+  id: string;
+  supplier_gstin: string | null;
+  supplier_name: string | null;
+  invoice_number: string | null;
+  invoice_date: string | null;
+  invoice_value: number;
+  taxable_value: number;
+  igst: number;
+  cgst: number;
+  sgst: number;
+  cess: number;
+  filing_status: string | null;
+  invoice_type: string | null;
+}
+
+export interface Gstr2aSupplierRow {
+  gstin: string;
+  supplier: string;
+  invoice_count: number;
+  taxable_value: number;
+  total_gst: number;
+  filed_count: number;
+  pending_count: number;
+}
+
+export interface Gstr2aDashboard {
+  period: string;
+  summary: {
+    invoice_count: number;
+    taxable_value: number;
+    total_gst: number;
+    igst: number; cgst: number; sgst: number; cess: number;
+    filed_count: number;
+    pending_count: number;
+  };
+  suppliers: Gstr2aSupplierRow[];
+  invoices: Gstr2aInvoice[];
+  computed_at: string;
+}
+
+export const fetchGstr2aDashboard = async (
+  userId: string, period?: string | null,
+): Promise<Gstr2aDashboard | null> => {
+  const { data, error } = await supabase.rpc('get_gstr2a_dashboard', {
+    p_user_id: userId, p_period: period ?? null,
+  });
+  if (error) { console.error('[fss] gstr2a dashboard:', error); return null; }
+  return data as Gstr2aDashboard;
+};
+
+export type ThreeWayStatus =
+  | 'MATCHED'
+  | 'MISSING_IN_PORTAL'
+  | 'MISSING_IN_BOOKS'
+  | 'IN_2B_NOT_2A'
+  | 'SUPPLIER_NOT_FILED'
+  | 'GST_MISMATCH'
+  | 'VALUE_MISMATCH'
+  | 'ITC_BLOCKED';
+
+export interface ThreeWayRow {
+  gstin: string;
+  invoice_number: string;
+  supplier: string;
+  date_books: string | null;
+  date_2a: string | null;
+  date_2b: string | null;
+  tv_books: number | null;
+  tv_2a: number | null;
+  tv_2b: number | null;
+  gst_books: number | null;
+  gst_2a: number | null;
+  gst_2b: number | null;
+  filing_status: string | null;
+  itc_eligible: boolean | null;
+  in_books: boolean;
+  in_2a: boolean;
+  in_2b: boolean;
+  reco_status: ThreeWayStatus;
+}
+
+export interface ThreeWayDuplicate {
+  gstin: string;
+  invoice_number: string;
+  dup_count: number;
+}
+
+export interface ThreeWayReconciliation {
+  period: string;
+  summary: {
+    total_rows: number;
+    matched: number;
+    missing_in_portal: number;
+    missing_in_books: number;
+    in_2b_not_2a: number;
+    supplier_not_filed: number;
+    gst_mismatch: number;
+    value_mismatch: number;
+    itc_blocked: number;
+    books_gst: number;
+    gst_2a_total: number;
+    gst_2b_total: number;
+    duplicate_invoices: number;
+  };
+  rows: ThreeWayRow[];
+  duplicates: ThreeWayDuplicate[];
+  computed_at: string;
+}
+
+export const fetchThreeWayReconciliation = async (
+  userId: string, period: string,
+): Promise<ThreeWayReconciliation | null> => {
+  const { data, error } = await supabase.rpc('get_three_way_gst_reconciliation', {
+    p_user_id: userId, p_period: period,
+  });
+  if (error) { console.error('[fss] three-way recon:', error); return null; }
+  return data as ThreeWayReconciliation;
+};
+
+export interface ItcIntelligence {
+  fiscal_year: string;
+  fy_start: string;
+  fy_end: string;
+  available: number;
+  claimed: number;
+  blocked: number;
+  unclaimed: number;
+  leakage: number;
+  computed_at: string;
+}
+
+export const fetchItcIntelligence = async (
+  userId: string, fiscalYear: string,
+): Promise<ItcIntelligence | null> => {
+  const { data, error } = await supabase.rpc('get_itc_intelligence', {
+    p_user_id: userId, p_fiscal_year: fiscalYear,
+  });
+  if (error) { console.error('[fss] itc intelligence:', error); return null; }
+  return data as ItcIntelligence;
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// PHASE 30 (Sprint 2) — Aging + P&L from journals only
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface AgingParty {
+  party_id: string;
+  party_name: string | null;
+  balance: number;
+  b_0_30: number;
+  b_31_60: number;
+  b_61_90: number;
+  b_90_plus: number;
+}
+
+export interface AgingReport {
+  party_type: 'customer' | 'vendor';
+  as_of: string;
+  summary: {
+    party_count: number;
+    total: number;
+    bucket_0_30: number;
+    bucket_31_60: number;
+    bucket_61_90: number;
+    bucket_90_plus: number;
+  };
+  parties: AgingParty[];
+  computed_at: string;
+}
+
+export const fetchArApAging = async (
+  userId: string, partyType: 'customer' | 'vendor', asOf?: string,
+): Promise<AgingReport | null> => {
+  const { data, error } = await supabase.rpc('get_ar_ap_aging', {
+    p_user_id: userId, p_party_type: partyType,
+    p_as_of: asOf ?? new Date().toISOString().slice(0, 10),
+  });
+  if (error) { console.error('[fss] aging:', error); return null; }
+  return data as AgingReport;
+};
+
+export interface PnlAccountRow {
+  account_id: string;
+  account_code: string;
+  account_name: string;
+  account_type: 'Income' | 'Expense';
+  total_debit: number;
+  total_credit: number;
+  net: number;
+}
+
+export interface PnlReport {
+  from_date: string;
+  to_date: string;
+  source: 'journals_only';
+  revenue: number;
+  cogs: number;
+  gross_profit: number;
+  opex: number;
+  net_profit: number;
+  accounts: PnlAccountRow[];
+  computed_at: string;
+}
+
+export const fetchPnlFromJournals = async (
+  userId: string, fromDate: string, toDate: string,
+): Promise<PnlReport | null> => {
+  const { data, error } = await supabase.rpc('get_pnl_from_journals', {
+    p_user_id: userId, p_from_date: fromDate, p_to_date: toDate,
+  });
+  if (error) { console.error('[fss] pnl:', error); return null; }
+  return data as PnlReport;
+};
+
+export type ProfitabilityDimension = 'project' | 'branch' | 'cost_center' | 'department';
+
+export interface ProfitabilityRow {
+  id: string;
+  name: string;
+  revenue: number;
+  expenses: number;
+  net_profit: number;
+}
+
+export interface ProfitabilityReport {
+  dimension: ProfitabilityDimension;
+  from_date: string;
+  to_date: string;
+  rows: ProfitabilityRow[];
+  computed_at: string;
+}
+
+export const fetchProfitabilityByDimension = async (
+  userId: string, dimension: ProfitabilityDimension, fromDate: string, toDate: string,
+): Promise<ProfitabilityReport | null> => {
+  const { data, error } = await supabase.rpc('get_profitability_by_dimension', {
+    p_user_id: userId, p_dimension: dimension, p_from_date: fromDate, p_to_date: toDate,
+  });
+  if (error) { console.error('[fss] profitability:', error); return null; }
+  return data as ProfitabilityReport;
+};
+
+export interface WorkingCapitalDays {
+  as_of: string;
+  window_days: number;
+  window_start: string;
+  revenue_window: number;
+  cogs_window: number;
+  ar_balance: number;
+  ap_balance: number;
+  inventory_value: number;
+  dso_days: number | null;
+  dpo_days: number | null;
+  dio_days: number | null;
+  ccc_days: number | null;
+  working_capital: number;
+  computed_at: string;
+}
+
+export const fetchWorkingCapitalDays = async (
+  userId: string, asOf?: string, windowDays: number = 365,
+): Promise<WorkingCapitalDays | null> => {
+  const { data, error } = await supabase.rpc('get_working_capital_days', {
+    p_user_id: userId,
+    p_as_of: asOf ?? new Date().toISOString().slice(0, 10),
+    p_window_days: windowDays,
+  });
+  if (error) { console.error('[fss] working capital:', error); return null; }
+  return data as WorkingCapitalDays;
+};
+
+export interface CustomerCreditScore {
+  party_id: string;
+  party_name: string | null;
+  outstanding: number;
+  lifetime_billed: number;
+  lifetime_collected: number;
+  open_balance: number;
+  overdue_pct: number;
+  days_since_last_payment: number | null;
+  revenue_concentration_pct: number;
+  score: number;
+}
+
+export interface CustomerCreditScores {
+  as_of: string;
+  customers: CustomerCreditScore[];
+  computed_at: string;
+}
+
+export const fetchCustomerCreditScores = async (
+  userId: string, asOf?: string,
+): Promise<CustomerCreditScores | null> => {
+  const { data, error } = await supabase.rpc('get_customer_credit_scores', {
+    p_user_id: userId,
+    p_as_of: asOf ?? new Date().toISOString().slice(0, 10),
+  });
+  if (error) { console.error('[fss] credit scores:', error); return null; }
+  return data as CustomerCreditScores;
+};
+
+export interface InventoryHoldingItem {
+  item_id: string;
+  item_name: string | null;
+  sku: string | null;
+  net_qty: number;
+  net_value: number;
+  last_movement_date: string;
+  days_since_movement: number;
+  status: 'active' | 'slow' | 'dead';
+}
+
+export interface InventoryHoldingRisk {
+  as_of: string;
+  summary: {
+    item_count: number;
+    active_count: number;
+    slow_count: number;
+    dead_count: number;
+    value_at_risk: number;
+    dead_value: number;
+  };
+  items: InventoryHoldingItem[];
+  computed_at: string;
+}
+
+export const fetchInventoryHoldingRisk = async (
+  userId: string, asOf?: string,
+): Promise<InventoryHoldingRisk | null> => {
+  const { data, error } = await supabase.rpc('get_inventory_holding_risk', {
+    p_user_id: userId,
+    p_as_of: asOf ?? new Date().toISOString().slice(0, 10),
+  });
+  if (error) { console.error('[fss] inv holding:', error); return null; }
+  return data as InventoryHoldingRisk;
 };

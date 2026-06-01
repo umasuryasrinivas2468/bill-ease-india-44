@@ -1,22 +1,15 @@
 
 /**
- * Profit & Loss Report Component
- * 
- * Data Sources:
- * 1. Sales Invoices: total_amount where status = 'paid' for revenue (Income)
- * 2. Purchase Bills: total_amount where status = 'paid' or 'partial' for expenses (Expenses)
- * 3. Journal Lines: 
- *    - Credits to Income accounts as Revenue
- *    - Debits to Expense accounts as Expenses
- * 
- * Features:
- * - Aggregates data from invoices, purchase bills, and journal entries
- * - Monthly breakdown with visual charts
- * - Drill-down to individual transactions
- * - Period comparison (previous year/period)
- * - Export to PDF, Excel, CSV
- * - Email reports
- * - Account-wise summaries
+ * Profit & Loss Report — journal-derived (SSOT)
+ *
+ * Numbers come ONLY from journal_lines + accounts.account_type:
+ *   Revenue  = SUM(credit - debit) on Income accounts
+ *   Expenses = SUM(debit - credit) on Expense accounts
+ *
+ * The previous version also aggregated invoices.total_amount and
+ * purchase_bills.total_amount on top of the journal data, which
+ * double-counted any transaction that had been auto-posted to the GL.
+ * That dual-source pull is now removed.
  */
 
 import React, { useState, useMemo } from 'react';
@@ -51,20 +44,6 @@ interface JournalLineWithAccount {
   journal_id: string;
   journal_number?: string;
   narration?: string;
-}
-
-interface InvoiceData {
-  id: string;
-  total_amount: number;
-  invoice_date: string;
-  status: string;
-}
-
-interface PurchaseBillData {
-  id: string;
-  total_amount: number;
-  bill_date: string;
-  status: string;
 }
 
 interface MonthlyData {
@@ -130,59 +109,7 @@ const ProfitLoss = () => {
   const [emailAddress, setEmailAddress] = useState('');
   const [isEmailSending, setIsEmailSending] = useState(false);
 
-  // Fetch paid invoices for revenue
-  const { data: invoiceData = [], isLoading: isLoadingInvoices } = useQuery({
-    queryKey: ['profit-loss-invoices', user?.id, startDate, endDate],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      
-      const { data, error } = await supabase
-        .from('invoices')
-        .select('id, total_amount, invoice_date, status')
-        .eq('user_id', user.id)
-        .eq('status', 'paid')
-        .gte('invoice_date', startDate)
-        .lte('invoice_date', endDate);
-      
-      if (error) throw error;
-      
-      return data.map(item => ({
-        id: item.id,
-        total_amount: Number(item.total_amount),
-        invoice_date: item.invoice_date,
-        status: item.status
-      })) as InvoiceData[];
-    },
-    enabled: !!user?.id,
-  });
-
-  // Fetch paid purchase bills for expenses
-  const { data: purchaseBillData = [], isLoading: isLoadingPurchaseBills } = useQuery({
-    queryKey: ['profit-loss-purchase-bills', user?.id, startDate, endDate],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      
-      const { data, error } = await (supabase as any)
-        .from('purchase_bills')
-        .select('id, total_amount, bill_date, status')
-        .eq('user_id', user.id)
-        .in('status', ['paid', 'partial'])
-        .gte('bill_date', startDate)
-        .lte('bill_date', endDate);
-      
-      if (error) throw error;
-      
-      return data.map(item => ({
-        id: item.id,
-        total_amount: Number(item.total_amount),
-        bill_date: item.bill_date,
-        status: item.status
-      })) as PurchaseBillData[];
-    },
-    enabled: !!user?.id,
-  });
-
-  // Fetch current period journal lines with account information
+  // Fetch current period journal lines with account information (SSOT)
   const { data: journalData = [], isLoading } = useQuery({
     queryKey: ['profit-loss-data', user?.id, startDate, endDate],
     queryFn: async () => {
@@ -234,58 +161,6 @@ const ProfitLoss = () => {
       }) as JournalLineWithAccount[];
     },
     enabled: !!user?.id,
-  });
-
-  // Fetch paid invoices for comparison period
-  const { data: comparisonInvoiceData = [], isLoading: isLoadingComparisonInvoices } = useQuery({
-    queryKey: ['profit-loss-comparison-invoices', user?.id, comparisonStartDate, comparisonEndDate, enableComparison],
-    queryFn: async () => {
-      if (!user?.id || !enableComparison) return [];
-      
-      const { data, error } = await supabase
-        .from('invoices')
-        .select('id, total_amount, invoice_date, status')
-        .eq('user_id', user.id)
-        .eq('status', 'paid')
-        .gte('invoice_date', comparisonStartDate)
-        .lte('invoice_date', comparisonEndDate);
-      
-      if (error) throw error;
-      
-      return data.map(item => ({
-        id: item.id,
-        total_amount: Number(item.total_amount),
-        invoice_date: item.invoice_date,
-        status: item.status
-      })) as InvoiceData[];
-    },
-    enabled: !!user?.id && enableComparison,
-  });
-
-  // Fetch paid purchase bills for comparison period
-  const { data: comparisonPurchaseBillData = [], isLoading: isLoadingComparisonPurchaseBills } = useQuery({
-    queryKey: ['profit-loss-comparison-purchase-bills', user?.id, comparisonStartDate, comparisonEndDate, enableComparison],
-    queryFn: async () => {
-      if (!user?.id || !enableComparison) return [];
-      
-      const { data, error } = await (supabase as any)
-        .from('purchase_bills')
-        .select('id, total_amount, bill_date, status')
-        .eq('user_id', user.id)
-        .in('status', ['paid', 'partial'])
-        .gte('bill_date', comparisonStartDate)
-        .lte('bill_date', comparisonEndDate);
-      
-      if (error) throw error;
-      
-      return data.map(item => ({
-        id: item.id,
-        total_amount: Number(item.total_amount),
-        bill_date: item.bill_date,
-        status: item.status
-      })) as PurchaseBillData[];
-    },
-    enabled: !!user?.id && enableComparison,
   });
 
   // Fetch comparison period data if comparison is enabled
@@ -342,58 +217,10 @@ const ProfitLoss = () => {
     enabled: !!user?.id && enableComparison,
   });
 
-  // Helper function to process journal data, invoice data, and purchase bill data into monthly data
-  const processMonthlyData = (journalData: JournalLineWithAccount[], invoiceData: InvoiceData[], purchaseBillData: PurchaseBillData[]): MonthlyData[] => {
-    console.log('🔍 Processing monthly data:', {
-      journalCount: journalData.length,
-      invoiceCount: invoiceData.length,
-      purchaseBillCount: purchaseBillData.length,
-      dateRange: `${startDate} to ${endDate}`
-    });
-    
+  // Process journal lines into monthly data — SSOT, no source-table aggregation.
+  const processMonthlyData = (journalData: JournalLineWithAccount[]): MonthlyData[] => {
     const monthMap = new Map<string, { income: number; expenses: number }>();
-    
-    // Process paid invoices as revenue
-    invoiceData.forEach(invoice => {
-      const date = new Date(invoice.invoice_date);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      
-      console.log('📄 Processing invoice:', {
-        id: invoice.id,
-        invoice_date: invoice.invoice_date,
-        amount: invoice.total_amount,
-        monthKey: monthKey
-      });
-      
-      if (!monthMap.has(monthKey)) {
-        monthMap.set(monthKey, { income: 0, expenses: 0 });
-      }
-      
-      const monthData = monthMap.get(monthKey)!;
-      monthData.income += invoice.total_amount;
-    });
 
-    // Process paid purchase bills as expenses
-    purchaseBillData.forEach(bill => {
-      const date = new Date(bill.bill_date);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      
-      console.log('📋 Processing purchase bill:', {
-        id: bill.id,
-        bill_date: bill.bill_date,
-        amount: bill.total_amount,
-        monthKey: monthKey
-      });
-      
-      if (!monthMap.has(monthKey)) {
-        monthMap.set(monthKey, { income: 0, expenses: 0 });
-      }
-      
-      const monthData = monthMap.get(monthKey)!;
-      monthData.expenses += bill.total_amount;
-    });
-    
-    // Process journal entries
     journalData.forEach(line => {
       const date = new Date(line.journal_date);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -452,53 +279,25 @@ const ProfitLoss = () => {
   const monthlyData = useMemo(() => {
     console.log('Debug - Processing data:', {
       journalDataCount: journalData.length,
-      invoiceDataCount: invoiceData.length,
-      purchaseBillDataCount: purchaseBillData.length,
       dateRange: { startDate, endDate },
-      invoiceData: invoiceData.slice(0, 3), // First 3 invoices for debugging
-      purchaseBillData: purchaseBillData.slice(0, 3), // First 3 purchase bills for debugging
       journalData: journalData.slice(0, 3) // First 3 journal entries for debugging
     });
-    
-    const result = processMonthlyData(journalData, invoiceData, purchaseBillData);
+
+    const result = processMonthlyData(journalData);
     console.log('Debug - Monthly data result:', result);
     return result;
-  }, [journalData, invoiceData, purchaseBillData, startDate, endDate]);
-  
+  }, [journalData, startDate, endDate]);
+
   // Process comparison data
-  const comparisonMonthlyData = useMemo(() => 
-    enableComparison ? processMonthlyData(comparisonJournalData, comparisonInvoiceData, comparisonPurchaseBillData) : [], 
-    [comparisonJournalData, comparisonInvoiceData, comparisonPurchaseBillData, enableComparison]
+  const comparisonMonthlyData = useMemo(() =>
+    enableComparison ? processMonthlyData(comparisonJournalData) : [],
+    [comparisonJournalData, enableComparison]
   );
 
-  // Create account summaries for drill-down
+  // Create account summaries for drill-down (journal-derived only)
   const accountSummaries = useMemo(() => {
     const accountMap = new Map<string, AccountSummary>();
-    
-    // Add invoice revenue as a separate account
-    if (invoiceData.length > 0) {
-      const invoiceRevenue = invoiceData.reduce((sum, invoice) => sum + invoice.total_amount, 0);
-      accountMap.set('invoices-income', {
-        account_id: 'invoices',
-        account_name: 'Invoice Revenue',
-        account_type: 'income',
-        total_amount: invoiceRevenue,
-        transactions_count: invoiceData.length
-      });
-    }
 
-    // Add purchase bill expenses as a separate account
-    if (purchaseBillData.length > 0) {
-      const purchaseExpenses = purchaseBillData.reduce((sum, bill) => sum + bill.total_amount, 0);
-      accountMap.set('purchase-bills-expense', {
-        account_id: 'purchase-bills',
-        account_name: 'Purchase Bills',
-        account_type: 'expense',
-        total_amount: purchaseExpenses,
-        transactions_count: purchaseBillData.length
-      });
-    }
-    
     journalData.forEach(line => {
       const accountKey = `${line.account_id}-${line.account_type}`;
       
@@ -525,7 +324,7 @@ const ProfitLoss = () => {
     return Array.from(accountMap.values())
       .filter(account => Math.abs(account.total_amount) > 0)
       .sort((a, b) => b.total_amount - a.total_amount);
-  }, [journalData, invoiceData]);
+  }, [journalData]);
 
   // Calculate current totals
   const totals = useMemo(() => {
@@ -885,54 +684,18 @@ const ProfitLoss = () => {
   };
 
   const getAccountTransactions = (accountId: string) => {
-    if (accountId === 'invoices') {
-      // For invoice revenue, return invoice transactions
-      return invoiceData
-        .map(invoice => ({
-          id: invoice.id,
-          journal_date: invoice.invoice_date,
-          debit: 0,
-          credit: invoice.total_amount,
-          account_name: 'Invoice Revenue',
-          account_type: 'income',
-          journal_number: `INV-${invoice.id.slice(-6)}`,
-          narration: `Invoice payment - ₹${invoice.total_amount.toLocaleString()}`,
-          journal_id: invoice.id,
-          account_id: 'invoices'
-        }))
-        .sort((a, b) => new Date(b.journal_date).getTime() - new Date(a.journal_date).getTime());
-    }
-
-    if (accountId === 'purchase-bills') {
-      // For purchase bill expenses, return purchase bill transactions
-      return purchaseBillData
-        .map(bill => ({
-          id: bill.id,
-          journal_date: bill.bill_date,
-          debit: bill.total_amount,
-          credit: 0,
-          account_name: 'Purchase Bills',
-          account_type: 'expense',
-          journal_number: `BILL-${bill.id.slice(-6)}`,
-          narration: `Purchase bill payment - ₹${bill.total_amount.toLocaleString()}`,
-          journal_id: bill.id,
-          account_id: 'purchase-bills'
-        }))
-        .sort((a, b) => new Date(b.journal_date).getTime() - new Date(a.journal_date).getTime());
-    }
-    
     return journalData
       .filter(line => line.account_id === accountId)
       .sort((a, b) => new Date(b.journal_date).getTime() - new Date(a.journal_date).getTime());
   };
 
-  if (isLoading || isLoadingInvoices || isLoadingPurchaseBills || (enableComparison && (isLoadingComparison || isLoadingComparisonInvoices || isLoadingComparisonPurchaseBills))) {
+  if (isLoading || (enableComparison && isLoadingComparison)) {
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-lg">
             Loading Profit & Loss data...
-            {enableComparison && (isLoadingComparison || isLoadingComparisonInvoices || isLoadingComparisonPurchaseBills) && " (including comparison data)"}
+            {enableComparison && isLoadingComparison && " (including comparison data)"}
           </div>
         </div>
       </div>
@@ -945,7 +708,7 @@ const ProfitLoss = () => {
         <div>
           <h1 className="text-3xl font-bold">Profit & Loss Report</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Comprehensive profit and loss statement with drill-down and comparison features
+            Journal-derived (SSOT) — every figure comes from posted journal_lines on Income / Expense accounts. No source-table fallback.
           </p>
         </div>
         <div className="flex space-x-2">
@@ -1226,19 +989,10 @@ const ProfitLoss = () => {
           <CardContent>
             <div className="space-y-2 text-sm">
               <div><strong>Date Range:</strong> {startDate} to {endDate}</div>
-              <div><strong>Invoice Count:</strong> {invoiceData.length}</div>
               <div><strong>Journal Entry Count:</strong> {journalData.length}</div>
               <div><strong>User ID:</strong> {user?.id}</div>
-              
-              {invoiceData.length > 0 && (
-                <div>
-                  <strong>Sample Invoice:</strong> 
-                  <pre className="mt-1 text-xs bg-white p-2 rounded border">
-                    {JSON.stringify(invoiceData[0], null, 2)}
-                  </pre>
-                </div>
-              )}
-              
+              <div className="text-xs text-muted-foreground">Source: journal_lines (SSOT). Numbers no longer pulled from invoices/bills directly — every posted transaction reaches the GL via post_journal.</div>
+
               {journalData.length > 0 && (
                 <div>
                   <strong>Sample Journal Entry:</strong>
@@ -1247,16 +1001,10 @@ const ProfitLoss = () => {
                   </pre>
                 </div>
               )}
-              
-              {invoiceData.length === 0 && journalData.length === 0 && (
+
+              {journalData.length === 0 && (
                 <div className="text-orange-600 font-medium">
-                  No invoices or journal entries found for this date range. 
-                  Please check if you have:
-                  <ul className="list-disc list-inside mt-2 space-y-1">
-                    <li>Paid invoices in the selected date range</li>
-                    <li>Journal entries with income/expense account types</li>
-                    <li>Correct date range selected</li>
-                  </ul>
+                  No journal entries found for this date range. Make sure every business transaction (invoice / payment / expense) has been posted to the GL via post_journal.
                 </div>
               )}
             </div>
@@ -1282,7 +1030,7 @@ const ProfitLoss = () => {
               <h4 className="font-semibold text-green-600 mb-3">Income Accounts</h4>
               <div className="space-y-2">
                 {accountSummaries
-                  .filter(account => account.account_type === 'income')
+                  .filter(account => account.account_type === 'Income')
                   .map((account) => (
                     <div 
                       key={account.account_id}
@@ -1303,7 +1051,7 @@ const ProfitLoss = () => {
                       </div>
                     </div>
                   ))}
-                {accountSummaries.filter(account => account.account_type === 'income').length === 0 && (
+                {accountSummaries.filter(account => account.account_type === 'Income').length === 0 && (
                   <div className="text-center text-muted-foreground py-4">
                     No income accounts found
                   </div>
@@ -1316,7 +1064,7 @@ const ProfitLoss = () => {
               <h4 className="font-semibold text-red-600 mb-3">Expense Accounts</h4>
               <div className="space-y-2">
                 {accountSummaries
-                  .filter(account => account.account_type === 'expense')
+                  .filter(account => account.account_type === 'Expense')
                   .map((account) => (
                     <div 
                       key={account.account_id}
@@ -1337,7 +1085,7 @@ const ProfitLoss = () => {
                       </div>
                     </div>
                   ))}
-                {accountSummaries.filter(account => account.account_type === 'expense').length === 0 && (
+                {accountSummaries.filter(account => account.account_type === 'Expense').length === 0 && (
                   <div className="text-center text-muted-foreground py-4">
                     No expense accounts found
                   </div>

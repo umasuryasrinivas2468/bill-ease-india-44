@@ -38,11 +38,18 @@ const PostToLedgerButton: React.FC<PostToLedgerButtonProps> = ({ expense, onSucc
         id: expense.id,
         expense_date: expense.expense_date,
         vendor_name: expense.vendor_name,
+        vendor_id: (expense as any).vendor_id ?? undefined,
         category_name: expense.category_name,
         amount: Number(expense.amount),
         tax_amount: Number(expense.tax_amount),
+        tds_amount: Number((expense as any).tds_amount ?? 0),
         payment_mode: expense.payment_mode,
         description: expense.description,
+        is_rcm: (expense as any).is_rcm,
+        itc_eligible: (expense as any).itc_eligible,
+        cost_center_id: (expense as any).cost_center_id ?? undefined,
+        project_id: (expense as any).project_id ?? undefined,
+        branch_id: (expense as any).branch_id ?? undefined,
       });
 
       toast({

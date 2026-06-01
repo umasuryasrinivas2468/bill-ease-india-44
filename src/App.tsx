@@ -112,6 +112,10 @@ import TrialBalance from "./pages/accounting/TrialBalance";
 import ProfitLoss from "./pages/accounting/ProfitLoss";
 import ProjectProfitLoss from "./pages/accounting/ProjectProfitLoss";
 import ManualJournals from "./pages/accounting/ManualJournals";
+import SubLedgerManager from "./pages/accounting/SubLedgerManager";
+import Gstr2a from "./pages/compliance/Gstr2a";
+import GstReconciliation from "./pages/compliance/GstReconciliation";
+import ProfitabilityByDimension from "./pages/reports/ProfitabilityByDimension";
 import FinancialStatements from "./pages/FinancialStatements";
 import AssetsDashboard from "./pages/assets/AssetsDashboard";
 import AssetRegister from "./pages/assets/AssetRegister";
@@ -320,6 +324,10 @@ function App() {
                           <Route path="/accounting/profit-loss" element={<ProfitLoss />} />
                           <Route path="/accounting/project-profit-loss" element={<ProjectProfitLoss />} />
                           <Route path="/accounting/manual-journals" element={<ManualJournals />} />
+                          <Route path="/accounting/sub-ledgers" element={<SubLedgerManager />} />
+                          <Route path="/compliance/gstr-2a" element={<Gstr2a />} />
+                          <Route path="/compliance/gst-reconciliation" element={<GstReconciliation />} />
+                          <Route path="/reports/profitability" element={<ProfitabilityByDimension />} />
                           <Route path="/accounting/financial-statements" element={<FinancialStatements />} />
 
                           {/* Fixed Assets */}

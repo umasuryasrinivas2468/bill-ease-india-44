@@ -1,200 +1,105 @@
 import { useQuery } from '@tanstack/react-query';
 import { useUser } from '@clerk/clerk-react';
 import { supabase } from '@/lib/supabase';
-import { computeGSTBreakdown, round2 } from '@/lib/gst';
-import { useBusinessData } from '@/hooks/useBusinessData';
+import { round2 } from '@/lib/gst';
 
 // ═══════════════════════════════════════════════════════════════════
-// useGSTLiability — aggregates a given month into the numbers shown on
-// the Output Tax Liability + Net GST Payable dashboards.
+// useGSTLiability — Output Tax Liability + Net GST Payable dashboard.
 //
-// Sources:
-//   - invoices            → output tax (read __tax_meta from items JSON
-//                           if present, else compute from gst_amount +
-//                           client place_of_supply vs seller state)
-//   - credit_notes        → negative output tax (reversal)
-//   - purchase_bills      → eligible ITC (gst_amount)
-//   - expenses (is_rcm)   → RCM payable (also ITC-eligible in most cases)
+// SSOT: all numbers come from `get_gst_liability_from_journals(user, period)`
+// which aggregates `journal_lines.tax_type` (cgst/sgst/igst/cess/itc/
+// output_gst/rcm_input/rcm_output). The previous implementation summed
+// invoices.gst_amount + credit_notes.gst_amount + bills.gst_amount +
+// expenses.rcm_amount directly — that double-counted anything posted to
+// the GL via post_journal.
 //
-// Period is a calendar month. `month` is YYYY-MM.
+// Period is a calendar month (YYYY-MM).
 // ═══════════════════════════════════════════════════════════════════
 
 export interface GSTLiabilitySummary {
   period: string;                 // YYYY-MM
-  output: { cgst: number; sgst: number; igst: number; total: number };
+  output: { cgst: number; sgst: number; igst: number; cess?: number; total: number };
   credit_notes: { cgst: number; sgst: number; igst: number; total: number };
   net_output: { cgst: number; sgst: number; igst: number; total: number };
   itc: { purchase_bills: number; rcm: number; total: number };
-  rcm_liability: number;          // reverse-charge GST payable
+  rcm_liability: number;
   net_payable: {
     cgst: number;
     sgst: number;
     igst: number;
-    total_cash: number;           // what you actually owe in cash this month
+    total_cash: number;
   };
 }
 
-function monthBounds(month: string) {
-  // month = YYYY-MM → [firstDayISO, firstDayOfNextMonthISO)
-  const [y, m] = month.split('-').map(Number);
-  const start = new Date(Date.UTC(y, m - 1, 1)).toISOString().slice(0, 10);
-  const end = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
-  return { start, end };
-}
-
-function splitFromTotal(gstTotal: number, intraState: boolean) {
-  if (intraState) {
-    const half = round2(gstTotal / 2);
-    return { cgst: half, sgst: round2(gstTotal - half), igst: 0 };
-  }
-  return { cgst: 0, sgst: 0, igst: round2(gstTotal) };
-}
-
-function readTaxMeta(items: any): any | null {
-  if (!Array.isArray(items)) return null;
-  const meta = items.find(
-    (x) => x && typeof x === 'object' && x.__tax_meta === true,
-  );
-  return meta || null;
+interface JournalGstResult {
+  period: string;
+  source: 'journals_only';
+  output: { cgst: number; sgst: number; igst: number; cess: number; total: number };
+  itc:    { cgst: number; sgst: number; igst: number; cess: number; total: number };
+  rcm:    { input: number; output: number };
+  computed_at: string;
 }
 
 export const useGSTLiability = (month: string) => {
   const { user } = useUser();
-  const { getBusinessInfo } = useBusinessData();
-  const sellerState = getBusinessInfo()?.state || '';
 
   return useQuery<GSTLiabilitySummary>({
-    queryKey: ['gst-liability', user?.id, month, sellerState],
+    queryKey: ['gst-liability-journal', user?.id, month],
     enabled: !!user?.id && !!month,
     queryFn: async () => {
-      const { start, end } = monthBounds(month);
+      const { data, error } = await supabase.rpc('get_gst_liability_from_journals', {
+        p_user_id: user!.id,
+        p_period: month,
+      });
+      if (error) throw error;
+      const r = data as JournalGstResult;
 
-      // ── OUTPUT TAX: invoices ──
-      const { data: invoices = [] } = await supabase
-        .from('invoices')
-        .select('id, invoice_date, gst_amount, items, client_name')
-        .eq('user_id', user!.id)
-        .gte('invoice_date', start)
-        .lt('invoice_date', end);
-
-      // Pull clients to look up place_of_supply for legacy invoices without __tax_meta
-      const { data: clients = [] } = await supabase
-        .from('clients')
-        .select('name, place_of_supply')
-        .eq('user_id', user!.id);
-      const clientPOS = new Map(
-        (clients || []).map((c: any) => [c.name, c.place_of_supply]),
-      );
-
-      const output = { cgst: 0, sgst: 0, igst: 0, total: 0 };
-      for (const inv of invoices || []) {
-        const gstTotal = Number(inv.gst_amount) || 0;
-        if (gstTotal === 0) continue;
-        output.total += gstTotal;
-
-        const meta = readTaxMeta(inv.items);
-        if (meta) {
-          output.cgst += Number(meta.cgst_amount) || 0;
-          output.sgst += Number(meta.sgst_amount) || 0;
-          output.igst += Number(meta.igst_amount) || 0;
-        } else {
-          // Legacy fallback: re-derive from seller state vs client's POS
-          const buyerState = clientPOS.get(inv.client_name) || '';
-          const bd = computeGSTBreakdown(0, 0, sellerState, buyerState);
-          const split = splitFromTotal(gstTotal, bd.intraState);
-          output.cgst += split.cgst;
-          output.sgst += split.sgst;
-          output.igst += split.igst;
-        }
-      }
-
-      // ── CREDIT NOTES: reversals ──
-      const { data: creditNotes = [] } = await supabase
-        .from('credit_notes')
-        .select('gst_amount, items, client_name, issue_date')
-        .eq('user_id', user!.id)
-        .gte('issue_date', start)
-        .lt('issue_date', end);
-
-      const credit = { cgst: 0, sgst: 0, igst: 0, total: 0 };
-      for (const cn of creditNotes || []) {
-        const gstTotal = Number(cn.gst_amount) || 0;
-        if (gstTotal === 0) continue;
-        credit.total += gstTotal;
-        const meta = readTaxMeta(cn.items);
-        if (meta) {
-          credit.cgst += Number(meta.cgst_amount) || 0;
-          credit.sgst += Number(meta.sgst_amount) || 0;
-          credit.igst += Number(meta.igst_amount) || 0;
-        } else {
-          const buyerState = clientPOS.get(cn.client_name) || '';
-          const bd = computeGSTBreakdown(0, 0, sellerState, buyerState);
-          const split = splitFromTotal(gstTotal, bd.intraState);
-          credit.cgst += split.cgst;
-          credit.sgst += split.sgst;
-          credit.igst += split.igst;
-        }
-      }
-
-      // ── ITC from purchase_bills ──
-      const { data: purchaseBills = [] } = await supabase
-        .from('purchase_bills')
-        .select('gst_amount, bill_date')
-        .eq('user_id', user!.id)
-        .gte('bill_date', start)
-        .lt('bill_date', end);
-      const itcFromBills = (purchaseBills || []).reduce(
-        (sum: number, b: any) => sum + (Number(b.gst_amount) || 0),
-        0,
-      );
-
-      // ── RCM liability + ITC from expenses ──
-      const { data: rcmExpenses = [] } = await supabase
-        .from('expenses')
-        .select('rcm_amount, expense_date')
-        .eq('user_id', user!.id)
-        .eq('is_rcm', true)
-        .gte('expense_date', start)
-        .lt('expense_date', end);
-      const rcmLiability = (rcmExpenses || []).reduce(
-        (sum: number, e: any) => sum + (Number(e.rcm_amount) || 0),
-        0,
-      );
-
-      // ── Assemble ──
+      // The journal-derived "output" already nets credit notes (they post Dr
+      // CGST/SGST/IGST on a credit_note journal which reduces the credit side
+      // of the running output total). For UI parity with the prior summary
+      // we surface zeros in `credit_notes` and use the same `output` value
+      // as `net_output`.
+      const output = {
+        cgst:  round2(r.output.cgst),
+        sgst:  round2(r.output.sgst),
+        igst:  round2(r.output.igst),
+        cess:  round2(r.output.cess),
+        total: round2(r.output.total),
+      };
+      const zeros = { cgst: 0, sgst: 0, igst: 0, total: 0 };
       const netOutput = {
-        cgst: round2(output.cgst - credit.cgst),
-        sgst: round2(output.sgst - credit.sgst),
-        igst: round2(output.igst - credit.igst),
-        total: round2(output.total - credit.total),
+        cgst:  output.cgst,
+        sgst:  output.sgst,
+        igst:  output.igst,
+        total: output.total,
       };
 
-      // RCM counts as ITC since the buyer pays it AND can claim it back (in most cases)
-      const totalITC = round2(itcFromBills + rcmLiability);
+      const itcBills = round2(r.itc.total);    // includes RCM input
+      const rcmIn    = round2(r.rcm.input);
+      const totalItc = itcBills;
+      const rcmLiability = round2(r.rcm.output);
 
-      // Net cash payable, per head. ITC offsets output on a best-effort split —
-      // a full implementation needs per-bill breakdown; for now proportion by output mix.
       const netOutputTotal = Math.max(netOutput.total, 0);
       const shareCgst = netOutputTotal ? netOutput.cgst / netOutputTotal : 0;
       const shareSgst = netOutputTotal ? netOutput.sgst / netOutputTotal : 0;
       const shareIgst = netOutputTotal ? netOutput.igst / netOutputTotal : 0;
 
-      const netCgst = Math.max(0, round2(netOutput.cgst - totalITC * shareCgst));
-      const netSgst = Math.max(0, round2(netOutput.sgst - totalITC * shareSgst));
-      const netIgst = Math.max(0, round2(netOutput.igst - totalITC * shareIgst));
+      const netCgst = Math.max(0, round2(netOutput.cgst - totalItc * shareCgst));
+      const netSgst = Math.max(0, round2(netOutput.sgst - totalItc * shareSgst));
+      const netIgst = Math.max(0, round2(netOutput.igst - totalItc * shareIgst));
       const netCash = round2(netCgst + netSgst + netIgst + rcmLiability);
 
       return {
         period: month,
         output,
-        credit_notes: credit,
+        credit_notes: zeros,           // already netted into `output` from journals
         net_output: netOutput,
         itc: {
-          purchase_bills: round2(itcFromBills),
-          rcm: round2(rcmLiability),
-          total: totalITC,
+          purchase_bills: round2(itcBills - rcmIn),
+          rcm: rcmIn,
+          total: totalItc,
         },
-        rcm_liability: round2(rcmLiability),
+        rcm_liability: rcmLiability,
         net_payable: {
           cgst: netCgst,
           sgst: netSgst,

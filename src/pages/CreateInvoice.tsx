@@ -263,9 +263,11 @@ const CreateInvoice = () => {
       // Auto-create journal entry for the invoice
       try {
         await postInvoiceJournal(user!.id, {
+          invoice_id: createdInvoice?.id,
           invoice_number: invoiceNumber,
           invoice_date: invoiceDate,
           client_name: selectedClient.name,
+          customer_id: selectedClient.id,
           amount: gstResult.taxable,
           gst_amount: gstAmount,
           total_amount: total,
@@ -279,6 +281,7 @@ const CreateInvoice = () => {
         document_number: invoiceNumber,
         date: invoiceDate,
         party_name: selectedClient.name,
+        customer_id: selectedClient.id,
         items: [...items, tax_meta],
         source_type: 'invoice',
       });

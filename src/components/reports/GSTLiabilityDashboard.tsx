@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useUser } from '@clerk/clerk-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,15 +14,60 @@ import {
   Wallet,
   ReceiptText,
   Coins,
+  ShieldCheck,
+  ShieldAlert,
 } from 'lucide-react';
 import { useGSTLiability } from '@/hooks/useGSTLiability';
 import { formatINR } from '@/lib/gst';
+import { fetchThreeWayReconciliation, validateBooks } from '@/services/financialStatementsService';
 
 const currentMonth = () => new Date().toISOString().slice(0, 7); // YYYY-MM
 
 const GSTLiabilityDashboard: React.FC = () => {
+  const { user } = useUser();
+  const userId = user?.id;
   const [month, setMonth] = useState<string>(currentMonth());
   const { data, isLoading, error } = useGSTLiability(month);
+
+  // Filing readiness — combines 3-way recon + validate_books signal.
+  const { data: recon } = useQuery({
+    queryKey: ['filing-readiness-recon', userId, month],
+    queryFn: () => userId ? fetchThreeWayReconciliation(userId, month) : Promise.resolve(null),
+    enabled: !!userId,
+  });
+  const fy = (() => {
+    const [y, m] = month.split('-').map(Number);
+    const startY = m >= 4 ? y : y - 1;
+    return `${startY}-${(startY + 1).toString().slice(2)}`;
+  })();
+  const { data: validation } = useQuery({
+    queryKey: ['filing-readiness-validate', userId, fy],
+    queryFn: () => userId ? validateBooks(userId, fy) : Promise.resolve(null),
+    enabled: !!userId,
+  });
+
+  const readiness = (() => {
+    const s = recon?.summary;
+    const checksFailed = validation?.checks?.filter(c => c.passed === false).length ?? 0;
+    const matchPct = s && s.total_rows > 0 ? (s.matched / s.total_rows) * 100 : 100;
+    const issues = (s?.missing_in_portal ?? 0)
+                 + (s?.missing_in_books ?? 0)
+                 + (s?.gst_mismatch ?? 0)
+                 + (s?.value_mismatch ?? 0)
+                 + (s?.duplicate_invoices ?? 0)
+                 + checksFailed;
+    let tone: 'green' | 'amber' | 'red' = 'green';
+    let label = 'Ready to file';
+    if (issues > 0 && issues <= 5) { tone = 'amber'; label = 'Review recommended'; }
+    if (issues > 5 || checksFailed > 0) { tone = 'red'; label = 'Not ready — fix issues first'; }
+    return { tone, label, issues, matchPct, checksFailed };
+  })();
+
+  const toneStyles: Record<'green' | 'amber' | 'red', string> = {
+    green: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+    amber: 'bg-amber-50 border-amber-200 text-amber-800',
+    red:   'bg-red-50 border-red-200 text-red-800',
+  };
 
   return (
     <div className="space-y-6">
@@ -48,6 +95,26 @@ const GSTLiabilityDashboard: React.FC = () => {
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Filing Readiness */}
+      <Card className={`border ${toneStyles[readiness.tone]}`}>
+        <CardContent className="flex items-center justify-between gap-4 py-4">
+          <div className="flex items-center gap-3">
+            {readiness.tone === 'red'
+              ? <ShieldAlert className="h-6 w-6" />
+              : <ShieldCheck className="h-6 w-6" />}
+            <div>
+              <div className="text-sm font-semibold">Filing Readiness — {readiness.label}</div>
+              <div className="text-xs opacity-80">
+                {readiness.issues} issue(s) detected · {readiness.matchPct.toFixed(0)}% recon matched · {readiness.checksFailed} validation check(s) failing
+              </div>
+            </div>
+          </div>
+          <Badge variant="outline" className="text-[10px] bg-background">
+            Book vs Portal · FY {fy}
+          </Badge>
         </CardContent>
       </Card>
 
