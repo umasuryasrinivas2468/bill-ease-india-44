@@ -169,6 +169,7 @@ const SECTIONS: NavSection[] = [
     title: "Compliance",
     icon: ShieldCheck,
     items: [
+      { title: "Tax Compliance Center", url: "/tax-compliance", icon: ShieldCheck },
       { title: "GST Dashboard", url: "/compliance/gst", icon: Scale },
       { title: "GSTR-1", url: comingSoon("GSTR-1"), icon: FileText },
       { title: "GSTR-3B", url: "/reports/gst3-filing", icon: FileText },
@@ -188,6 +189,7 @@ const SECTIONS: NavSection[] = [
     icon: Calculator,
     items: [
       { title: "Journal Entries", url: "/accounting/manual-journals", icon: ClipboardCheck },
+      { title: "Accounting Health", url: "/accounting/health", icon: ShieldCheck },
       { title: "General Ledger", url: "/accounting/ledgers", icon: BookOpen },
       { title: "Sub-Ledgers", url: "/accounting/sub-ledgers", icon: BookOpen },
       { title: "Customer Ledger", url: "/customer-ledger", icon: BookOpen },

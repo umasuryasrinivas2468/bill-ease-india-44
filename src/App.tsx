@@ -64,6 +64,7 @@ import GSTCompliance from "./pages/GSTCompliance";
 import ComplianceGST from "./pages/compliance/GST";
 import Payroll from "./pages/Payroll";
 import TDS from "./pages/TDS";
+import TaxCompliance from "./pages/TaxCompliance";
 import DeliveryChallans from "./pages/DeliveryChallans";
 import ITR6Filing from "./pages/ITR6Filing";
 import RecurringInvoices from "./pages/RecurringInvoices";
@@ -113,6 +114,7 @@ import ProfitLoss from "./pages/accounting/ProfitLoss";
 import ProjectProfitLoss from "./pages/accounting/ProjectProfitLoss";
 import ManualJournals from "./pages/accounting/ManualJournals";
 import SubLedgerManager from "./pages/accounting/SubLedgerManager";
+import AccountingHealth from "./pages/accounting/AccountingHealth";
 import Gstr2a from "./pages/compliance/Gstr2a";
 import GstReconciliation from "./pages/compliance/GstReconciliation";
 import ProfitabilityByDimension from "./pages/reports/ProfitabilityByDimension";
@@ -325,6 +327,7 @@ function App() {
                           <Route path="/accounting/project-profit-loss" element={<ProjectProfitLoss />} />
                           <Route path="/accounting/manual-journals" element={<ManualJournals />} />
                           <Route path="/accounting/sub-ledgers" element={<SubLedgerManager />} />
+                          <Route path="/accounting/health" element={<AccountingHealth />} />
                           <Route path="/compliance/gstr-2a" element={<Gstr2a />} />
                           <Route path="/compliance/gst-reconciliation" element={<GstReconciliation />} />
                           <Route path="/reports/profitability" element={<ProfitabilityByDimension />} />
@@ -371,6 +374,8 @@ function App() {
                           <Route path="/gst-compliance" element={<GSTCompliance />} />
                           <Route path="/compliance/gst-legacy" element={<ComplianceGST />} />
                           <Route path="/reports/tds" element={<TDS />} />
+                          <Route path="/tax-compliance" element={<TaxCompliance />} />
+                          <Route path="/tax-compliance/:tab" element={<TaxCompliance />} />
                         </Route>
 
                         <Route path="*" element={<NotFound />} />
