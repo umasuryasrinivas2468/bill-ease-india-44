@@ -50,11 +50,13 @@ async function generateGeminiText(prompt) {
   return data?.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('\n').trim() || '';
 }
 
-// In-memory storage for user VPAs (in production, use a database)
-const userVPAs = new Map();
-const transactions = new Map();
-// In-memory store for created payment links
-const paymentLinks = new Map();
+// Durable, Map-compatible stores backed by Cloud SQL (falls back to in-memory
+// when DATABASE_URL is unset). Replaces the previous plain Maps so state
+// survives Cloud Run restarts/redeploys. See server/store.js.
+const { PersistentMap, initStores } = require('./store');
+const userVPAs = new PersistentMap('user_vpas');
+const transactions = new PersistentMap('transactions');
+const paymentLinks = new PersistentMap('payment_links');
 
 // Generate reference ID
 const generateReferenceId = () => {
@@ -828,16 +830,22 @@ app.get('/test/pdf', (req, res) => {
   res.send(minimalPdf);
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log('Federal Bank UPI Integration Server with TDS Support');
-  console.log('Endpoints:');
-  console.log('- POST /create-vpa - Create VPA for user');
-  console.log('- POST /collect - Create UPI collection request');
-  console.log('- GET /status/:referenceId - Check transaction status');
-  console.log('- GET /user-vpa/:userId - Get user VPA');
-  console.log('- GET /transactions/:userId - Get user transactions');
-  console.log('- POST /tds/rules - Add new TDS category');
-  console.log('- GET /reports/tds - Get TDS report with filters');
-  console.log('- POST /tds/transaction - Record TDS transaction');
-});
+// Hydrate durable stores from Cloud SQL before accepting traffic, then listen.
+// Bind to 0.0.0.0 so Cloud Run can route to the container.
+initStores([userVPAs, transactions, paymentLinks])
+  .catch((e) => console.error('[store] init failed, continuing in-memory:', e.message))
+  .finally(() => {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log('Federal Bank UPI Integration Server with TDS Support');
+      console.log('Endpoints:');
+      console.log('- POST /create-vpa - Create VPA for user');
+      console.log('- POST /collect - Create UPI collection request');
+      console.log('- GET /status/:referenceId - Check transaction status');
+      console.log('- GET /user-vpa/:userId - Get user VPA');
+      console.log('- GET /transactions/:userId - Get user transactions');
+      console.log('- POST /tds/rules - Add new TDS category');
+      console.log('- GET /reports/tds - Get TDS report with filters');
+      console.log('- POST /tds/transaction - Record TDS transaction');
+    });
+  });

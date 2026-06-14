@@ -1,0 +1,10 @@
+# Builds the shared Deno functions image from the repo root context.
+# Usage: gcloud builds submit --config gcp/functions/cloudbuild.yaml \
+#          --substitutions=_IMAGE=REGION-docker.pkg.dev/PROJECT/REPO/functions:latest .
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-t", "${_IMAGE}", "-f", "gcp/functions/Dockerfile", "."]
+images:
+  - "${_IMAGE}"
+options:
+  logging: CLOUD_LOGGING_ONLY

@@ -1,0 +1,7 @@
+# Never commit real migration config / secrets / dumps
+.env.migration
+*.jwt
+*.dump
+*.sql.gz
+keys/
+service-account*.json
